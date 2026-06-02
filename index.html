@@ -276,7 +276,7 @@ tbody tr:hover td{background:#FAFBFD}
   /* แถบเครื่องมือพรีวิวบนมือถือ */
   #printBar{gap:8px}
   #printBar select{font-size:11px;padding:5px 7px}
-  #printFrame{width:100%!important;min-height:auto!important}
+  #printFrame{min-height:auto!important}
 }
 
 @media (max-width:430px){
@@ -284,7 +284,7 @@ tbody tr:hover td{background:#FAFBFD}
   .pr-g,.pr-g[style]{grid-template-columns:1fr!important}
   .topbar-avatar,.av{width:32px;height:32px}
 }
-@media print{ body>*:not(#printOverlay){display:none!important} #printOverlay{position:static!important;inset:auto!important;background:#fff!important} #printBar{display:none!important} #printFrame{box-shadow:none!important;width:100%!important} }
+@media print{ body>*:not(#printOverlay){display:none!important} #printOverlay{position:static!important;inset:auto!important;background:#fff!important} #printBar{display:none!important} #printScaleWrap{transform:none!important;width:auto!important;height:auto!important} #printFrame{box-shadow:none!important;width:100%!important} }
 </style>
 </head>
 <body>
@@ -3343,9 +3343,9 @@ function printDoc(type,id,opts){
   body{color:#2b3a4a;font-size:11px;line-height:1.4}
   .sheet{width:210mm;min-height:272mm;margin:0 auto 10mm;padding:11mm 12mm;background:#fff;position:relative;overflow:hidden;page-break-after:always;display:flex;flex-direction:column;box-sizing:border-box}
   .sheet:last-child{margin-bottom:0;page-break-after:auto}
-  .corner{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 110px 110px 0;border-color:transparent ${theme} transparent transparent}
-  .pageno{position:absolute;top:8mm;right:9mm;font-size:18px;font-weight:700;color:#fff;z-index:2}
-  .title{text-align:right;font-size:19px;font-weight:700;color:${theme};margin-bottom:2px;padding-right:4px}
+  .corner{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 84px 84px 0;border-color:transparent ${theme} transparent transparent}
+  .pageno{position:absolute;top:6mm;right:7mm;font-size:15px;font-weight:700;color:#fff;z-index:2}
+  .title{text-align:right;font-size:19px;font-weight:700;color:${theme};margin-bottom:2px;padding-right:4px;padding-top:30px}
   .title .subtitle{font-size:13px;font-weight:400;color:#8a96a3;margin-top:2px}
   .title-rule{border-bottom:1px solid #e2e2e2;margin-bottom:14px}
   .top{display:flex;justify-content:space-between;gap:30px;margin-bottom:16px}
@@ -3379,7 +3379,7 @@ function printDoc(type,id,opts){
   @media print{ .sheet{width:auto;min-height:auto;height:auto;margin:0;padding:11mm 12mm;box-shadow:none;page-break-after:always} .sheet:last-child{page-break-after:auto} .ft{margin-top:48px} .corner,.pageno,.title,.sumt td:first-child,.cust-lb,.docmeta td.k{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
   @media screen{body{background:#fff}}
   </style></head><body>${pages}</body></html>`;
-  showPrintPreview(innerHTML, type, id, {copyMode, docType:docTypeName});
+  showPrintPreview(innerHTML, type, id, {copyMode, docType:docTypeName, showSig:CO.showSig});
 }
 
 // แปลงตัวเลขเป็นข้อความภาษาไทย (บาท/สตางค์)
@@ -3450,9 +3450,12 @@ function showPrintPreview(html, type, id, opts){
           <button onclick="closePrintPreview()" style="padding:9px 18px;border-radius:8px;border:none;background:rgba(255,255,255,.15);color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">✕ ปิด</button>
         </div>
       </div>
-      <div style="flex:1;overflow:auto;display:flex;justify-content:center;padding:20px"><iframe id="printFrame" style="width:210mm;max-width:100%;min-height:297mm;border:none;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.3)"></iframe></div>`;
+      <div style="flex:1;overflow:auto;display:flex;justify-content:center;padding:16px"><div id="printScaleWrap" style="width:794px;flex:none;transform-origin:top center"><iframe id="printFrame" style="width:794px;min-height:1123px;border:none;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.3);display:block" scrolling="no"></iframe></div></div>`;
     document.body.appendChild(ov);
   }
+  // ปรับสเกลพรีวิวให้พอดีจอแคบ (A4 = 794px) แต่เนื้อหายังเป็น A4 จริง ไม่ตกบรรทัด
+  setTimeout(fitPrintPreview,60);
+  window.addEventListener('resize',fitPrintPreview);
   // sync controls
   const copySel=document.getElementById('pv-copy'); if(copySel) copySel.value=printCtx.copyMode;
   const sigBtn=document.getElementById('pv-sig'); if(sigBtn){ const on=printCtx.showSig!==false; sigBtn.textContent=on?'✓ แสดง':'✕ ซ่อน'; sigBtn.style.background=on?'#00C9A7':'rgba(255,255,255,.2)'; }
@@ -3481,6 +3484,10 @@ function showPrintPreview(html, type, id, opts){
   const f=document.getElementById('printFrame');
   const doc=f.contentDocument||f.contentWindow.document;
   doc.open(); doc.write(html); doc.close();
+  // รอเนื้อหา + ฟอนต์โหลด แล้วปรับสเกล/ความสูงให้พอดีจอ
+  setTimeout(fitPrintPreview,120);
+  setTimeout(fitPrintPreview,500);
+  try{ f.contentWindow.addEventListener('load',()=>setTimeout(fitPrintPreview,100)); }catch(e){}
   toast('🖨️ เปิดพรีวิวเอกสารแล้ว');
 }
 function reprintPreview(){
@@ -3523,7 +3530,25 @@ async function shareDoc(){
   const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
   toast('📤 ดาวน์โหลดเอกสารแล้ว (อุปกรณ์นี้ไม่รองรับแชร์ตรง)');
 }
-function closePrintPreview(){ const ov=document.getElementById('printOverlay'); if(ov) ov.style.display='none'; }
+function fitPrintPreview(){
+  try{
+    const wrap=document.getElementById('printScaleWrap'); const fr=document.getElementById('printFrame');
+    if(!wrap||!fr) return;
+    const container=wrap.parentElement;
+    const avail=container.clientWidth-32; // ลบ padding
+    const A4=794;
+    const scale=Math.min(1, avail/A4);
+    wrap.style.transform='scale('+scale+')';
+    // ปรับความสูง iframe ตามเนื้อหาจริง แล้วชดเชยความสูงที่หายจากการ scale
+    try{
+      const doc=fr.contentDocument;
+      if(doc&&doc.body){ const h=Math.max(doc.body.scrollHeight,doc.documentElement.scrollHeight,1123); fr.style.height=h+'px';
+        wrap.style.height=(h*scale)+'px'; wrap.style.marginBottom='0';
+      }
+    }catch(e){}
+  }catch(e){}
+}
+function closePrintPreview(){ const ov=document.getElementById('printOverlay'); if(ov) ov.style.display='none'; try{ window.removeEventListener('resize',fitPrintPreview); }catch(e){} }
 // วันที่รูปแบบ DD/MM/YYYY (ค.ศ.)
 function fmtSlash(d){ if(!d) return ''; const dt=new Date(d); const p=n=>String(n).padStart(2,'0'); return `${p(dt.getDate())}/${p(dt.getMonth()+1)}/${dt.getFullYear()}`; }
 
