@@ -325,15 +325,15 @@ tbody tr:hover td{background:#FAFBFD}
   <button class="ni on" onclick="nav('dashboard')"><span class="ni-ic">🏠</span>ภาพรวมบริษัท</button>
   <button class="ni" onclick="nav('cashier')"><span class="ni-ic">💰</span>แคชเชียร์</button>
   <div class="ns">เอกสารขาย</div>
-  <button class="ni" onclick="nav('quotes')"><span class="ni-ic">📄</span>ใบเสนอราคา<span class="nb">3</span></button>
+  <button class="ni" onclick="nav('quotes')"><span class="ni-ic">📄</span>ใบเสนอราคา<span class="nb" id="nb-quotes" style="display:none">0</span></button>
   <button class="ni" onclick="nav('invoices')"><span class="ni-ic">📋</span>ใบวางบิล</button>
-  <button class="ni" onclick="nav('installments')"><span class="ni-ic">🗓️</span>ใบแบ่งจ่าย<span class="nb">5</span></button>
+  <button class="ni" onclick="nav('installments')"><span class="ni-ic">🗓️</span>ใบแบ่งจ่าย<span class="nb" id="nb-installments" style="display:none">0</span></button>
   <button class="ni" onclick="nav('delivery')"><span class="ni-ic">📦</span>ใบส่งสินค้า/ใบแจ้งหนี้</button>
   <button class="ni" onclick="nav('cashsale')"><span class="ni-ic">🛒</span>ขายเงินสด</button>
   <div class="ns">เอกสารซื้อ</div>
   <button class="ni" onclick="nav('po')"><span class="ni-ic">🗂️</span>ใบสั่งซื้อ</button>
   <button class="ni" onclick="nav('receive')"><span class="ni-ic">📥</span>ใบรับสินค้า</button>
-  <button class="ni" onclick="nav('expense')"><span class="ni-ic">💳</span>ค่าใช้จ่าย<span class="nb">1</span></button>
+  <button class="ni" onclick="nav('expense')"><span class="ni-ic">💳</span>ค่าใช้จ่าย<span class="nb" id="nb-expense" style="display:none">0</span></button>
   <div class="ns">คลังสินค้า</div>
   <button class="ni" onclick="nav('products')"><span class="ni-ic">📦</span>สินค้า</button>
   <button class="ni" onclick="nav('contacts')"><span class="ni-ic">👥</span>สมุดรายชื่อ</button>
@@ -1238,6 +1238,18 @@ function collectNotifications(){
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
+// อัปเดตตัวเลขแจ้งเตือนที่เมนู ให้คำนวณจากข้อมูลจริง (ซ่อนเมื่อ 0)
+function updateNavBadges(){
+  try{
+    const set=(id,n)=>{ const el=document.getElementById(id); if(el){ el.textContent=n; el.style.display=n>0?'':'none'; } };
+    // ใบเสนอราคาที่รออนุมัติ
+    set('nb-quotes', DB.quotes.filter(q=>q.status==='รออนุมัติ').length);
+    // ใบแบ่งจ่ายที่ยังมีงวดค้าง
+    set('nb-installments', DB.installments.filter(r=>(r.rows||[]).some(x=>!x.paid)).length);
+    // ค่าใช้จ่ายที่รออนุมัติ
+    set('nb-expense', DB.expense.filter(e=>e.status==='รออนุมัติ').length);
+  }catch(e){}
+}
 function openNotifications(){
   const list=collectNotifications();
   document.getElementById('ml-t').textContent='🔔 การแจ้งเตือน';
@@ -3000,6 +3012,7 @@ function saveData(){
   catch(e){ /* storage unavailable */ }
   try{ cloudAutoSync(); }catch(e){}
   try{ updateNotifDot(); }catch(e){}
+  try{ updateNavBadges(); }catch(e){}
 }
 function loadData(){
   try{
@@ -3116,7 +3129,7 @@ function doClearEmpty(){
     try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
     try{ if('serviceWorker' in navigator){ const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister())); } }catch(e){}
     // 6) แสดงผลว่างทันที
-    try{ renderPage(curPage); renderDashboard(); }catch(e){}
+    try{ renderPage(curPage); renderDashboard(); updateNavBadges(); updateNotifDot(); }catch(e){}
     toast('🗑️ ล้างข้อมูลเป็น 0 เรียบร้อย');
     // 7) hard reload
     setTimeout(()=>{ try{ location.reload(true); }catch(e){ location.href=location.href; } },900);
@@ -4192,6 +4205,7 @@ loadData();
 try{ acctInit(); backfillJournals(); }catch(e){ console.warn('init accounting:',e); }
 try{ renderDashboard(); }catch(e){ console.warn('init dashboard:',e); }
 try{ updateNotifDot(); }catch(e){}
+try{ updateNavBadges(); }catch(e){}
 </script>
 </body>
 </html>
