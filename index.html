@@ -3004,7 +3004,19 @@ function saveData(){
 function loadData(){
   try{
     const raw=localStorage.getItem(STORE_KEY);
-    if(raw){ const d=JSON.parse(raw); if(d.DB) Object.assign(DB,d.DB); if(d.idCounters) Object.assign(idCounters,d.idCounters); if(d.docNumbering) Object.assign(docNumbering,d.docNumbering); if(d.settingsState) Object.assign(settingsState,d.settingsState); if(d.companyInfo) Object.assign(companyInfo,d.companyInfo); return true; }
+    if(raw){
+      const d=JSON.parse(raw);
+      if(d.DB){
+        // ล้าง array ตัวอย่างที่ฮาร์ดโค้ดไว้ก่อน แล้วค่อยใส่ข้อมูลที่บันทึกจริง (กันข้อมูลตัวอย่างค้าง)
+        Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].length=0; });
+        Object.keys(d.DB).forEach(k=>{ DB[k]=d.DB[k]; });
+      }
+      if(d.idCounters) Object.assign(idCounters,d.idCounters);
+      if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
+      if(d.settingsState) Object.assign(settingsState,d.settingsState);
+      if(d.companyInfo) Object.assign(companyInfo,d.companyInfo);
+      return true;
+    }
   }catch(e){}
   return false;
 }
@@ -3090,14 +3102,17 @@ function doClearEmpty(){
     try{ Object.keys(docNumbering).forEach(k=>{ docNumbering[k].next=1; }); }catch(e){}
     try{ Object.keys(idCounters).forEach(k=>{ idCounters[k]=1; }); }catch(e){}
     companyInfo={};
-    // 2) ปิด auto-sync คลาวด์ชั่วคราว กันเขียนทับระหว่างล้าง
+    // 2) ปิด auto-sync คลาวด์ถาวร กันดึง/เขียนข้อมูลเก่ากลับมาหลังรีโหลด
     try{ clearTimeout(cloudTimer); }catch(e){}
-    // 3) ลบ key หลักออกจาก localStorage ทั้งหมด (ทั้งข้อมูลและ flag)
-    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+    try{ cloudCfg.enabled=false; saveCloudCfg(); }catch(e){}
+    // 3) ลบ key ทั้งหมดของแอปออกจาก localStorage (กันข้อมูล/ตัวอย่างค้าง)
+    try{
+      const keys=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&(k.indexOf('flowbiz')===0||k===STORE_KEY)) keys.push(k); }
+      keys.forEach(k=>{ try{ localStorage.removeItem(k); }catch(e){} });
+    }catch(e){}
+    // 4) เขียนสถานะว่างพร้อม flag _empty (กัน seed ข้อมูลตัวอย่างกลับมา)
     try{ localStorage.setItem(STORE_KEY, JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo,_empty:true})); }catch(e){}
-    // 4) ซิงค์สถานะว่างขึ้นคลาวด์ (ถ้าเปิด) แล้วรอให้เสร็จ
-    try{ if(typeof cloudCfg!=='undefined'&&cloudCfg.enabled){ await cloudPush(true); } }catch(e){}
-    // 5) ล้าง cache + ยกเลิก service worker (กัน Netlify เสิร์ฟไฟล์/ข้อมูลเก่า)
+    // 5) ล้าง cache + ยกเลิก service worker (กันเสิร์ฟไฟล์/ข้อมูลเก่า)
     try{ if('caches' in window){ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); } }catch(e){}
     try{ if('serviceWorker' in navigator){ const regs=await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r=>r.unregister())); } }catch(e){}
     // 6) แสดงผลว่างทันที
