@@ -2394,7 +2394,7 @@ function openExpDrawer(id){
     ${r.status==='รออนุมัติ'?`<button class="btn bp" style="flex:1;justify-content:center" onclick="approveExp('${r.id}');closeDrawer()">✓ อนุมัติ</button>`:''}
   </div>`;
   const info=[['รายละเอียด',r.desc],['เลขที่',r.id]];
-  openDrawer(r.id,null,info,galleryHtml+infoHtml+linesHtml+matchHtml+matchStatus+actions);
+  openDrawer(r.id,null,info,galleryHtml+infoHtml+linesHtml+matchHtml+matchStatus+actions,'expense');
 }
 function expViewImg(id,idx){
   const r=DB.expense.find(x=>x.id===id); if(!r) return;
@@ -3520,16 +3520,19 @@ function printDoc(type,id,opts){
   else if(type==='installments'){ r=DB.installments.find(x=>x.id===id); }
   else if(type==='cashsale'){ r=DB.cashsale.find(x=>x.id===id); }
   else if(type==='delivery'){ r=DB.delivery.find(x=>x.id===id); }
+  else if(type==='expense'){ r=DB.expense.find(x=>x.id===id); }
   if(!r) return;
   // ถ้าเอกสารตั้งค่าไม่แสดงลายเซ็นไว้ (และผู้ใช้ไม่ได้สั่งแสดงเองในพรีวิว) ให้ซ่อน
   if(opts.showSig===undefined && r.noSig) CO.showSig=false;
-  const defaultByType=(type==='quotes'?'ใบเสนอราคา':type==='installments'?'ใบแบ่งจ่าย':type==='cashsale'?'บิลเงินสด / ใบเสร็จรับเงิน':type==='delivery'?'ใบส่งสินค้า / ใบกำกับภาษี':'ใบวางบิล / ใบแจ้งหนี้');
+  const defaultByType=(type==='quotes'?'ใบเสนอราคา':type==='installments'?'ใบแบ่งจ่าย':type==='cashsale'?'บิลเงินสด / ใบเสร็จรับเงิน':type==='delivery'?'ใบส่งสินค้า / ใบกำกับภาษี':type==='expense'?'ใบสำคัญจ่าย':'ใบวางบิล / ใบแจ้งหนี้');
   const docTypeName = opts.docType || r.docHeader || defaultByType;
   // บันทึกหัวบิลที่เลือกไว้กับเอกสาร (เพื่อให้ครั้งต่อไปเปิดมาเป็นหัวเดิม)
   if(opts.docType && r.docHeader!==opts.docType){ r.docHeader=opts.docType; try{ saveData(); }catch(e){} }
   title = docTypeName;
   const cust=getCust(r.cust);
-  const custName = (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
+  const custName = type==='expense'
+    ? (r.desc||'ผู้รับเงิน')
+    : (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
   const disc=r.disc||0;
   const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+(b.price||0)*(b.qty||0),0):(r.amt/(r.vat?1.07:1));
   const discAmt=itemsSub*disc/100;
@@ -3543,6 +3546,23 @@ function printDoc(type,id,opts){
   const copies = copyMode==='both' ? [{lb:'ต้นฉบับ',n:1},{lb:'สำเนา',n:2}] : copyMode==='copy' ? [{lb:'สำเนา',n:1}] : [{lb:'ต้นฉบับ',n:1}];
 
   function buildBody(){
+    // ── ใบสำคัญจ่าย ──
+    if(type==='expense'){
+      const sub=(r.lines||[]).reduce((s,l)=>s+(l.amt||0),0)||r.amt;
+      const vatAmt=r.vat?sub*0.07:0;
+      const grandAmt=sub+vatAmt;
+      const lineRows=(r.lines&&r.lines.length)
+        ? r.lines.map((l,i)=>`<tr><td style="text-align:center;color:#52606d">${i+1}</td><td style="font-weight:500">${l.desc||'-'}</td><td style="text-align:right">${fmt(l.amt)}</td></tr>`).join('')
+        : `<tr><td style="text-align:center;color:#52606d">1</td><td style="font-weight:500">${r.desc}</td><td style="text-align:right">${fmt(sub)}</td></tr>`;
+      return `
+      <table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการ</th><th style="text-align:right;width:140px">จำนวนเงิน (฿)</th></tr></thead><tbody>${lineRows}</tbody></table>
+      <table class="sumt">
+        <tr><td>รวมเป็นเงิน</td><td>${fmt(sub)} บาท</td></tr>
+        <tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vatAmt)} บาท</td></tr>
+        <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(grandAmt)} บาท</td></tr>
+      </table>
+      <div class="baht">(${bahtText(grandAmt)})</div>`;
+    }
     if(type==='installments'){
       const itemsTable=(r.items&&r.items.length)
         ? `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการสินค้า</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคา/หน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${r.items.map((it,i)=>{const parts=String(it.name||'').split('\n');const nm=parts[0]||'';const sub=it.sub||parts.slice(1).join(' ');return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}</td><td style="text-align:right">${fmt(it.price*it.qty)}</td></tr>`;}).join('')}</tbody></table>`
@@ -3569,12 +3589,12 @@ function printDoc(type,id,opts){
 
   // สีธีมตามหัวบิลที่เลือก: เสนอราคา=ส้ม, เสร็จ/เงินสด=เขียว, อื่นๆ=ม่วง
   const dt=docTypeName;
-  const theme = dt.includes('เสนอราคา') ? '#F5821F' : (dt.includes('เสร็จ')||dt.includes('เงินสด')||dt.includes('มัดจำ')) ? '#0F9D58' : '#6B2FA6';
-  const themeBg = theme==='#F5821F' ? '#FFF8F2' : theme==='#0F9D58' ? '#F0FaF4' : '#F8F4FC';
+  const theme = type==='expense' ? '#E53E3E' : dt.includes('เสนอราคา') ? '#F5821F' : (dt.includes('เสร็จ')||dt.includes('เงินสด')||dt.includes('มัดจำ')) ? '#0F9D58' : '#6B2FA6';
+  const themeBg = type==='expense' ? '#FFF5F5' : theme==='#F5821F' ? '#FFF8F2' : theme==='#0F9D58' ? '#F0FaF4' : '#F8F4FC';
   // ป้ายลงนาม
   const isQuoteLike = dt.includes('เสนอราคา')||dt.includes('สั่งซื้อ');
-  const sigLeft = isQuoteLike ? 'ผู้สั่งซื้อสินค้า' : 'ผู้รับเอกสาร';
-  const sigRight = isQuoteLike ? 'ผู้อนุมัติ' : 'ผู้มีอำนาจลงนาม';
+  const sigLeft = type==='expense' ? 'ผู้จ่ายเงิน' : isQuoteLike ? 'ผู้สั่งซื้อสินค้า' : 'ผู้รับเอกสาร';
+  const sigRight = type==='expense' ? 'ผู้อนุมัติการจ่าย' : isQuoteLike ? 'ผู้อนุมัติ' : 'ผู้มีอำนาจลงนาม';
   function buildPage(copy){
     return `<div class="sheet">
       <div class="corner"></div>
@@ -3585,15 +3605,14 @@ function printDoc(type,id,opts){
         <div>
           <div class="co-name">${CO.name}</div>
           <div class="co-addr">${CO.addr}<br>${CO.tax}<br>${CO.tel}<br>${CO.mobile}</div>
-          <div class="cust-sec"><div class="cust-lb">ลูกค้า</div><div class="cust-nm">${custName}</div></div>
+          <div class="cust-sec"><div class="cust-lb">${type==='expense'?'รายการ':'ลูกค้า'}</div><div class="cust-nm">${custName}</div></div>
         </div>
         <div class="docmeta">
           <table>
             <tr><td class="k">เลขที่</td><td class="v">${r.id}</td></tr>
             <tr><td class="k">วันที่</td><td class="v">${docDate}</td></tr>
-            ${r.due?`<tr><td class="k">ครบกำหนด</td><td class="v">${fmtSlash(r.due)}</td></tr>`:''}
-            ${r.exp?`<tr><td class="k">ยืนราคาถึง</td><td class="v">${fmtSlash(r.exp)}</td></tr>`:''}
-            <tr><td class="k">ผู้ขาย</td><td class="v">${CO.seller}</td></tr>
+            ${type==='expense'?`<tr><td class="k">หมวดหมู่</td><td class="v">${r.cat||'-'}</td></tr><tr><td class="k">ช่องทางจ่าย</td><td class="v">${r.payMethod||'เงินสด'}</td></tr>`:`${r.due?`<tr><td class="k">ครบกำหนด</td><td class="v">${fmtSlash(r.due)}</td></tr>`:''}${r.exp?`<tr><td class="k">ยืนราคาถึง</td><td class="v">${fmtSlash(r.exp)}</td></tr>`:''}`}
+            <tr><td class="k">ผู้จัดทำ</td><td class="v">${CO.seller}</td></tr>
           </table>
         </div>
       </div>
