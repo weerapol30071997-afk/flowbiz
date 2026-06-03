@@ -330,6 +330,8 @@ tbody tr:hover td{background:#FAFBFD}
   <button class="ni" onclick="nav('installments')"><span class="ni-ic">🗓️</span>ใบแบ่งจ่าย<span class="nb" id="nb-installments" style="display:none">0</span></button>
   <button class="ni" onclick="nav('delivery')"><span class="ni-ic">📦</span>ใบส่งสินค้า/ใบแจ้งหนี้</button>
   <button class="ni" onclick="nav('cashsale')"><span class="ni-ic">🛒</span>ขายเงินสด</button>
+  <div class="ns">งานบริการ</div>
+  <button class="ni" onclick="nav('jobs')"><span class="ni-ic">🛠️</span>จัดการงาน<span class="nb" id="nb-jobs" style="display:none">0</span></button>
   <div class="ns">เอกสารซื้อ</div>
   <button class="ni" onclick="nav('po')"><span class="ni-ic">🗂️</span>ใบสั่งซื้อ</button>
   <button class="ni" onclick="nav('receive')"><span class="ni-ic">📥</span>ใบรับสินค้า</button>
@@ -338,6 +340,7 @@ tbody tr:hover td{background:#FAFBFD}
   <button class="ni" onclick="nav('products')"><span class="ni-ic">📦</span>สินค้า</button>
   <button class="ni" onclick="nav('contacts')"><span class="ni-ic">👥</span>สมุดรายชื่อ</button>
   <div class="ns">บัญชี</div>
+  <button class="ni" onclick="nav('summary')"><span class="ni-ic">📋</span>สรุปบัญชี</button>
   <button class="ni" onclick="nav('journal')"><span class="ni-ic">📒</span>สมุดรายวัน</button>
   <button class="ni" onclick="nav('ledger')"><span class="ni-ic">📚</span>บัญชีแยกประเภท</button>
   <button class="ni" onclick="nav('financials')"><span class="ni-ic">📈</span>งบการเงิน</button>
@@ -653,14 +656,55 @@ tbody tr:hover td{background:#FAFBFD}
 
   <!-- ══ EXPENSE ══ -->
   <div id="pg-expense" class="pg">
-    <div class="fb">
-      <input class="fi" placeholder="🔍 ค้นหา..." id="ex-search" oninput="renderExpense()">
-      <select class="fi" style="flex:0 0 150px" id="ex-cat" onchange="renderExpense()"><option value="">หมวดทั้งหมด</option><option>วัสดุ/อุปกรณ์</option><option>ค่าจ้าง</option><option>ค่าขนส่ง</option><option>อื่นๆ</option></select>
-      <button class="btn bp" onclick="openExpenseForm()">+ บันทึกค่าใช้จ่าย</button>
+    <!-- Stats KPI -->
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+      <div class="kpi rd"><div class="kpi-ic rd">💳</div><div class="kpi-lb">รออนุมัติ</div><div class="kpi-vl"><small>฿</small><span id="exp-k1">0</span></div></div>
+      <div class="kpi or"><div class="kpi-ic or">📅</div><div class="kpi-lb">เดือนนี้</div><div class="kpi-vl"><small>฿</small><span id="exp-k2">0</span></div></div>
+      <div class="kpi bl"><div class="kpi-ic bl">📊</div><div class="kpi-lb">ปีนี้</div><div class="kpi-vl"><small>฿</small><span id="exp-k3">0</span></div></div>
+      <div class="kpi gn"><div class="kpi-ic gn">🧾</div><div class="kpi-lb">มีรูปบิล</div><div class="kpi-vl"><span id="exp-k4">0</span><small> ใบ</small></div></div>
     </div>
-    <div class="tc"><div class="tc-hd"><div class="card-t">ค่าใช้จ่ายทั้งหมด</div></div>
-    <table><thead><tr><th>เลขที่</th><th>รายละเอียด</th><th>หมวดหมู่</th><th>วันที่</th><th>การจับคู่</th><th style="text-align:right">ยอด</th><th></th></tr></thead>
-    <tbody id="expenseTbl"></tbody></table></div>
+    <!-- Filter bar -->
+    <div class="fb" style="gap:8px;flex-wrap:wrap">
+      <input class="fi" placeholder="🔍 ค้นหา..." id="ex-search" oninput="renderExpense()" style="min-width:160px">
+      <select class="fi" style="flex:0 0 140px" id="ex-cat" onchange="renderExpense()">
+        <option value="">หมวดทั้งหมด</option><option>วัสดุ/อุปกรณ์</option><option>ค่าจ้าง</option><option>ค่าขนส่ง</option><option>ค่าสาธารณูปโภค</option><option>ค่าอาหาร</option><option>อื่นๆ</option>
+      </select>
+      <select class="fi" style="flex:0 0 130px" id="ex-month" onchange="renderExpense()"><option value="">ทุกเดือน</option></select>
+      <div style="display:flex;gap:4px;background:#fff;padding:3px;border-radius:9px;border:1px solid var(--bd)">
+        <button class="pt-b on" id="ex-v-tbl" onclick="exSetView('tbl',this)">☰ รายการ</button>
+        <button class="pt-b" id="ex-v-grid" onclick="exSetView('grid',this)">⊞ การ์ด</button>
+      </div>
+      <button class="btn bp" style="margin-left:auto" onclick="openExpenseForm()">+ บันทึกค่าใช้จ่าย</button>
+    </div>
+    <!-- List view -->
+    <div id="ex-view-tbl" class="tc" style="margin-top:14px">
+      <table><thead><tr><th>เลขที่</th><th>รายละเอียด</th><th>หมวด</th><th>วันที่</th><th style="text-align:right">ยอด</th><th>สถานะ</th><th></th></tr></thead>
+      <tbody id="expenseTbl"></tbody></table>
+    </div>
+    <!-- Grid view -->
+    <div id="ex-view-grid" style="display:none;margin-top:14px;display:none;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px" id="expenseGrid"></div>
+  </div>
+
+  <!-- ══ JOBS (จัดการงาน) ══ -->
+  <div id="pg-jobs" class="pg">
+    <!-- KPI -->
+    <div class="kpi-g" style="grid-template-columns:repeat(5,1fr);margin-bottom:14px">
+      <div class="kpi bl"><div class="kpi-ic bl">📋</div><div class="kpi-lb">งานทั้งหมด</div><div class="kpi-vl"><span id="job-k1">0</span></div></div>
+      <div class="kpi or"><div class="kpi-ic or">🔍</div><div class="kpi-lb">สำรวจ/รอทำ</div><div class="kpi-vl"><span id="job-k2">0</span></div></div>
+      <div class="kpi bl"><div class="kpi-ic bl">🔧</div><div class="kpi-lb">กำลังทำ</div><div class="kpi-vl"><span id="job-k3">0</span></div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">🔎</div><div class="kpi-lb">รอตรวจ</div><div class="kpi-vl"><span id="job-k4">0</span></div></div>
+      <div class="kpi gn"><div class="kpi-ic gn">✅</div><div class="kpi-lb">ส่งมอบแล้ว</div><div class="kpi-vl"><span id="job-k5">0</span></div></div>
+    </div>
+    <!-- Filter bar -->
+    <div class="fb" style="gap:8px;flex-wrap:wrap">
+      <input class="fi" placeholder="🔍 ค้นหางาน..." id="job-search" oninput="renderJobs()" style="min-width:160px">
+      <select class="fi" style="flex:0 0 150px" id="job-status-f" onchange="renderJobs()">
+        <option value="">สถานะทั้งหมด</option><option>สำรวจ</option><option>รอทำ</option><option>กำลังทำ</option><option>ตรวจงาน</option><option>อนุมัติแล้ว</option><option>ไม่อนุมัติ</option><option>ส่งมอบแล้ว</option>
+      </select>
+      <button class="btn bp" style="margin-left:auto" onclick="openJobForm()">+ สร้างงานใหม่</button>
+    </div>
+    <!-- Job cards grid -->
+    <div id="jobsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px"></div>
   </div>
 
   <!-- ══ PRODUCTS ══ -->
@@ -701,6 +745,86 @@ tbody tr:hover td{background:#FAFBFD}
   </div>
 
   <!-- ══ JOURNAL (สมุดรายวัน) ══ -->
+  <!-- ══ SUMMARY (สรุปบัญชี) ══ -->
+  <div id="pg-summary" class="pg">
+    <!-- Date range bar -->
+    <div style="background:#fff;border-radius:14px;border:1px solid var(--bd);padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:10px">📅 ช่วงเวลาที่ต้องการดู</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;flex:1;min-width:200px">
+          <span style="color:var(--mu);white-space:nowrap">ตั้งแต่</span>
+          <input class="fi" type="date" id="sum-from" style="flex:1">
+          <span style="color:var(--mu)">ถึง</span>
+          <input class="fi" type="date" id="sum-to" style="flex:1">
+        </div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="pt-b" onclick="sumPreset('month')">เดือนนี้</button>
+          <button class="pt-b" onclick="sumPreset('quarter')">ไตรมาสนี้</button>
+          <button class="pt-b" onclick="sumPreset('year')">ปีนี้</button>
+          <button class="pt-b" onclick="sumPreset('all')">ทั้งหมด</button>
+        </div>
+        <button class="btn bp" style="padding:8px 18px" onclick="renderSummary()">🔍 แสดงผล</button>
+        <button class="btn bo" style="padding:8px 14px" onclick="exportSummaryCSV()">📥 ส่งออก</button>
+      </div>
+    </div>
+
+    <!-- KPI 4 ช่อง -->
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="kpi gn"><div class="kpi-ic gn">💰</div><div class="kpi-lb">รายได้รวม</div><div class="kpi-vl"><small>฿</small><span id="sum-k1">0</span></div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">💸</div><div class="kpi-lb">ค่าใช้จ่ายรวม</div><div class="kpi-vl"><small>฿</small><span id="sum-k2">0</span></div></div>
+      <div class="kpi bl"><div class="kpi-ic bl">📈</div><div class="kpi-lb">กำไร/ขาดทุน</div><div class="kpi-vl"><small>฿</small><span id="sum-k3">0</span></div></div>
+      <div class="kpi or"><div class="kpi-ic or">🧾</div><div class="kpi-lb">VAT ขาย (ค้างนำส่ง)</div><div class="kpi-vl"><small>฿</small><span id="sum-k4">0</span></div></div>
+    </div>
+
+    <!-- 3 คอลัมน์หลัก -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px" id="sum-top-grid">
+      <!-- กำไรขาดทุน -->
+      <div class="card">
+        <div class="card-t" style="margin-bottom:12px">📊 กำไร-ขาดทุน (P&L)</div>
+        <div id="sum-pl"></div>
+      </div>
+      <!-- งบดุลย่อ -->
+      <div class="card">
+        <div class="card-t" style="margin-bottom:12px">🏦 ฐานะการเงิน (Balance)</div>
+        <div id="sum-bs"></div>
+      </div>
+    </div>
+
+    <!-- รายได้-ค่าใช้จ่ายแยกหมวด -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-t" style="margin-bottom:12px">📦 รายได้แยกหมวด</div>
+        <div id="sum-rev-detail"></div>
+      </div>
+      <div class="card">
+        <div class="card-t" style="margin-bottom:12px">💳 ค่าใช้จ่ายแยกหมวด</div>
+        <div id="sum-exp-detail"></div>
+      </div>
+    </div>
+
+    <!-- กระแสเงินสด + เอกสาร -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+      <div class="card">
+        <div class="card-t" style="margin-bottom:12px">💵 กระแสเงินสด</div>
+        <div id="sum-cf"></div>
+      </div>
+      <div class="card">
+        <div class="card-t" style="margin-bottom:12px">📄 สรุปเอกสาร</div>
+        <div id="sum-docs"></div>
+      </div>
+    </div>
+
+    <!-- รายการ journal ในช่วง -->
+    <div class="tc">
+      <div class="tc-hd">
+        <div class="card-t">รายการบัญชีในช่วงเวลา</div>
+        <span id="sum-jv-count" style="font-size:11px;color:var(--mu)"></span>
+      </div>
+      <table><thead><tr><th>วันที่</th><th>รายละเอียด</th><th style="text-align:right">เดบิต</th><th style="text-align:right">เครดิต</th><th>แหล่ง</th></tr></thead>
+      <tbody id="sum-jv-tbl"></tbody></table>
+    </div>
+  </div>
+
   <div id="pg-journal" class="pg">
     <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi bl"><div class="kpi-ic bl">📒</div><div class="kpi-lb">รายการบันทึก</div><div class="kpi-vl" id="jr-count">0</div></div>
@@ -969,6 +1093,11 @@ const DB = {
     {date:'2026-05-28',desc:'จ่ายค่าวัสดุ',method:'โอนเงิน',amt:18500},
     {date:'2026-05-25',desc:'จ่ายค่าแรงช่าง',method:'โอนเงิน',amt:35000},
   ],
+  jobs:[
+    {id:'JOB-2026-0003',title:'ติดตั้งตู้ MDB อาคาร A',cust:'C001',date:'2026-05-28',due:'2026-06-05',assignee:'ทีมช่าง ก',status:'กำลังทำ',desc:'ติดตั้งและเดินสายตู้ควบคุมไฟฟ้าหลัก','location':'อาคาร A ชั้น 1 ซอยรามคำแหง 24','gps':null,surveyPhotos:[],beforePhotos:[],afterPhotos:[],inspectNote:'',value:85000},
+    {id:'JOB-2026-0002',title:'สำรวจระบบไฟโรงงาน',cust:'C003',date:'2026-05-22',due:'2026-05-30',assignee:'วิศวกร ข',status:'ตรวจงาน',desc:'สำรวจและประเมินระบบไฟฟ้าเดิม','location':'โรงงานนิคมบางปู','gps':null,surveyPhotos:[],beforePhotos:[],afterPhotos:[],inspectNote:'',value:25000},
+    {id:'JOB-2026-0001',title:'เปลี่ยนหม้อแปลง',cust:'C002',date:'2026-05-15',due:'2026-05-20',assignee:'ทีมช่าง ก',status:'ส่งมอบแล้ว',desc:'เปลี่ยนหม้อแปลงไฟฟ้า 250kVA','location':'สำนักงานใหญ่','gps':null,surveyPhotos:[],beforePhotos:[],afterPhotos:[],inspectNote:'ผ่านการตรวจสอบเรียบร้อย',approved:true,value:320000},
+  ],
 };
 
 // ══════════════════════════════════
@@ -982,7 +1111,7 @@ const statusBadge = s => {
   const m={ชำระแล้ว:'b-paid',รอชำระ:'b-pend',เกินกำหนด:'b-over',อนุมัติแล้ว:'b-paid',รออนุมัติ:'b-grey',ปฏิเสธ:'b-over','ไม่อนุมัติ':'b-over','ดำเนินการแล้ว':'b-done2','แบ่งจ่าย':'b-split',รับของแล้ว:'b-paid',รอรับของ:'b-pend',จัดส่งแล้ว:'b-paid','บันทึกแล้ว':'b-paid'};
   return `<span class="badge ${m[s]||'b-pend'}">${s}</span>`;
 };
-let idCounters={quotes:46,invoices:90,delivery:33,cashsale:19,po:22,receive:16,expense:42,installments:6};
+let idCounters={quotes:46,invoices:90,delivery:33,cashsale:19,po:22,receive:16,expense:42,installments:6,jobs:3};
 // ตั้งค่าเลขที่เอกสาร: คำนำหน้า (prefix) + เลขรันถัดไป (แก้ไขได้)
 let docNumbering={
   quotes:{prefix:'QT',year:2026,next:46,digits:4},
@@ -993,9 +1122,10 @@ let docNumbering={
   receive:{prefix:'RC',year:2026,next:16,digits:4},
   expense:{prefix:'EXP',year:2026,next:42,digits:4},
   installments:{prefix:'INST',year:2026,next:6,digits:4},
+  jobs:{prefix:'JOB',year:2026,next:4,digits:4},
 };
-const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย'};
-const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments'};
+const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน'};
+const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs'};
 
 // ตรวจว่าเลขนี้มีอยู่แล้วหรือไม่ (กันซ้ำ)
 function idExists(type,id){
@@ -1034,7 +1164,7 @@ function toast(msg){
 // ══════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════
-const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:'💰 แคชเชียร์',quotes:'📄 ใบเสนอราคา',quoteEdit:'📝 แก้ไขใบเสนอราคา',invoices:'📋 ใบวางบิล',installments:'🗓️ ใบแบ่งจ่าย',delivery:'📦 ใบส่งสินค้า / ใบแจ้งหนี้',cashsale:'🛒 ขายเงินสด',po:'🗂️ ใบสั่งซื้อ',receive:'📥 ใบรับสินค้า',expense:'💳 ค่าใช้จ่าย',products:'📦 สินค้า',contacts:'👥 สมุดรายชื่อ',reports:'📊 รายงาน',settings:'⚙️ การตั้งค่า',journal:'📒 สมุดรายวัน',ledger:'📚 บัญชีแยกประเภท',financials:'📈 งบการเงิน',vat:'🧾 รายงานภาษี',coa:'🗃️ ผังบัญชี',cashflow:'💵 งบกระแสเงินสด',cogs:'📦 ต้นทุน-กำไรขั้นต้น',wht:'📑 ภาษีหัก ณ ที่จ่าย',aging:'⏰ งบอายุหนี้',closing:'🔒 ปิดงวดบัญชี'};
+const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:'💰 แคชเชียร์',quotes:'📄 ใบเสนอราคา',quoteEdit:'📝 แก้ไขใบเสนอราคา',invoices:'📋 ใบวางบิล',installments:'🗓️ ใบแบ่งจ่าย',delivery:'📦 ใบส่งสินค้า / ใบแจ้งหนี้',cashsale:'🛒 ขายเงินสด',po:'🗂️ ใบสั่งซื้อ',receive:'📥 ใบรับสินค้า',expense:'💳 ค่าใช้จ่าย',products:'📦 สินค้า',contacts:'👥 สมุดรายชื่อ',reports:'📊 รายงาน',settings:'⚙️ การตั้งค่า',journal:'📒 สมุดรายวัน',ledger:'📚 บัญชีแยกประเภท',financials:'📈 งบการเงิน',vat:'🧾 รายงานภาษี',coa:'🗃️ ผังบัญชี',cashflow:'💵 งบกระแสเงินสด',cogs:'📦 ต้นทุน-กำไรขั้นต้น',wht:'📑 ภาษีหัก ณ ที่จ่าย',aging:'⏰ งบอายุหนี้',closing:'🔒 ปิดงวดบัญชี',summary:'📋 สรุปบัญชี',jobs:'🛠️ จัดการงาน'};
 let curPage='dashboard';
 
 function nav(page){
@@ -1064,7 +1194,7 @@ function renderPage(page){
     expense:renderExpense,products:renderProducts,contacts:renderContacts,
     reports:renderReports,settings:renderSettings,installments:renderInst,
     journal:renderJournal,ledger:renderLedger,financials:renderFinancials,vat:renderVat,coa:renderCOA,
-    cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing};
+    cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing,summary:renderSummary,jobs:renderJobs};
   if(r[page]) r[page]();
 }
 
@@ -1248,6 +1378,8 @@ function updateNavBadges(){
     set('nb-installments', DB.installments.filter(r=>(r.rows||[]).some(x=>!x.paid)).length);
     // ค่าใช้จ่ายที่รออนุมัติ
     set('nb-expense', DB.expense.filter(e=>e.status==='รออนุมัติ').length);
+    // งานที่รอตรวจ
+    set('nb-jobs', (DB.jobs||[]).filter(j=>j.status==='ตรวจงาน').length);
   }catch(e){}
 }
 function openNotifications(){
@@ -2169,88 +2301,258 @@ function renderReceive(){
 // ══════════════════════════════════
 // EXPENSE
 // ══════════════════════════════════
+let exView='tbl';
+function exSetView(v,el){ exView=v; document.querySelectorAll('#ex-view-tbl,#ex-view-grid').forEach(x=>x.style.display='none'); document.getElementById('ex-view-'+v).style.display=v==='grid'?'grid':''; document.querySelectorAll('#ex-v-tbl,#ex-v-grid').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
 function renderExpense(){
+  // ── เติม filter เดือน ──
+  const mSel=document.getElementById('ex-month');
+  if(mSel){
+    const months=[...new Set(DB.expense.map(r=>r.date?.slice(0,7)).filter(Boolean))].sort().reverse();
+    if(mSel.dataset.c!==String(months.length)){
+      mSel.dataset.c=months.length;
+      const thNames=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+      mSel.innerHTML='<option value="">ทุกเดือน</option>'+months.map(m=>{const[y,mo]=m.split('-');return`<option value="${m}">${thNames[+mo]} ${(+y)+543}</option>`;}).join('');
+    }
+  }
   const q=(document.getElementById('ex-search')?.value||'').toLowerCase();
   const cat=document.getElementById('ex-cat')?.value||'';
-  const tb=document.getElementById('expenseTbl'); tb.innerHTML='';
-  DB.expense.filter(r=>(!q||(r.desc+r.id).toLowerCase().includes(q))&&(!cat||r.cat===cat)).forEach(r=>{
-    const matched=(r.matches&&r.matches.length)?r.matches.reduce((a,b)=>a+b.amt,0):0;
-    const matchLabel=(r.matches&&r.matches.length)
-      ? `<span class="badge ${Math.abs(matched-r.amt)<0.5?'b-paid':'b-part'}" style="cursor:pointer" onclick="event.stopPropagation();openMatchModal('${r.id}')">🔗 ${r.matches.length} เอกสาร · ฿${fmt(matched)}</span>`
-      : `<span class="badge b-grey" style="cursor:pointer" onclick="event.stopPropagation();openMatchModal('${r.id}')">ยังไม่จับคู่</span>`;
-    tb.innerHTML+=`<tr onclick="openExpDrawer('${r.id}')"><td><div class="dn">${r.id}</div></td><td>${r.slip?'🧾 ':''}${r.desc}</td><td><span class="badge b-part">${r.cat}</span></td><td>${fmtD(r.date)}</td><td>${matchLabel}</td><td style="text-align:right;font-weight:700">฿${fmt(r.amt)}</td><td><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();openMatchModal('${r.id}')">🔗</button>${r.status==='รออนุมัติ'?`<button class="btn bp" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();approveExp('${r.id}')">อนุมัติ</button>`:''}</div></td></tr>`;
-  });
+  const mon=document.getElementById('ex-month')?.value||'';
+  const now=new Date().toISOString().slice(0,7);
+  const yr=new Date().getFullYear().toString();
+  // ── KPI ──
+  const k1=DB.expense.filter(r=>r.status==='รออนุมัติ').reduce((a,r)=>a+r.amt,0);
+  const k2=DB.expense.filter(r=>r.date?.startsWith(now)).reduce((a,r)=>a+r.amt,0);
+  const k3=DB.expense.filter(r=>r.date?.startsWith(yr)).reduce((a,r)=>a+r.amt,0);
+  const k4=DB.expense.filter(r=>(r.slips?.length||r.slip)).length;
+  document.getElementById('exp-k1').textContent=fmt(k1);
+  document.getElementById('exp-k2').textContent=fmt(k2);
+  document.getElementById('exp-k3').textContent=fmt(k3);
+  document.getElementById('exp-k4').textContent=k4;
+  const list=DB.expense.filter(r=>(!q||(r.desc+r.id).toLowerCase().includes(q))&&(!cat||r.cat===cat)&&(!mon||r.date?.startsWith(mon)));
+  // ── รายการตาราง ──
+  const tb=document.getElementById('expenseTbl'); if(tb){ tb.innerHTML='';
+    if(!list.length) tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:32px">ไม่มีรายการ</td></tr>';
+    list.forEach(r=>{
+      const imgs=r.slips||(r.slip?[r.slip]:[]);
+      const thumb=imgs.length?`<img src="${imgs[0]}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;margin-right:6px;vertical-align:middle;border:1px solid var(--bd)">`:'' ;
+      const statusCls=r.status==='อนุมัติแล้ว'?'b-paid':r.status==='ปฏิเสธ'?'b-rej':'b-pend';
+      tb.innerHTML+=`<tr onclick="openExpDrawer('${r.id}')">
+        <td><div class="dn">${r.id}</div></td>
+        <td style="max-width:220px">${thumb}<span style="vertical-align:middle">${r.desc}</span>${imgs.length>1?`<span style="font-size:10px;color:var(--mu);margin-left:4px">+${imgs.length} รูป</span>`:''}</td>
+        <td><span class="badge b-part">${r.cat}</span></td>
+        <td style="white-space:nowrap">${fmtD(r.date)}</td>
+        <td style="text-align:right;font-weight:700">฿${fmt(r.amt)}</td>
+        <td><span class="badge ${statusCls}">${r.status}</span></td>
+        <td><div style="display:flex;gap:4px">
+          <button class="btn bo" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();openExpenseForm('${r.id}')">✏️</button>
+          ${r.status==='รออนุมัติ'?`<button class="btn bp" style="font-size:11px;padding:4px 8px" onclick="event.stopPropagation();approveExp('${r.id}')">✓</button>`:''}
+        </div></td></tr>`;
+    });
+  }
+  // ── การ์ด grid ──
+  const grid=document.getElementById('expenseGrid'); if(grid){
+    grid.style.display=exView==='grid'?'grid':'none';
+    if(exView==='grid'){
+      if(!list.length){ grid.innerHTML='<div style="text-align:center;color:var(--mu);padding:32px;grid-column:1/-1">ไม่มีรายการ</div>'; }
+      else grid.innerHTML=list.map(r=>{
+        const imgs=r.slips||(r.slip?[r.slip]:[]);
+        const statusCls=r.status==='อนุมัติแล้ว'?'b-paid':r.status==='ปฏิเสธ'?'b-rej':'b-pend';
+        return`<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openExpDrawer('${r.id}')">
+          ${imgs.length?`<div style="height:140px;background:#f0f2f5;position:relative;overflow:hidden"><img src="${imgs[0]}" style="width:100%;height:100%;object-fit:cover">${imgs.length>1?`<div style="position:absolute;bottom:6px;right:8px;background:rgba(0,0,0,.55);color:#fff;border-radius:20px;font-size:11px;padding:2px 8px">+${imgs.length-1} รูป</div>`:''}</div>`
+          :`<div style="height:80px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:36px">🧾</div>`}
+          <div style="padding:12px">
+            <div style="font-weight:700;font-size:13px;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.desc}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span class="badge b-part" style="font-size:10px">${r.cat}</span>
+              <span class="badge ${statusCls}" style="font-size:10px">${r.status}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font-size:11px;color:var(--mu)">${fmtD(r.date)}</span>
+              <span style="font-weight:700;color:var(--p)">฿${fmt(r.amt)}</span>
+            </div>
+          </div></div>`;
+      }).join('');
+    }
+  }
 }
 function approveExp(id){ const r=DB.expense.find(x=>x.id===id); if(r){ r.status='อนุมัติแล้ว'; saveData(); renderExpense(); toast('✅ อนุมัติค่าใช้จ่ายแล้ว'); } }
 
 function openExpDrawer(id){
   const r=DB.expense.find(x=>x.id===id); if(!r) return;
+  const imgs=r.slips||(r.slip?[r.slip]:[]);
   const matched=(r.matches&&r.matches.length)?r.matches.reduce((a,b)=>a+b.amt,0):0;
-  const info=[['รายละเอียด',r.desc],['หมวดหมู่',r.cat],['วันที่',fmtD(r.date)],['สถานะ',r.status],['ยอดบิล','฿'+fmt(r.amt)],['จับคู่แล้ว','฿'+fmt(matched)]];
-  let extra='';
-  if(r.matches&&r.matches.length){
-    extra+=`<div><div style="font-size:13px;font-weight:700;margin-bottom:10px">เอกสารที่จับคู่</div>`+r.matches.map((m,i)=>`<div style="display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--bd)"><div style="width:34px;height:34px;border-radius:8px;background:var(--pl);color:var(--p);display:flex;align-items:center;justify-content:center;font-size:15px">${m.type==='po'?'🗂️':m.type==='quotes'?'📄':'📋'}</div><div style="flex:1"><div style="font-size:13px;font-weight:600">${m.docId}</div><div style="font-size:11px;color:var(--mu)">${m.label}</div></div><div style="text-align:right"><div style="font-weight:700">฿${fmt(m.amt)}</div></div></div>`).join('')+`</div>`;
-  }
   const diff=r.amt-matched;
-  if(r.slip){ extra=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">รูปใบเสร็จ</div><img src="${r.slip}" style="width:100%;border-radius:10px;border:1px solid var(--bd)"></div>`+extra; }
-  if(r.lines&&r.lines.length){ extra=`<div style="margin-bottom:14px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">รายการ</div>${r.lines.map(l=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12px"><span>${l.desc||'-'}</span><span style="font-weight:600">฿${fmt(l.amt)}</span></div>`).join('')}</div>`+extra; }
-  extra+=`<div class="rm-ind ${Math.abs(diff)<0.5?'rm-ok':diff>0?'rm-wn':'rm-ov'}">${Math.abs(diff)<0.5?'✓ จับคู่ครบยอดแล้ว':diff>0?'⚠ ยังเหลือ ฿'+fmt(diff):'✕ จับคู่เกินยอด ฿'+fmt(-diff)}</div>`;
-  extra+=`<div style="display:flex;gap:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="openExpenseForm('${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="openMatchModal('${r.id}')">🔗 จับคู่</button></div>`;
-  openDrawer(r.id,null,info,extra);
+  const statusCls=r.status==='อนุมัติแล้ว'?'b-paid':r.status==='ปฏิเสธ'?'b-rej':'b-pend';
+  // gallery
+  const galleryHtml=imgs.length?`
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">📷 รูปบิล (${imgs.length} รูป)</div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:6px">
+        ${imgs.map((img,i)=>`<div style="flex-shrink:0;cursor:pointer" onclick="expViewImg('${id}',${i})">
+          <img src="${img}" style="height:110px;width:88px;object-fit:cover;border-radius:10px;border:2px solid var(--bd)">
+        </div>`).join('')}
+      </div>
+    </div>`:'';
+  // รายการ
+  const linesHtml=r.lines?.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">รายการ</div>
+      ${r.lines.map(l=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);font-size:12px"><span>${l.desc||'-'}</span><span style="font-weight:600">฿${fmt(l.amt)}</span></div>`).join('')}
+    </div>`:'';
+  // info rows
+  const infoHtml=`
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:12px">
+      <span style="color:var(--mu)">หมวดหมู่</span><span class="badge b-part" style="width:fit-content">${r.cat}</span>
+      <span style="color:var(--mu)">วันที่</span><span style="font-weight:500">${fmtD(r.date)}</span>
+      <span style="color:var(--mu)">สถานะ</span><span class="badge ${statusCls}" style="width:fit-content">${r.status}</span>
+      <span style="color:var(--mu)">ช่องทางจ่าย</span><span>${r.payMethod||'-'}</span>
+      <span style="color:var(--mu)">ยอดบิล</span><span style="font-weight:700;color:var(--p)">฿${fmt(r.amt)}</span>
+      ${r.vat?`<span style="color:var(--mu)">VAT 7%</span><span>฿${fmt(r.amt/1.07*0.07)}</span>`:''}
+    </div>`;
+  // matched
+  const matchHtml=r.matches?.length?`
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">เอกสารที่จับคู่</div>
+      ${r.matches.map(m=>`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd)">
+        <div style="width:32px;height:32px;border-radius:8px;background:var(--pl);display:flex;align-items:center;justify-content:center">${m.type==='po'?'🗂️':'📋'}</div>
+        <div style="flex:1;font-size:12px"><div style="font-weight:600">${m.docId}</div><div style="color:var(--mu)">${m.label}</div></div>
+        <div style="font-weight:700;font-size:12px">฿${fmt(m.amt)}</div>
+      </div>`).join('')}
+    </div>`:'';
+  const matchStatus=`<div class="rm-ind ${Math.abs(diff)<0.5?'rm-ok':diff>0?'rm-wn':'rm-ov'}">${Math.abs(diff)<0.5?'✓ จับคู่ครบยอดแล้ว':diff>0?'⚠ ยังเหลือ ฿'+fmt(diff):'✕ จับคู่เกินยอด ฿'+fmt(-diff)}</div>`;
+  const actions=`<div style="display:flex;gap:8px;margin-top:4px">
+    <button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openExpenseForm('${r.id}')">✏️ แก้ไข</button>
+    <button class="btn bp" style="flex:1;justify-content:center" onclick="openMatchModal('${r.id}')">🔗 จับคู่</button>
+    ${r.status==='รออนุมัติ'?`<button class="btn bp" style="flex:1;justify-content:center" onclick="approveExp('${r.id}');closeDrawer()">✓ อนุมัติ</button>`:''}
+  </div>`;
+  const info=[['รายละเอียด',r.desc],['เลขที่',r.id]];
+  openDrawer(r.id,null,info,galleryHtml+infoHtml+linesHtml+matchHtml+matchStatus+actions,'expense');
+}
+function expViewImg(id,idx){
+  const r=DB.expense.find(x=>x.id===id); if(!r) return;
+  const imgs=r.slips||(r.slip?[r.slip]:[]);
+  let cur=idx;
+  document.getElementById('ml-t').textContent='รูปบิล';
+  document.getElementById('ml-s').textContent=`รูปที่ ${cur+1}/${imgs.length}`;
+  const render=()=>{
+    document.getElementById('ml-s').textContent=`รูปที่ ${cur+1}/${imgs.length}`;
+    document.getElementById('ml-bd').innerHTML=`<img src="${imgs[cur]}" style="width:100%;border-radius:10px;cursor:zoom-in" onclick="window.open('${imgs[cur]}')">
+    <div style="display:flex;justify-content:center;gap:8px;margin-top:10px">${imgs.map((_,i)=>`<div onclick="cur=${i};render()" style="width:10px;height:10px;border-radius:50%;background:${i===cur?'var(--p)':'var(--bd)'};cursor:pointer"></div>`).join('')}</div>`;
+  };
+  document.getElementById('ml-act').innerHTML=`${imgs.length>1?`<button class="btn bo" onclick="if(cur>0){cur--;expViewImg_render();}">◀</button>`:''}
+    <span style="flex:1"></span>
+    <button class="btn bo" onclick="window.open('${imgs[cur]}')">⬇️ บันทึก</button>
+    <button class="btn bp" onclick="closeModal();openExpDrawer('${id}')">← กลับ</button>
+    ${imgs.length>1?`<button class="btn bo" onclick="if(cur<${imgs.length-1}){cur++;expViewImg_render();}">▶</button>`:''}`;
+  document.getElementById('ml').classList.add('op');
+  document.getElementById('ml-bd').innerHTML=`<img src="${imgs[cur]}" style="width:100%;border-radius:10px" onclick="window.open(this.src)">
+    ${imgs.length>1?`<div style="display:flex;justify-content:center;gap:8px;margin-top:12px">${imgs.map((img,i)=>`<img src="${img}" onclick="expViewImg('${id}',${i})" style="width:52px;height:52px;object-fit:cover;border-radius:7px;cursor:pointer;border:2px solid ${i===cur?'var(--p)':'var(--bd)'}">`).join('')}</div>`:''}`; 
+  document.getElementById('ml').classList.add('op');
 }
 
-// ══════════════════════════════════
-// ฟอร์มค่าใช้จ่าย (แนบรูปใบเสร็จ + คำนวณยอด)
-// ══════════════════════════════════
-let expEditId=null, expSlip=null, expLines=[];
+// ══ ฟอร์มค่าใช้จ่าย — ทันสมัย หลายรูป ══
+let expEditId=null, expSlips=[], expLines=[], expAiIdx=0;
 function openExpenseForm(id){
-  expEditId=id; expSlip=null; expLines=[];
+  expEditId=id; expLines=[];
   const r=id?DB.expense.find(x=>x.id===id):null;
-  if(r){ expSlip=r.slip||null; expLines=(r.lines?JSON.parse(JSON.stringify(r.lines)):[]); }
+  // รองรับทั้ง slips[] ใหม่ และ slip เดิม (1 รูป)
+  expSlips=r?(r.slips?JSON.parse(JSON.stringify(r.slips)):r.slip?[r.slip]:[]):[];
+  if(r){ expLines=(r.lines?JSON.parse(JSON.stringify(r.lines)):[]); }
   if(!expLines.length) expLines=[{desc:'',amt:0}];
+  const cats=['วัสดุ/อุปกรณ์','ค่าจ้าง','ค่าขนส่ง','ค่าสาธารณูปโภค','ค่าอาหาร','อื่นๆ'];
   document.getElementById('ml-t').textContent=id?'แก้ไขค่าใช้จ่าย':'บันทึกค่าใช้จ่าย';
-  document.getElementById('ml-s').textContent=id?r.id:'แนบรูปใบเสร็จและกรอกยอดได้';
+  document.getElementById('ml-s').textContent=id?r.id:'แนบรูปบิลได้หลายรูป · AI อ่านอัตโนมัติ';
   document.getElementById('ml-bd').innerHTML=`
-    <div class="fl2">
-      <div class="fg full"><label class="flb">รายละเอียด *</label><input class="fi" id="ex-desc" value="${r?(r.desc||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ซื้อสายไฟ NYY"></div>
-      <div class="fg"><label class="flb">หมวดหมู่</label><select class="fi" id="ex-cat2"><option ${r&&r.cat==='วัสดุ/อุปกรณ์'?'selected':''}>วัสดุ/อุปกรณ์</option><option ${r&&r.cat==='ค่าจ้าง'?'selected':''}>ค่าจ้าง</option><option ${r&&r.cat==='ค่าขนส่ง'?'selected':''}>ค่าขนส่ง</option><option ${r&&r.cat==='อื่นๆ'?'selected':''}>อื่นๆ</option></select></div>
-      <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="ex-date2" value="${r?r.date:'2026-05-29'}"></div>
-      <div class="fg"><label class="flb">การชำระ</label><select class="fi" id="ex-paytype"><option value="cash"${!r||r.payType!=='credit'?' selected':''}>จ่ายสดทันที</option><option value="credit"${r&&r.payType==='credit'?' selected':''}>ค้างจ่าย (เครดิต)</option></select></div>
-      <div class="fg"><label class="flb">ช่องทางจ่าย</label><select class="fi" id="ex-paymethod"><option value="โอนเงิน"${r&&r.payMethod==='โอนเงิน'?' selected':''}>โอนเงิน</option><option value="เงินสด"${!r||r.payMethod!=='โอนเงิน'?' selected':''}>เงินสด</option></select></div>
-    </div>
-
-    <div style="border:1.5px dashed var(--bd);border-radius:12px;padding:16px;margin:14px 0;text-align:center" id="ex-slip-zone">
-      <div id="ex-slip-preview"></div>
-      <input type="file" id="ex-slip-input" accept="image/*" style="display:none" onchange="handleSlipUpload(event)">
-      <div id="ex-slip-empty">
-        <div style="font-size:34px;margin-bottom:6px">🧾</div>
-        <div style="font-size:13px;font-weight:600;margin-bottom:4px">แนบรูปใบเสร็จ / บิล</div>
-        <div style="font-size:11px;color:var(--mu);margin-bottom:10px">ถ่ายรูปหรือเลือกจากเครื่อง</div>
-        <button class="btn bo" onclick="document.getElementById('ex-slip-input').click()">📷 เลือกรูป</button>
+    <!-- ── ส่วนบน: รายละเอียดหลัก ── -->
+    <div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px;letter-spacing:.5px">ข้อมูลทั่วไป</div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">รายละเอียด *</label>
+        <input class="fi" id="ex-desc" value="${r?(r.desc||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ซื้อสายไฟ NYY 2.5 mm"></div>
+      <div class="fl2">
+        <div class="fg"><label class="flb">หมวดหมู่</label>
+          <select class="fi" id="ex-cat2">${cats.map(c=>`<option${r&&r.cat===c?' selected':''}>${c}</option>`).join('')}</select></div>
+        <div class="fg"><label class="flb">วันที่</label>
+          <input class="fi" type="date" id="ex-date2" value="${r?r.date:new Date().toISOString().slice(0,10)}"></div>
+        <div class="fg"><label class="flb">วิธีจ่าย</label>
+          <select class="fi" id="ex-paytype"><option value="เงินสด"${!r||r.payMethod==='เงินสด'?' selected':''}>💵 เงินสด</option><option value="โอนเงิน"${r&&r.payMethod==='โอนเงิน'?' selected':''}>🏦 โอนเงิน</option><option value="บัตรเครดิต"${r&&r.payMethod==='บัตรเครดิต'?' selected':''}>💳 บัตรเครดิต</option></select></div>
+        <div class="fg"><label class="flb">สถานะการจ่าย</label>
+          <select class="fi" id="ex-paytype2"><option value="จ่ายแล้ว"${!r||r.payType!=='credit'?' selected':''}>✅ จ่ายแล้ว</option><option value="ค้างจ่าย"${r&&r.payType==='credit'?' selected':''}>⏳ ค้างจ่าย</option></select></div>
       </div>
     </div>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div style="font-size:13px;font-weight:700">รายการ</div>
-      <button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="expAddLine()">+ เพิ่มรายการ</button>
+    <!-- ── รูปบิล (หลายรูป) ── -->
+    <div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--p);letter-spacing:.5px">📷 รูปบิล/ใบเสร็จ (<span id="ex-img-count">${expSlips.length}</span>/10)</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn bp" style="font-size:11px;padding:5px 11px" onclick="document.getElementById('ex-slip-input').click()">📷 เพิ่มรูป</button>
+          <input type="file" id="ex-slip-input" accept="image/*" multiple style="display:none" onchange="handleSlipsUpload(event)">
+        </div>
+      </div>
+      <div id="ex-slips-gallery" style="display:flex;gap:8px;flex-wrap:wrap;min-height:44px"></div>
+      <div id="ex-ai-bar" style="margin-top:10px;display:${expSlips.length?'block':'none'}">
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn bp" style="font-size:12px;flex:1;justify-content:center" onclick="extractAmountFromImage()">🤖 AI อ่านใบเสร็จ</button>
+          <div id="ex-ai-status" style="font-size:11px;color:var(--mu);flex:2"></div>
+        </div>
+      </div>
     </div>
-    <div id="ex-lines"></div>
 
-    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:12px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="color:var(--mu);font-size:13px">รวมเป็นเงิน</span><span id="ex-sub" style="font-weight:600">0.00</span></div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="color:var(--mu);font-size:13px">ภาษีมูลค่าเพิ่ม 7% <button class="sw" id="ex-vatsw" onclick="this.classList.toggle('on');expCalc()" style="vertical-align:middle"></button></span><span id="ex-vat">0.00</span></div>
-      <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:700">ยอดรวมทั้งสิ้น</span><span id="ex-grand" style="font-size:18px;font-weight:700;color:var(--p)">0.00</span></div>
+    <!-- ── รายการและยอด ── -->
+    <div style="background:var(--bg);border-radius:14px;padding:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px;letter-spacing:.5px">รายการและยอดเงิน</div>
+      <div id="ex-lines"></div>
+      <button class="add-r" style="margin-top:6px" onclick="expAddLine()">⊕ เพิ่มรายการ</button>
+      <div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:13px">
+          <span style="color:var(--mu)">รวมก่อนภาษี</span><span id="ex-sub" style="font-weight:600">0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:13px">
+          <span style="color:var(--mu)">ภาษีมูลค่าเพิ่ม 7% <button class="sw" id="ex-vatsw" onclick="this.classList.toggle('on');expCalc()" style="vertical-align:middle;margin-left:6px"></button></span>
+          <span id="ex-vat">0.00</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-weight:700;font-size:14px">ยอดรวมทั้งสิ้น</span>
+          <span id="ex-grand" style="font-size:20px;font-weight:700;color:var(--p)">0.00</span>
+        </div>
+      </div>
     </div>`;
-  document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delExpense('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveExpense()">💾 บันทึก</button>`;
+  document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delExpense('${id}')">🗑️</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveExpense()">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
-  if(r&&r.vat){ setTimeout(()=>document.getElementById('ex-vatsw')?.classList.add('on'),0); }
-  renderSlipPreview(); expRenderLines();
+  if(r?.vat) setTimeout(()=>document.getElementById('ex-vatsw')?.classList.add('on'),0);
+  expRenderSlips(); expRenderLines();
 }
-function handleSlipUpload(e){
-  const file=e.target.files[0]; if(!file) return;
-  if(file.size>10*1024*1024){ toast('⚠️ ไฟล์ใหญ่เกิน 10MB'); return; }
-  compressReceiptImage(file,1400,0.7).then(data=>{ expSlip=data; renderSlipPreview(); toast('📎 แนบรูปแล้ว — กด "ให้ AI อ่านใบเสร็จ"'); });
+function handleSlipsUpload(e){
+  const files=[...e.target.files]; if(!files.length) return;
+  if(expSlips.length+files.length>10){ toast('⚠️ แนบรูปได้สูงสุด 10 รูป'); return; }
+  let done=0;
+  files.forEach(file=>{
+    if(file.size>15*1024*1024){ toast('⚠️ '+file.name+' ใหญ่เกิน 15MB'); done++; return; }
+    compressReceiptImage(file,1400,0.75).then(data=>{
+      expSlips.push(data); done++;
+      if(done===files.length){ expRenderSlips(); toast('📎 เพิ่ม '+files.length+' รูปแล้ว'); }
+    });
+  });
+  e.target.value='';
 }
+function expRenderSlips(){
+  const box=document.getElementById('ex-slips-gallery'); if(!box) return;
+  const cnt=document.getElementById('ex-img-count'); if(cnt) cnt.textContent=expSlips.length;
+  const aiBar=document.getElementById('ex-ai-bar'); if(aiBar) aiBar.style.display=expSlips.length?'block':'none';
+  if(!expSlips.length){
+    box.innerHTML=`<div onclick="document.getElementById('ex-slip-input').click()" style="width:100%;height:80px;border:2px dashed var(--bd);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--mu);font-size:12px;gap:4px"><span style="font-size:24px">📷</span>แตะเพื่อเพิ่มรูปบิล</div>`;
+    return;
+  }
+  box.innerHTML=expSlips.map((img,i)=>`
+    <div style="position:relative;flex-shrink:0">
+      <img src="${img}" style="width:82px;height:82px;object-fit:cover;border-radius:10px;border:2px solid var(--bd);cursor:pointer" onclick="expPreviewSlip(${i})">
+      <button onclick="expDelSlip(${i})" style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;border-radius:50%;background:var(--dg);color:#fff;border:none;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0">✕</button>
+      ${i===expAiIdx?'<div style="position:absolute;bottom:2px;left:2px;background:var(--p);color:#fff;border-radius:4px;font-size:9px;padding:1px 4px">AI</div>':''}
+    </div>`).join('')+
+    (expSlips.length<10?`<div onclick="document.getElementById('ex-slip-input').click()" style="width:82px;height:82px;border:2px dashed var(--bd);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;color:var(--mu);font-size:11px;gap:2px"><span style="font-size:22px">+</span>เพิ่มรูป</div>`:'');
+}
+function expDelSlip(i){ expSlips.splice(i,1); if(expAiIdx>=expSlips.length) expAiIdx=0; expRenderSlips(); }
+function expPreviewSlip(i){ expAiIdx=i; expRenderSlips(); }
 // บีบอัดรูปก่อนเก็บ/ส่ง AI (ลดขนาด+คุณภาพ ให้ส่งเร็วและไม่เกิน limit)
 function compressReceiptImage(file,maxDim,quality){
   maxDim=maxDim||1400; quality=quality||0.7;
@@ -2288,14 +2590,14 @@ function renderSlipPreview(){
   } else { empty.style.display='block'; prev.innerHTML=''; }
 }
 
-// ดึงตัวเลขจากรูป (วิเคราะห์เบื้องต้นในเครื่อง + ให้ยืนยัน)
-// ดึงข้อมูลจากรูปใบเสร็จด้วย AI (Claude API) — อ่านยอดรวม/VAT/ร้าน/รายการ
+function renderSlipPreview(){} // legacy stub — ใช้ expRenderSlips แทน
+// ดึงข้อมูลจากรูปใบเสร็จด้วย AI (Claude API)
 async function extractAmountFromImage(){
-  if(!expSlip) return;
+  const img=expSlips[expAiIdx]; if(!img){ toast('⚠️ เลือกรูปที่ต้องการให้ AI อ่านก่อน (แตะที่รูป)'); return; }
   toast('🤖 AI กำลังอ่านใบเสร็จ...');
   const statusEl=document.getElementById('ex-ai-status');
   if(statusEl){ statusEl.style.display='block'; statusEl.textContent='🤖 AI กำลังอ่านใบเสร็จ... (อาจใช้เวลาสักครู่)'; statusEl.style.color='var(--p)'; }
-  const m=String(expSlip).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
+  const m=String(img).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
   if(!m){ if(statusEl){statusEl.textContent='⚠️ รูปไม่ถูกต้อง';statusEl.style.color='var(--dg)';} aiManualFallback(); return; }
   const mediaType=m[1], b64=m[2];
   const prompt='คุณคือผู้ช่วยอ่านใบเสร็จ/ใบกำกับภาษีของไทย วิเคราะห์รูปนี้แล้วตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown โครงสร้าง: {"vendor":"ชื่อร้าน/ผู้ขาย","date":"YYYY-MM-DD หรือ null","total":ยอดรวมทั้งสิ้นที่ต้องจ่ายเป็นตัวเลข,"vat":จำนวนภาษีมูลค่าเพิ่มเป็นตัวเลขหรือ 0,"hasVat":true หรือ false,"category":"หนึ่งใน วัสดุ/อุปกรณ์ หรือ ค่าจ้าง หรือ ค่าขนส่ง หรือ อื่นๆ","items":[{"desc":"ชื่อรายการ","amt":จำนวนเงินก่อนรวม}]} ถ้าอ่านยอดไม่ได้ให้ total เป็น 0 ถ้าใบเสร็จมี VAT ให้ vat เป็นจำนวนภาษีและ hasVat เป็น true; total ต้องเป็นยอดสุทธิที่จ่ายจริงรวม VAT แล้ว';
@@ -2386,13 +2688,291 @@ function saveExpense(){
   const hasVat=document.getElementById('ex-vatsw')?.classList.contains('on');
   const amt=sub+(hasVat?sub*0.07:0);
   if(amt<=0){ toast('⚠️ กรุณากรอกยอดเงิน'); return; }
-  const rec={desc,cat:document.getElementById('ex-cat2').value,date:document.getElementById('ex-date2').value,status:'รออนุมัติ',amt,vat:hasVat,lines,slip:expSlip,matches:[],payType:document.getElementById('ex-paytype')?.value||'cash',payMethod:document.getElementById('ex-paymethod')?.value||'เงินสด'};
+  const rec={desc,cat:document.getElementById('ex-cat2').value,date:document.getElementById('ex-date2').value,status:'รออนุมัติ',amt,vat:hasVat,lines,slips:expSlips,slip:expSlips[0]||null,matches:[],payType:document.getElementById('ex-paytype2')?.value==='ค้างจ่าย'?'credit':'cash',payMethod:document.getElementById('ex-paytype')?.value||'เงินสด'};
   if(expEditId){ const idx=DB.expense.findIndex(x=>x.id===expEditId); rec.id=expEditId; rec.status=DB.expense[idx].status; rec.matches=DB.expense[idx].matches||[]; DB.expense[idx]=rec; }
   else{ rec.id=nextId('expense'); DB.expense.unshift(rec); }
   try{autoPostExpense(rec);}catch(e){}
   saveData(); closeModal(); renderExpense(); toast('✅ บันทึกค่าใช้จ่ายแล้ว');
 }
 function delExpense(id){ if(confirm('ลบค่าใช้จ่ายนี้?')){ const i=DB.expense.findIndex(x=>x.id===id); if(i>=0) DB.expense.splice(i,1); try{removeJournalBySource('expense',id);}catch(e){} saveData(); closeModal(); renderExpense(); toast('🗑️ ลบแล้ว'); } }
+
+// ══════════════════════════════════════════════════════════
+// 🛠️ ระบบจัดการงานบริการ (สร้าง → สำรวจ → ทำงาน → ตรวจ → ส่งมอบ)
+// ══════════════════════════════════════════════════════════
+const JOB_FLOW=['สำรวจ','รอทำ','กำลังทำ','ตรวจงาน','อนุมัติแล้ว','ส่งมอบแล้ว'];
+const JOB_STATUS_STYLE={'สำรวจ':{c:'#F5821F',bg:'#FFF3E8',ic:'🔍'},'รอทำ':{c:'#6B7280',bg:'#F3F4F6',ic:'⏳'},'กำลังทำ':{c:'#0A6EBD',bg:'#E8F2FB',ic:'🔧'},'ตรวจงาน':{c:'#D97706',bg:'#FEF3C7',ic:'🔎'},'อนุมัติแล้ว':{c:'#0F9D58',bg:'#E8F8F0',ic:'✅'},'ไม่อนุมัติ':{c:'#E53E3E',bg:'#FEE',ic:'❌'},'ส่งมอบแล้ว':{c:'#00897B',bg:'#E0F2F1',ic:'📦'}};
+function jobStatusBadge(s){ const st=JOB_STATUS_STYLE[s]||JOB_STATUS_STYLE['รอทำ']; return `<span style="background:${st.bg};color:${st.c};font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;white-space:nowrap">${st.ic} ${s}</span>`; }
+
+function renderJobs(){
+  const jobs=DB.jobs||[];
+  // KPI
+  document.getElementById('job-k1').textContent=jobs.length;
+  document.getElementById('job-k2').textContent=jobs.filter(j=>['สำรวจ','รอทำ'].includes(j.status)).length;
+  document.getElementById('job-k3').textContent=jobs.filter(j=>j.status==='กำลังทำ').length;
+  document.getElementById('job-k4').textContent=jobs.filter(j=>j.status==='ตรวจงาน').length;
+  document.getElementById('job-k5').textContent=jobs.filter(j=>j.status==='ส่งมอบแล้ว').length;
+  const q=(document.getElementById('job-search')?.value||'').toLowerCase();
+  const sf=document.getElementById('job-status-f')?.value||'';
+  const list=jobs.filter(j=>(!q||(j.title+j.id+(j.location||'')).toLowerCase().includes(q))&&(!sf||j.status===sf));
+  const grid=document.getElementById('jobsGrid');
+  if(!list.length){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:40px">ยังไม่มีงาน — กด "สร้างงานใหม่"</div>'; return; }
+  grid.innerHTML=list.map(j=>{
+    const cust=getCust(j.cust);
+    const nPhoto=(j.surveyPhotos?.length||0)+(j.beforePhotos?.length||0)+(j.afterPhotos?.length||0);
+    const stepIdx=JOB_FLOW.indexOf(j.status==='ไม่อนุมัติ'?'ตรวจงาน':j.status);
+    const progress=stepIdx>=0?Math.round((stepIdx+1)/JOB_FLOW.length*100):0;
+    return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openJobDrawer('${j.id}')">
+      <div style="height:5px;background:var(--bd)"><div style="height:100%;width:${progress}%;background:${JOB_STATUS_STYLE[j.status]?.c||'#0A6EBD'};transition:width .4s"></div></div>
+      <div style="padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
+          <div style="font-weight:700;font-size:14px;line-height:1.3">${j.title}</div>
+          ${jobStatusBadge(j.status)}
+        </div>
+        <div style="font-size:11px;color:var(--mu);margin-bottom:10px">${j.id}</div>
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 8px;font-size:12px;margin-bottom:10px">
+          <span style="color:var(--mu)">👤 ลูกค้า</span><span style="font-weight:500">${cust.name||j.cust||'-'}</span>
+          <span style="color:var(--mu)">📍 สถานที่</span><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.location||'-'}</span>
+          <span style="color:var(--mu)">👷 ผู้รับผิดชอบ</span><span style="font-weight:500">${j.assignee||'-'}</span>
+          <span style="color:var(--mu)">📅 กำหนดเสร็จ</span><span style="font-weight:500">${j.due?fmtD(j.due):'-'}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bd);padding-top:9px">
+          <span style="font-size:11px;color:var(--mu)">${nPhoto>0?`📷 ${nPhoto} รูป`:'ยังไม่มีรูป'}${j.gps?' · 📍GPS':''}</span>
+          <span style="font-weight:700;color:var(--p);font-size:13px">฿${fmt(j.value||0)}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ตัวแปรชั่วคราวสำหรับฟอร์มงาน ──
+let jobPhotos={survey:[],before:[],after:[]}, jobGps=null, jobEditId=null;
+function openJobForm(id){
+  jobEditId=id;
+  const j=id?DB.jobs.find(x=>x.id===id):null;
+  jobPhotos={survey:j?.surveyPhotos?[...j.surveyPhotos]:[],before:j?.beforePhotos?[...j.beforePhotos]:[],after:j?.afterPhotos?[...j.afterPhotos]:[]};
+  jobGps=j?.gps||null;
+  const custOpts=DB.contacts.map(c=>`<option value="${c.id}"${j&&j.cust===c.id?' selected':''}>${c.name}</option>`).join('');
+  document.getElementById('ml-t').textContent=id?'แก้ไขงาน':'สร้างงานใหม่';
+  document.getElementById('ml-s').textContent=id?j.id:'บันทึกข้อมูลงาน + ดึงตำแหน่ง GPS';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px;letter-spacing:.5px">ข้อมูลงาน</div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่องาน *</label><input class="fi" id="job-title" value="${j?(j.title||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ติดตั้งตู้ MDB อาคาร A"></div>
+      <div class="fl2">
+        <div class="fg"><label class="flb">ลูกค้า</label><select class="fi" id="job-cust"><option value="">— เลือกลูกค้า —</option>${custOpts}</select></div>
+        <div class="fg"><label class="flb">ผู้รับผิดชอบ</label><input class="fi" id="job-assignee" value="${j?(j.assignee||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ทีมช่าง ก"></div>
+        <div class="fg"><label class="flb">วันที่เริ่ม</label><input class="fi" type="date" id="job-date" value="${j?j.date:new Date().toISOString().slice(0,10)}"></div>
+        <div class="fg"><label class="flb">กำหนดเสร็จ</label><input class="fi" type="date" id="job-due" value="${j?(j.due||''):''}"></div>
+        <div class="fg"><label class="flb">มูลค่างาน (บาท)</label><input class="fi" type="number" id="job-value" value="${j?(j.value||0):0}"></div>
+        <div class="fg"><label class="flb">สถานะ</label><select class="fi" id="job-status">${JOB_FLOW.concat(['ไม่อนุมัติ']).map(s=>`<option${j&&j.status===s?' selected':(!j&&s==='สำรวจ')?' selected':''}>${s}</option>`).join('')}</select></div>
+      </div>
+      <div class="fg" style="margin-top:10px"><label class="flb">รายละเอียดงาน</label><textarea class="fi" id="job-desc" rows="2" placeholder="อธิบายขอบเขตงาน...">${j?(j.desc||''):''}</textarea></div>
+    </div>
+
+    <!-- สถานที่ + GPS -->
+    <div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px;letter-spacing:.5px">📍 สถานที่หน้างาน</div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">ที่อยู่/สถานที่</label><input class="fi" id="job-location" value="${j?(j.location||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น อาคาร A ชั้น 1 ซอย..."></div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn bo" style="flex:1;justify-content:center" onclick="getJobLocation()">📍 ดึงตำแหน่ง GPS ปัจจุบัน</button>
+      </div>
+      <div id="job-gps-info" style="font-size:12px;color:var(--mu);margin-top:8px;text-align:center">${jobGps?`✅ พิกัด: ${jobGps.lat.toFixed(5)}, ${jobGps.lng.toFixed(5)} · <a href="https://maps.google.com/?q=${jobGps.lat},${jobGps.lng}" target="_blank" style="color:var(--p)">เปิดแผนที่</a>`:'ยังไม่ได้ดึงตำแหน่ง'}</div>
+    </div>
+
+    <!-- รูปภาพ 3 ชุด -->
+    ${jobPhotoSection('survey','🔍 รูปสำรวจหน้างาน','ถ่ายก่อนเสนอราคา/ประเมินงาน')}
+    ${jobPhotoSection('before','📸 รูปก่อนทำงาน','สภาพก่อนเริ่มงาน')}
+    ${jobPhotoSection('after','✨ รูปหลังทำงาน','ผลงานที่เสร็จแล้ว')}`;
+  document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delJob('${id}')">🗑️</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveJob()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  ['survey','before','after'].forEach(renderJobPhotos);
+}
+function jobPhotoSection(kind,title,sub){
+  return `<div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div style="font-size:11px;font-weight:700;color:var(--p);letter-spacing:.5px">${title} (<span id="jobph-count-${kind}">0</span>)</div>
+      <button class="btn bp" style="font-size:11px;padding:5px 11px" onclick="document.getElementById('jobph-input-${kind}').click()">📷 เพิ่มรูป</button>
+    </div>
+    <div style="font-size:10.5px;color:var(--mu);margin-bottom:8px">${sub}</div>
+    <input type="file" id="jobph-input-${kind}" accept="image/*" multiple style="display:none" onchange="handleJobPhotos('${kind}',event)">
+    <div id="jobph-gallery-${kind}" style="display:flex;gap:8px;flex-wrap:wrap;min-height:40px"></div>
+  </div>`;
+}
+function handleJobPhotos(kind,e){
+  const files=[...e.target.files]; if(!files.length) return;
+  if(jobPhotos[kind].length+files.length>12){ toast('⚠️ แนบได้สูงสุด 12 รูปต่อชุด'); return; }
+  let done=0;
+  files.forEach(file=>{
+    compressReceiptImage(file,1400,0.72).then(data=>{ jobPhotos[kind].push(data); done++; if(done===files.length) renderJobPhotos(kind); });
+  });
+  e.target.value='';
+}
+function renderJobPhotos(kind){
+  const box=document.getElementById('jobph-gallery-'+kind); if(!box) return;
+  const cnt=document.getElementById('jobph-count-'+kind); if(cnt) cnt.textContent=jobPhotos[kind].length;
+  if(!jobPhotos[kind].length){ box.innerHTML=`<div onclick="document.getElementById('jobph-input-${kind}').click()" style="width:100%;height:60px;border:2px dashed var(--bd);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mu);font-size:12px">แตะเพื่อเพิ่มรูป</div>`; return; }
+  box.innerHTML=jobPhotos[kind].map((img,i)=>`<div style="position:relative;flex-shrink:0">
+    <img src="${img}" style="width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--bd);cursor:pointer" onclick="window.open('${img}')">
+    <button onclick="jobPhotos['${kind}'].splice(${i},1);renderJobPhotos('${kind}')" style="position:absolute;top:-6px;right:-6px;width:21px;height:21px;border-radius:50%;background:var(--dg);color:#fff;border:none;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>
+  </div>`).join('');
+}
+function getJobLocation(){
+  const info=document.getElementById('job-gps-info');
+  if(!navigator.geolocation){ if(info) info.textContent='⚠️ อุปกรณ์ไม่รองรับ GPS'; return; }
+  if(info) info.textContent='⏳ กำลังดึงตำแหน่ง...';
+  navigator.geolocation.getCurrentPosition(
+    pos=>{ jobGps={lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy}; if(info) info.innerHTML=`✅ พิกัด: ${jobGps.lat.toFixed(5)}, ${jobGps.lng.toFixed(5)} · <a href="https://maps.google.com/?q=${jobGps.lat},${jobGps.lng}" target="_blank" style="color:var(--p)">เปิดแผนที่</a>`; toast('📍 ดึงตำแหน่งสำเร็จ'); },
+    err=>{ if(info) info.textContent='⚠️ ดึงตำแหน่งไม่สำเร็จ — อนุญาตการเข้าถึงตำแหน่งในเบราว์เซอร์'; toast('⚠️ ไม่สามารถดึงตำแหน่งได้'); },
+    {enableHighAccuracy:true,timeout:10000}
+  );
+}
+function saveJob(){
+  const title=document.getElementById('job-title').value.trim();
+  if(!title){ toast('⚠️ กรุณาใส่ชื่องาน'); return; }
+  const rec={
+    id: jobEditId || nextId('jobs'),
+    title, cust:document.getElementById('job-cust').value,
+    assignee:document.getElementById('job-assignee').value,
+    date:document.getElementById('job-date').value,
+    due:document.getElementById('job-due').value,
+    value:+document.getElementById('job-value').value||0,
+    status:document.getElementById('job-status').value,
+    desc:document.getElementById('job-desc').value,
+    location:document.getElementById('job-location').value,
+    gps:jobGps,
+    surveyPhotos:jobPhotos.survey, beforePhotos:jobPhotos.before, afterPhotos:jobPhotos.after,
+  };
+  if(jobEditId){ const old=DB.jobs.find(x=>x.id===jobEditId); if(old){ rec.inspectNote=old.inspectNote; rec.approved=old.approved; } const i=DB.jobs.findIndex(x=>x.id===jobEditId); DB.jobs[i]=rec; }
+  else DB.jobs.unshift(rec);
+  saveData(); closeModal(); renderJobs(); updateNavBadges&&updateNavBadges();
+  toast(jobEditId?'✅ แก้ไขงานแล้ว':'✅ สร้างงานใหม่แล้ว');
+}
+function delJob(id){ if(confirm('ลบงานนี้?')){ const i=DB.jobs.findIndex(x=>x.id===id); if(i>=0) DB.jobs.splice(i,1); saveData(); closeModal(); renderJobs(); toast('🗑️ ลบงานแล้ว'); } }
+
+function openJobDrawer(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  const cust=getCust(j.cust);
+  const photoGrid=(arr,label)=>{
+    if(!arr||!arr.length) return '';
+    return `<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">${label} (${arr.length})</div>
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">${arr.map(img=>`<img src="${img}" onclick="window.open('${img}')" style="height:100px;width:84px;object-fit:cover;border-radius:9px;border:1px solid var(--bd);cursor:pointer;flex-shrink:0">`).join('')}</div></div>`;
+  };
+  const info=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:12px">
+    <span style="color:var(--mu)">สถานะ</span><span>${jobStatusBadge(j.status)}</span>
+    <span style="color:var(--mu)">ลูกค้า</span><span style="font-weight:500">${cust.name||j.cust||'-'}</span>
+    <span style="color:var(--mu)">ผู้รับผิดชอบ</span><span style="font-weight:500">${j.assignee||'-'}</span>
+    <span style="color:var(--mu)">วันที่เริ่ม</span><span style="font-weight:500">${j.date?fmtD(j.date):'-'}</span>
+    <span style="color:var(--mu)">กำหนดเสร็จ</span><span style="font-weight:500">${j.due?fmtD(j.due):'-'}</span>
+    <span style="color:var(--mu)">มูลค่างาน</span><span style="font-weight:700;color:var(--p)">฿${fmt(j.value||0)}</span>
+    <span style="color:var(--mu)">📍 สถานที่</span><span style="font-weight:500">${j.location||'-'}</span>
+    ${j.gps?`<span style="color:var(--mu)">พิกัด GPS</span><span><a href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank" style="color:var(--p);font-weight:600">🗺️ เปิดแผนที่ Google</a></span>`:''}
+  </div>`;
+  const descBox=j.desc?`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="color:var(--mu);margin-bottom:4px">รายละเอียดงาน</div>${j.desc}</div>`:'';
+  // ปุ่มเปลี่ยนสถานะตาม flow
+  let actionBtns='';
+  if(j.status==='สำรวจ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','รอทำ')">✓ ยืนยันสำรวจเสร็จ → รอทำ</button>`;
+  else if(j.status==='รอทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 เริ่มทำงาน</button>`;
+  else if(j.status==='กำลังทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','ตรวจงาน')">🔎 ส่งตรวจงาน</button>`;
+  else if(j.status==='ตรวจงาน') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:var(--ok)" onclick="jobApprove('${id}',true)">✅ อนุมัติ</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="jobApprove('${id}',false)">❌ ไม่อนุมัติ</button>`;
+  else if(j.status==='อนุมัติแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:#00897B" onclick="jobDeliver('${id}')">📦 ทำใบส่งมอบงาน</button>`;
+  else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
+  else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
+  const inspectBox=j.inspectNote?`<div style="background:${j.approved?'#E8F8F0':'#FEE'};border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="font-weight:700;color:${j.approved?'var(--ok)':'var(--dg)'};margin-bottom:4px">${j.approved?'✅ ผลการตรวจ: อนุมัติ':'❌ ผลการตรวจ: ไม่อนุมัติ'}</div>${j.inspectNote}</div>`:'';
+  const extra=info+descBox+inspectBox
+    +photoGrid(j.surveyPhotos,'🔍 รูปสำรวจหน้างาน')
+    +photoGrid(j.beforePhotos,'📸 รูปก่อนทำงาน')
+    +photoGrid(j.afterPhotos,'✨ รูปหลังทำงาน')
+    +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
+    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไขงาน</button></div>`;
+  openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra);
+}
+function jobSetStatus(id,st){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status=st; saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('🔄 เปลี่ยนสถานะเป็น: '+st); setTimeout(()=>openJobDrawer(id),100); } }
+function jobApprove(id,ok){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  const note=prompt(ok?'บันทึกผลการตรวจ (อนุมัติ):':'เหตุผลที่ไม่อนุมัติ:', j.inspectNote||'');
+  if(note===null) return;
+  j.inspectNote=note; j.approved=ok; j.status=ok?'อนุมัติแล้ว':'ไม่อนุมัติ';
+  saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer();
+  toast(ok?'✅ อนุมัติงานแล้ว':'❌ ไม่อนุมัติงาน'); setTimeout(()=>openJobDrawer(id),100);
+}
+function jobDeliver(id){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status='ส่งมอบแล้ว'; j.deliverDate=new Date().toISOString().slice(0,10); saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('📦 บันทึกการส่งมอบงานแล้ว'); setTimeout(()=>openJobDrawer(id),100); } }
+
+// ── ใบส่งมอบงาน (พิมพ์) ──
+function printJobDelivery(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  const cust=getCust(j.cust);
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const photoRow=(arr)=>arr&&arr.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${arr.slice(0,6).map(img=>`<img src="${img}" style="width:90px;height:90px;object-fit:cover;border:1px solid #ccc;border-radius:4px">`).join('')}</div>`:'<div style="color:#999;font-size:11px">— ไม่มีรูป —</div>';
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบส่งมอบงาน ${j.id}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+    body{padding:28px 32px;color:#1a1a1a;font-size:13px;line-height:1.5}
+    .hd{display:flex;justify-content:space-between;border-bottom:3px solid #00897B;padding-bottom:12px;margin-bottom:16px}
+    .cn{font-size:15px;font-weight:700;color:#00897B}
+    .ca{font-size:11px;color:#555;margin-top:3px;max-width:380px}
+    .ti{text-align:right}
+    .ti h1{font-size:22px;color:#00897B}
+    .ti .no{font-size:13px;margin-top:4px;color:#333}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;background:#F0F9F8;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:12px}
+    .meta b{color:#00897B}
+    .sec{margin-bottom:16px}
+    .sec-t{font-size:13px;font-weight:700;color:#00897B;border-left:4px solid #00897B;padding-left:8px;margin-bottom:8px}
+    .desc{background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px;font-size:12px}
+    .sig{display:flex;justify-content:space-between;margin-top:40px;gap:30px}
+    .sig-col{flex:1;text-align:center}
+    .sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
+    @media print{body{padding:0}}
+  </style></head><body>
+    <div class="hd">
+      <div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}<br>เลขประจำตัวผู้เสียภาษี ${CO.tax} · โทร ${CO.tel}</div></div>
+      <div class="ti"><h1>ใบส่งมอบงาน</h1><div class="no">เลขที่ ${j.id}</div><div class="no">วันที่ ${fmtSlash(j.deliverDate||new Date().toISOString().slice(0,10))}</div></div>
+    </div>
+    <div class="meta">
+      <div><b>ชื่องาน:</b> ${j.title}</div>
+      <div><b>ลูกค้า:</b> ${cust.name||j.cust||'-'}</div>
+      <div><b>สถานที่:</b> ${j.location||'-'}</div>
+      <div><b>ผู้รับผิดชอบ:</b> ${j.assignee||'-'}</div>
+      <div><b>วันที่เริ่ม:</b> ${j.date?fmtSlash(j.date):'-'}</div>
+      <div><b>มูลค่างาน:</b> ฿${fmt(j.value||0)}</div>
+    </div>
+    <div class="sec"><div class="sec-t">รายละเอียดงาน</div><div class="desc">${j.desc||'-'}</div></div>
+    ${j.inspectNote?`<div class="sec"><div class="sec-t">ผลการตรวจรับงาน</div><div class="desc">${j.approved?'✅ อนุมัติ — ':''}${j.inspectNote}</div></div>`:''}
+    <div class="sec"><div class="sec-t">📸 รูปก่อนทำงาน</div>${photoRow(j.beforePhotos)}</div>
+    <div class="sec"><div class="sec-t">✨ รูปหลังทำงาน (ผลงานที่ส่งมอบ)</div>${photoRow(j.afterPhotos)}</div>
+    <div class="sig">
+      <div class="sig-col"><div class="sig-line">ผู้ส่งมอบงาน (${CO.seller})</div><div style="font-size:11px;color:#777;margin-top:4px">วันที่ ........./........./.........</div></div>
+      <div class="sig-col"><div class="sig-line">ผู้รับมอบงาน</div><div style="font-size:11px;color:#777;margin-top:4px">วันที่ ........./........./.........</div></div>
+    </div>
+  </body></html>`;
+  if(typeof showPrintPreview==='function'){ showPrintPreview(html,'ใบส่งมอบงาน '+j.id,{}); }
+  else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
+}
+// ── แชร์ใบส่งมอบงานช่องทางอื่น (LINE/อีเมล/บันทึกรูป) ──
+async function shareJobDelivery(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  const cust=getCust(j.cust);
+  const txt=`📦 ใบส่งมอบงาน ${j.id}\nงาน: ${j.title}\nลูกค้า: ${cust.name||j.cust||'-'}\nสถานที่: ${j.location||'-'}\nมูลค่างาน: ฿${fmt(j.value||0)}\nสถานะ: ส่งมอบแล้ว${j.gps?`\n📍 พิกัด: https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}`:''}\n\nจาก ${(companyInfo&&companyInfo.name)||'W.K Engineering'}`;
+  if(navigator.share){
+    try{ await navigator.share({title:'ใบส่งมอบงาน '+j.id,text:txt}); toast('📤 แชร์แล้ว'); return; }catch(e){ if(e.name==='AbortError') return; }
+  }
+  // fallback: เลือกช่องทาง
+  document.getElementById('ml-t').textContent='📤 แชร์ใบส่งมอบงาน';
+  document.getElementById('ml-s').textContent=j.id;
+  const enc=encodeURIComponent(txt);
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <a class="btn bo" style="justify-content:center;text-decoration:none;padding:13px" href="https://line.me/R/share?text=${enc}" target="_blank">💚 แชร์ผ่าน LINE</a>
+      <a class="btn bo" style="justify-content:center;text-decoration:none;padding:13px" href="mailto:?subject=${encodeURIComponent('ใบส่งมอบงาน '+j.id)}&body=${enc}">✉️ ส่งอีเมล</a>
+      <a class="btn bo" style="justify-content:center;text-decoration:none;padding:13px" href="https://wa.me/?text=${enc}" target="_blank">📱 WhatsApp</a>
+      <button class="btn bo" style="justify-content:center;padding:13px" onclick="navigator.clipboard.writeText(\`${txt.replace(/`/g,'')}\`).then(()=>toast('📋 คัดลอกข้อความแล้ว'))">📋 คัดลอกข้อความ</button>
+      <button class="btn bp" style="justify-content:center;padding:13px" onclick="closeModal();printJobDelivery('${id}')">🖨️ พิมพ์ / บันทึก PDF</button>
+    </div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+
+
 
 
 function openMatchModal(expId){
@@ -2922,22 +3502,29 @@ function resetCompany(){ companyInfo={}; coSigData=undefined; saveData(); closeM
 function openCloudForm(){
   document.getElementById('ml-t').textContent='🌐 จัดเก็บข้อมูลบนคลาวด์';
   document.getElementById('ml-s').textContent='ซิงค์ข้อมูลข้ามอุปกรณ์ด้วย Firebase (ฟรี)';
+  const localN=dbRecordCount();
   document.getElementById('ml-bd').innerHTML=`
     <div style="background:var(--bg);border-radius:10px;padding:12px;font-size:12px;color:var(--mu);margin-bottom:14px;line-height:1.7">
       <b style="color:var(--tx)">วิธีตั้งค่า (ทำครั้งเดียว):</b><br>
       1. ไปที่ <b>console.firebase.google.com</b> → สร้างโปรเจกต์ (ฟรี)<br>
-      2. เมนู Build → <b>Firestore Database</b> → Create database (โหมด test)<br>
+      2. เมนู Build → <b>Firestore Database</b> → Create database → <b>เลือกโหมด test</b><br>
       3. ⚙️ Project settings → คัดลอก <b>Project ID</b> และ <b>Web API Key</b><br>
-      4. วางค่าด้านล่าง แล้วกดบันทึก
+      4. วางค่าด้านล่าง → เปิดสวิตช์ → บันทึก
     </div>
-    <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔌</div><div style="flex:1"><div class="set-t">เปิดใช้งานคลาวด์</div><div class="set-s">ซิงค์อัตโนมัติเมื่อมีการเปลี่ยนแปลง</div></div><button class="sw ${cloudCfg.enabled?'on':''}" id="cl-en" onclick="this.classList.toggle('on')"></button></div>
+    <div style="background:rgba(245,130,31,.08);border:1px solid rgba(245,130,31,.3);border-radius:10px;padding:11px;font-size:11.5px;color:#b45309;margin-bottom:14px;line-height:1.6">
+      ⚠️ <b>สำคัญมาก:</b> ใช้ <b>Project ID และ API Key เดียวกัน</b> ทุกเครื่อง<br>
+      • เครื่องที่มีข้อมูลครบ → กด <b>"⬆️ ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์"</b> ก่อน<br>
+      • เครื่องใหม่/ว่าง → เปิดแอปจะ <b>ดึงข้อมูลอัตโนมัติ</b> หรือกด "⬇️ ดึงจากคลาวด์"
+    </div>
+    <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔌</div><div style="flex:1"><div class="set-t">เปิดใช้งานคลาวด์</div><div class="set-s">เปิดแอป=ดึงอัตโนมัติ · แก้ไข=ส่งขึ้นอัตโนมัติ</div></div><button class="sw ${cloudCfg.enabled?'on':''}" id="cl-en" onclick="this.classList.toggle('on')"></button></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Project ID</label><input class="fi" id="cl-pid" value="${cloudCfg.projectId||''}" placeholder="my-project-12345"></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Web API Key</label><input class="fi" id="cl-key" value="${cloudCfg.apiKey||''}" placeholder="AIzaSy..."></div>
-    <div class="fg" style="margin-bottom:10px"><label class="flb">รหัสชุดข้อมูล (Document ID)</label><input class="fi" id="cl-doc" value="${cloudCfg.docId||'flowbiz'}" placeholder="flowbiz"></div>
+    <div class="fg" style="margin-bottom:10px"><label class="flb">รหัสชุดข้อมูล (Document ID) — ต้องเหมือนกันทุกเครื่อง</label><input class="fi" id="cl-doc" value="${cloudCfg.docId||'flowbiz'}" placeholder="flowbiz"></div>
+    <div style="background:var(--bg);border-radius:9px;padding:9px 12px;font-size:11.5px;color:var(--mu);margin-bottom:10px">📱 ข้อมูลในเครื่องนี้ตอนนี้: <b style="color:var(--tx)">${localN} รายการ</b></div>
     <div id="cloud-status" style="font-size:12px;text-align:center;padding:8px;color:var(--mu)">${cloudCfg.enabled?'☁️ เปิดใช้งานคลาวด์อยู่':'ยังไม่ได้เปิดใช้งาน'}</div>
-    <div style="display:flex;gap:8px;margin-top:6px">
-      <button class="btn bo" style="flex:1;justify-content:center" onclick="cloudPull()">⬇️ ดึงจากคลาวด์</button>
-      <button class="btn bo" style="flex:1;justify-content:center" onclick="cloudPush()">⬆️ ซิงค์ขึ้น</button>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
+      <button class="btn bp" style="justify-content:center;padding:12px" onclick="cloudPush()">⬆️ ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์</button>
+      <button class="btn bo" style="justify-content:center;padding:12px" onclick="cloudPull()">⬇️ ดึงข้อมูลจากคลาวด์มาเครื่องนี้</button>
     </div>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveCloudForm()">💾 บันทึกการตั้งค่า</button>`;
   document.getElementById('ml').classList.add('op');
@@ -2948,8 +3535,10 @@ function saveCloudForm(){
   cloudCfg.apiKey=document.getElementById('cl-key').value.trim();
   cloudCfg.docId=document.getElementById('cl-doc').value.trim()||'flowbiz';
   saveCloudCfg();
-  if(cloudCfg.enabled&&cloudCfg.projectId&&cloudCfg.apiKey){ toast('✅ เปิดใช้งานคลาวด์แล้ว'); cloudPush(); }
-  else { toast('💾 บันทึกการตั้งค่าคลาวด์แล้ว'); closeModal(); }
+  if(cloudCfg.enabled&&cloudCfg.projectId&&cloudCfg.apiKey){
+    cloudInitDone=true; // ผู้ใช้ตั้งค่าเอง = พร้อมซิงค์
+    toast('✅ บันทึกแล้ว — เลือก "ส่งขึ้น" หรือ "ดึงลง" ตามต้องการ');
+  } else { toast('💾 บันทึกการตั้งค่าคลาวด์แล้ว'); closeModal(); }
 }
 
 // ฟอร์มตั้งค่าเลขที่เอกสาร (คำนำหน้า + เลขเริ่มต้น แยกแต่ละชนิด)
@@ -3045,48 +3634,78 @@ try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assi
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
 
-let cloudBusy=false, cloudTimer=null;
+let cloudBusy=false, cloudTimer=null, cloudInitDone=false;
 function setCloudStatus(txt,color){ const el=document.getElementById('cloud-status'); if(el){ el.textContent=txt; el.style.color=color||'var(--mu)'; } }
+// นับจำนวนเอกสารทั้งหมด (กันเขียนข้อมูลว่างทับ)
+function dbRecordCount(d){
+  const D=d||DB; let n=0;
+  ['quotes','invoices','installments','delivery','cashsale','po','receive','expense','contacts','products','journal','wht','closings'].forEach(k=>{ if(Array.isArray(D[k])) n+=D[k].length; });
+  return n;
+}
 
 async function cloudPush(silent){
   if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return;
+  // กันเครื่องว่างเขียนทับคลาวด์: ถ้าข้อมูลในเครื่องว่างมาก แต่ยังไม่ได้ดึงจากคลาวด์ครั้งแรก → ไม่ push
+  if(!cloudInitDone && dbRecordCount()===0){ if(!silent) toast('⏸️ ยังไม่ได้ดึงข้อมูลจากคลาวด์ — ข้ามการซิงค์ขึ้น'); return; }
   if(cloudBusy) return; cloudBusy=true;
   if(!silent) setCloudStatus('⏳ กำลังซิงค์ขึ้นคลาวด์...','var(--p)');
   try{
-    const payload=JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo,_date:new Date().toISOString()});
-    const body={fields:{data:{stringValue:payload},updated:{stringValue:new Date().toISOString()}}};
+    const payload=JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo,_date:new Date().toISOString(),_count:dbRecordCount()});
+    const body={fields:{data:{stringValue:payload},updated:{stringValue:new Date().toISOString()},count:{integerValue:String(dbRecordCount())}}};
     const res=await fetch(cloudURL(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok) throw new Error('HTTP '+res.status);
-    setCloudStatus('☁️ ซิงค์ล่าสุด '+new Date().toLocaleTimeString('th-TH'),'var(--ok)');
+    setCloudStatus('☁️ ซิงค์ขึ้นล่าสุด '+new Date().toLocaleTimeString('th-TH'),'var(--ok)');
     if(!silent) toast('☁️ บันทึกขึ้นคลาวด์แล้ว');
-  }catch(e){ setCloudStatus('⚠️ ซิงค์ไม่สำเร็จ — ตรวจการตั้งค่า','var(--dg)'); if(!silent) toast('⚠️ ซิงค์ขึ้นคลาวด์ไม่สำเร็จ'); }
+  }catch(e){ setCloudStatus('⚠️ ซิงค์ไม่สำเร็จ — ตรวจการตั้งค่า/กฎ Firestore','var(--dg)'); if(!silent) toast('⚠️ ซิงค์ขึ้นคลาวด์ไม่สำเร็จ'); }
   cloudBusy=false;
 }
-async function cloudPull(){
-  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey){ toast('⚠️ ยังไม่ได้ตั้งค่าคลาวด์'); return; }
+// ดึงข้อมูลจากคลาวด์ (แทนที่ทั้งหมด) — force=true ข้ามการยืนยัน
+async function cloudPull(force){
+  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey){ toast('⚠️ ยังไม่ได้ตั้งค่าคลาวด์'); return false; }
   setCloudStatus('⏳ กำลังดึงข้อมูลจากคลาวด์...','var(--p)');
   try{
     const res=await fetch(cloudURL());
-    if(res.status===404){ setCloudStatus('ยังไม่มีข้อมูลบนคลาวด์ (กดซิงค์ขึ้นก่อน)','var(--wn)'); toast('ยังไม่มีข้อมูลบนคลาวด์'); return; }
+    if(res.status===404){ setCloudStatus('ยังไม่มีข้อมูลบนคลาวด์ (กดซิงค์ขึ้นก่อน)','var(--wn)'); if(force!=='startup') toast('ยังไม่มีข้อมูลบนคลาวด์'); cloudInitDone=true; return false; }
     if(!res.ok) throw new Error('HTTP '+res.status);
     const j=await res.json();
     const str=j.fields&&j.fields.data&&j.fields.data.stringValue;
     if(!str) throw new Error('no data');
     const d=JSON.parse(str);
-    if(d.DB) Object.assign(DB,d.DB);
-    if(d.idCounters) Object.assign(idCounters,d.idCounters); if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
+    const cloudCount=dbRecordCount(d.DB);
+    const localCount=dbRecordCount();
+    // กันข้อมูลหาย: ถ้าคลาวด์ว่างแต่เครื่องมีข้อมูล ให้ถามก่อน (ยกเว้น force)
+    if(cloudCount===0 && localCount>0 && force!==true){
+      setCloudStatus('⚠️ คลาวด์ว่าง แต่เครื่องนี้มี '+localCount+' รายการ','var(--wn)');
+      if(force==='startup'){ cloudInitDone=true; return false; } // ตอนเปิดแอปไม่เขียนทับ
+      if(!confirm('⚠️ ข้อมูลบนคลาวด์ว่างเปล่า แต่เครื่องนี้มี '+localCount+' รายการ\n\nถ้าดึงจากคลาวด์ ข้อมูลในเครื่องจะหาย!\n\nกด "ยกเลิก" แล้วใช้ "ซิงค์ขึ้น" แทน เพื่อส่งข้อมูลเครื่องนี้ขึ้นคลาวด์\n\nยืนยันดึงข้อมูลว่างทับ?')){ cloudInitDone=true; return false; }
+    }
+    // แทนที่ข้อมูลทั้งหมด (ล้าง array ตัวอย่างก่อน)
+    if(d.DB){ Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].length=0; }); Object.keys(d.DB).forEach(k=>{ DB[k]=d.DB[k]; }); }
+    if(d.idCounters) Object.assign(idCounters,d.idCounters);
+    if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
     if(d.settingsState) Object.assign(settingsState,d.settingsState);
-    if(d.companyInfo) Object.assign(companyInfo,d.companyInfo);
-    saveData(); renderPage(curPage);
-    setCloudStatus('☁️ ดึงข้อมูลล่าสุดแล้ว','var(--ok)');
-    toast('✅ ดึงข้อมูลจากคลาวด์เรียบร้อย');
-  }catch(e){ setCloudStatus('⚠️ ดึงข้อมูลไม่สำเร็จ','var(--dg)'); toast('⚠️ ดึงข้อมูลจากคลาวด์ไม่สำเร็จ'); }
+    if(d.companyInfo){ Object.keys(companyInfo).forEach(k=>delete companyInfo[k]); Object.assign(companyInfo,d.companyInfo); }
+    cloudInitDone=true;
+    // บันทึกลงเครื่อง (ไม่ trigger push ซ้ำ)
+    try{ localStorage.setItem(STORE_KEY,JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo})); }catch(e){}
+    try{ renderPage(curPage); renderDashboard(); updateNavBadges(); updateNotifDot(); acctInit&&acctInit(); }catch(e){}
+    setCloudStatus('☁️ ดึงข้อมูลล่าสุดแล้ว ('+cloudCount+' รายการ)','var(--ok)');
+    if(force!=='startup') toast('✅ ดึงข้อมูลจากคลาวด์เรียบร้อย ('+cloudCount+' รายการ)');
+    return true;
+  }catch(e){ setCloudStatus('⚠️ ดึงข้อมูลไม่สำเร็จ','var(--dg)'); if(force!=='startup') toast('⚠️ ดึงข้อมูลจากคลาวด์ไม่สำเร็จ'); cloudInitDone=true; return false; }
 }
 // เรียกอัตโนมัติหลังบันทึก (หน่วงเวลาเพื่อรวบรายการ)
 function cloudAutoSync(){
   if(!cloudCfg.enabled) return;
+  if(!cloudInitDone) return; // รอให้ดึงข้อมูลครั้งแรกเสร็จก่อน กันเขียนทับ
   clearTimeout(cloudTimer);
   cloudTimer=setTimeout(()=>cloudPush(true),2500);
+}
+// ดึงข้อมูลอัตโนมัติตอนเปิดแอป (คลาวด์ = แหล่งข้อมูลหลัก)
+async function cloudStartupSync(){
+  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey){ cloudInitDone=true; return; }
+  await cloudPull('startup');
+  cloudInitDone=true;
 }
 function resetData(){
   document.getElementById('ml-t').textContent='🗑️ ล้างข้อมูล';
@@ -3250,16 +3869,19 @@ function printDoc(type,id,opts){
   else if(type==='installments'){ r=DB.installments.find(x=>x.id===id); }
   else if(type==='cashsale'){ r=DB.cashsale.find(x=>x.id===id); }
   else if(type==='delivery'){ r=DB.delivery.find(x=>x.id===id); }
+  else if(type==='expense'){ r=DB.expense.find(x=>x.id===id); }
   if(!r) return;
   // ถ้าเอกสารตั้งค่าไม่แสดงลายเซ็นไว้ (และผู้ใช้ไม่ได้สั่งแสดงเองในพรีวิว) ให้ซ่อน
   if(opts.showSig===undefined && r.noSig) CO.showSig=false;
-  const defaultByType=(type==='quotes'?'ใบเสนอราคา':type==='installments'?'ใบแบ่งจ่าย':type==='cashsale'?'บิลเงินสด / ใบเสร็จรับเงิน':type==='delivery'?'ใบส่งสินค้า / ใบกำกับภาษี':'ใบวางบิล / ใบแจ้งหนี้');
+  const defaultByType=(type==='quotes'?'ใบเสนอราคา':type==='installments'?'ใบแบ่งจ่าย':type==='cashsale'?'บิลเงินสด / ใบเสร็จรับเงิน':type==='delivery'?'ใบส่งสินค้า / ใบกำกับภาษี':type==='expense'?'ใบสำคัญจ่าย':'ใบวางบิล / ใบแจ้งหนี้');
   const docTypeName = opts.docType || r.docHeader || defaultByType;
   // บันทึกหัวบิลที่เลือกไว้กับเอกสาร (เพื่อให้ครั้งต่อไปเปิดมาเป็นหัวเดิม)
   if(opts.docType && r.docHeader!==opts.docType){ r.docHeader=opts.docType; try{ saveData(); }catch(e){} }
   title = docTypeName;
   const cust=getCust(r.cust);
-  const custName = (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
+  const custName = type==='expense'
+    ? (r.desc||'ผู้รับเงิน')
+    : (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
   const disc=r.disc||0;
   const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+(b.price||0)*(b.qty||0),0):(r.amt/(r.vat?1.07:1));
   const discAmt=itemsSub*disc/100;
@@ -3273,6 +3895,23 @@ function printDoc(type,id,opts){
   const copies = copyMode==='both' ? [{lb:'ต้นฉบับ',n:1},{lb:'สำเนา',n:2}] : copyMode==='copy' ? [{lb:'สำเนา',n:1}] : [{lb:'ต้นฉบับ',n:1}];
 
   function buildBody(){
+    // ── ใบสำคัญจ่าย ──
+    if(type==='expense'){
+      const sub=(r.lines||[]).reduce((s,l)=>s+(l.amt||0),0)||r.amt;
+      const vatAmt=r.vat?sub*0.07:0;
+      const grandAmt=sub+vatAmt;
+      const lineRows=(r.lines&&r.lines.length)
+        ? r.lines.map((l,i)=>`<tr><td style="text-align:center;color:#52606d">${i+1}</td><td style="font-weight:500">${l.desc||'-'}</td><td style="text-align:right">${fmt(l.amt)}</td></tr>`).join('')
+        : `<tr><td style="text-align:center;color:#52606d">1</td><td style="font-weight:500">${r.desc}</td><td style="text-align:right">${fmt(sub)}</td></tr>`;
+      return `
+      <table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการ</th><th style="text-align:right;width:140px">จำนวนเงิน (฿)</th></tr></thead><tbody>${lineRows}</tbody></table>
+      <table class="sumt">
+        <tr><td>รวมเป็นเงิน</td><td>${fmt(sub)} บาท</td></tr>
+        <tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vatAmt)} บาท</td></tr>
+        <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(grandAmt)} บาท</td></tr>
+      </table>
+      <div class="baht">(${bahtText(grandAmt)})</div>`;
+    }
     if(type==='installments'){
       const itemsTable=(r.items&&r.items.length)
         ? `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการสินค้า</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคา/หน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${r.items.map((it,i)=>{const parts=String(it.name||'').split('\n');const nm=parts[0]||'';const sub=it.sub||parts.slice(1).join(' ');return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}</td><td style="text-align:right">${fmt(it.price*it.qty)}</td></tr>`;}).join('')}</tbody></table>`
@@ -3299,12 +3938,12 @@ function printDoc(type,id,opts){
 
   // สีธีมตามหัวบิลที่เลือก: เสนอราคา=ส้ม, เสร็จ/เงินสด=เขียว, อื่นๆ=ม่วง
   const dt=docTypeName;
-  const theme = dt.includes('เสนอราคา') ? '#F5821F' : (dt.includes('เสร็จ')||dt.includes('เงินสด')||dt.includes('มัดจำ')) ? '#0F9D58' : '#6B2FA6';
-  const themeBg = theme==='#F5821F' ? '#FFF8F2' : theme==='#0F9D58' ? '#F0FaF4' : '#F8F4FC';
+  const theme = type==='expense' ? '#E53E3E' : dt.includes('เสนอราคา') ? '#F5821F' : (dt.includes('เสร็จ')||dt.includes('เงินสด')||dt.includes('มัดจำ')) ? '#0F9D58' : '#6B2FA6';
+  const themeBg = type==='expense' ? '#FFF5F5' : theme==='#F5821F' ? '#FFF8F2' : theme==='#0F9D58' ? '#F0FaF4' : '#F8F4FC';
   // ป้ายลงนาม
   const isQuoteLike = dt.includes('เสนอราคา')||dt.includes('สั่งซื้อ');
-  const sigLeft = isQuoteLike ? 'ผู้สั่งซื้อสินค้า' : 'ผู้รับเอกสาร';
-  const sigRight = isQuoteLike ? 'ผู้อนุมัติ' : 'ผู้มีอำนาจลงนาม';
+  const sigLeft = type==='expense' ? 'ผู้จ่ายเงิน' : isQuoteLike ? 'ผู้สั่งซื้อสินค้า' : 'ผู้รับเอกสาร';
+  const sigRight = type==='expense' ? 'ผู้อนุมัติการจ่าย' : isQuoteLike ? 'ผู้อนุมัติ' : 'ผู้มีอำนาจลงนาม';
   function buildPage(copy){
     return `<div class="sheet">
       <div class="corner"></div>
@@ -3315,15 +3954,14 @@ function printDoc(type,id,opts){
         <div>
           <div class="co-name">${CO.name}</div>
           <div class="co-addr">${CO.addr}<br>${CO.tax}<br>${CO.tel}<br>${CO.mobile}</div>
-          <div class="cust-sec"><div class="cust-lb">ลูกค้า</div><div class="cust-nm">${custName}</div></div>
+          <div class="cust-sec"><div class="cust-lb">${type==='expense'?'รายการ':'ลูกค้า'}</div><div class="cust-nm">${custName}</div></div>
         </div>
         <div class="docmeta">
           <table>
             <tr><td class="k">เลขที่</td><td class="v">${r.id}</td></tr>
             <tr><td class="k">วันที่</td><td class="v">${docDate}</td></tr>
-            ${r.due?`<tr><td class="k">ครบกำหนด</td><td class="v">${fmtSlash(r.due)}</td></tr>`:''}
-            ${r.exp?`<tr><td class="k">ยืนราคาถึง</td><td class="v">${fmtSlash(r.exp)}</td></tr>`:''}
-            <tr><td class="k">ผู้ขาย</td><td class="v">${CO.seller}</td></tr>
+            ${type==='expense'?`<tr><td class="k">หมวดหมู่</td><td class="v">${r.cat||'-'}</td></tr><tr><td class="k">ช่องทางจ่าย</td><td class="v">${r.payMethod||'เงินสด'}</td></tr>`:`${r.due?`<tr><td class="k">ครบกำหนด</td><td class="v">${fmtSlash(r.due)}</td></tr>`:''}${r.exp?`<tr><td class="k">ยืนราคาถึง</td><td class="v">${fmtSlash(r.exp)}</td></tr>`:''}`}
+            <tr><td class="k">ผู้จัดทำ</td><td class="v">${CO.seller}</td></tr>
           </table>
         </div>
       </div>
@@ -4193,6 +4831,188 @@ function doClosePeriod(){
 // helper ดาวน์โหลด CSV ใช้ร่วม
 function dlCSV(csv,name){ const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); toast('📥 ส่งออกแล้ว'); }
 
+// ══════════════════════════════════════════════════════════
+// สรุปบัญชี (Summary) — กรองตามช่วงวันที่
+// ══════════════════════════════════════════════════════════
+let sumData={rev:0,exp:0,net:0,vat:0};
+function sumPreset(p){
+  const now=new Date(); const y=now.getFullYear(); const m=now.getMonth();
+  let from,to;
+  if(p==='month'){ from=new Date(y,m,1); to=new Date(y,m+1,0); }
+  else if(p==='quarter'){ const q=Math.floor(m/3); from=new Date(y,q*3,1); to=new Date(y,q*3+3,0); }
+  else if(p==='year'){ from=new Date(y,0,1); to=new Date(y,11,31); }
+  else { from=null; to=null; }
+  const fmt2=d=>d?d.toISOString().slice(0,10):'';
+  const fEl=document.getElementById('sum-from'); const tEl=document.getElementById('sum-to');
+  if(fEl) fEl.value=fmt2(from); if(tEl) tEl.value=fmt2(to);
+  renderSummary();
+}
+function renderSummary(){
+  acctInit();
+  // ตั้งค่าเริ่มต้น: เดือนปัจจุบัน (ถ้ายังไม่ได้เลือก)
+  const fEl=document.getElementById('sum-from'); const tEl=document.getElementById('sum-to');
+  if(fEl&&!fEl.value){ const n=new Date(); fEl.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`; }
+  if(tEl&&!tEl.value){ const n=new Date(new Date().getFullYear(),new Date().getMonth()+1,0); tEl.value=n.toISOString().slice(0,10); }
+  const from=document.getElementById('sum-from')?.value||'';
+  const to=document.getElementById('sum-to')?.value||'';
+  // ── กรอง journal ตามช่วงวันที่ ──
+  const jvAll=DB.journal||[];
+  const jvFilt=jvAll.filter(e=>{
+    if(from&&e.date<from) return false;
+    if(to&&e.date>to) return false;
+    return true;
+  });
+  // ── คำนวณยอดบัญชีในช่วง ──
+  const bal={};
+  (DB.coa||[]).forEach(a=>bal[a.code]={debit:0,credit:0});
+  jvFilt.forEach(e=>e.lines.forEach(l=>{
+    if(!bal[l.code]) bal[l.code]={debit:0,credit:0};
+    bal[l.code].debit+=l.debit; bal[l.code].credit+=l.credit;
+  }));
+  const getbal=(code)=>{
+    const a=acctOf(code); if(!a) return 0;
+    const b=bal[code]||{debit:0,credit:0};
+    return ACCT_TYPES[a.type].normal==='debit'?b.debit-b.credit:b.credit-b.debit;
+  };
+  // ── P&L ──
+  const revAccts=DB.coa.filter(a=>a.type==='revenue');
+  const expAccts=DB.coa.filter(a=>a.type==='expense');
+  const totalRev=revAccts.reduce((s,a)=>s+getbal(a.code),0);
+  const totalExp=expAccts.reduce((s,a)=>s+getbal(a.code),0);
+  const netProfit=totalRev-totalExp;
+  // ── Balance Sheet ──
+  const totalAsset=DB.coa.filter(a=>a.type==='asset').reduce((s,a)=>s+getbal(a.code),0);
+  const totalLiab=DB.coa.filter(a=>a.type==='liability').reduce((s,a)=>s+getbal(a.code),0);
+  const totalEquity=DB.coa.filter(a=>a.type==='equity').reduce((s,a)=>s+getbal(a.code),0);
+  // ── VAT ──
+  const vat2301=getbal('2301'); const vat1750=getbal('1750');
+  const vatNet=vat2301-vat1750;
+  // ── Cash flow ──
+  const cashIn=jvFilt.reduce((s,e)=>s+(e.lines.filter(l=>['1010','1020'].includes(l.code)&&l.debit>0).reduce((a,l)=>a+l.debit,0)),0);
+  const cashOut=jvFilt.reduce((s,e)=>s+(e.lines.filter(l=>['1010','1020'].includes(l.code)&&l.credit>0).reduce((a,l)=>a+l.credit,0)),0);
+  // ── เอกสารในช่วง ──
+  const docFilter=arr=>arr.filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
+  const qCount=docFilter(DB.quotes).length;
+  const invCount=docFilter(DB.invoices).length;
+  const invAmt=docFilter(DB.invoices).reduce((s,r)=>s+r.amt,0);
+  const csCount=docFilter(DB.cashsale).length;
+  const csAmt=docFilter(DB.cashsale).reduce((s,r)=>s+r.amt,0);
+  const expCount=docFilter(DB.expense).length;
+  const expAmt=docFilter(DB.expense).reduce((s,r)=>s+r.amt,0);
+  const poCount=docFilter(DB.po).length;
+  // ── อัปเดต KPI ──
+  document.getElementById('sum-k1').textContent=fmt(totalRev);
+  document.getElementById('sum-k2').textContent=fmt(totalExp);
+  document.getElementById('sum-k3').textContent=fmt(netProfit);
+  document.getElementById('sum-k4').textContent=fmt(vatNet);
+  sumData={rev:totalRev,exp:totalExp,net:netProfit,vat:vatNet,cashIn,cashOut,from,to};
+  // ── helper row ──
+  const row=(label,val,bold,color)=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px">
+    <span style="color:${bold?'var(--tx)':'var(--mu)'};font-weight:${bold?700:400}">${label}</span>
+    <span style="font-weight:${bold?700:600};color:${color||'var(--tx)'}">${val}</span></div>`;
+  const divider=(label)=>`<div style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:.5px;margin:10px 0 4px;text-transform:uppercase">${label}</div>`;
+  // ── P&L ──
+  let plHtml=divider('รายได้');
+  revAccts.filter(a=>getbal(a.code)!==0).forEach(a=>{ plHtml+=row(a.name,`฿${fmt(getbal(a.code))}`,false,'var(--ok)'); });
+  plHtml+=row('รวมรายได้',`฿${fmt(totalRev)}`,true,'var(--ok)');
+  plHtml+=divider('ค่าใช้จ่าย');
+  expAccts.filter(a=>getbal(a.code)!==0).forEach(a=>{ plHtml+=row(a.name,`฿${fmt(getbal(a.code))}`,false,'var(--dg)'); });
+  plHtml+=row('รวมค่าใช้จ่าย',`฿${fmt(totalExp)}`,true,'var(--dg)');
+  plHtml+=`<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:14px;font-weight:700;border-top:2px solid var(--bd);margin-top:4px">
+    <span>${netProfit>=0?'กำไรสุทธิ':'ขาดทุนสุทธิ'}</span>
+    <span style="color:${netProfit>=0?'var(--ok)':'var(--dg)'}">฿${fmt(Math.abs(netProfit))}</span></div>`;
+  document.getElementById('sum-pl').innerHTML=plHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
+  // ── Balance Sheet ──
+  let bsHtml=divider('สินทรัพย์');
+  DB.coa.filter(a=>a.type==='asset'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
+  bsHtml+=row('รวมสินทรัพย์',`฿${fmt(totalAsset)}`,true,'var(--bl)');
+  bsHtml+=divider('หนี้สิน');
+  DB.coa.filter(a=>a.type==='liability'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
+  bsHtml+=row('รวมหนี้สิน',`฿${fmt(totalLiab)}`,true,'var(--dg)');
+  bsHtml+=divider('ส่วนของผู้ถือหุ้น');
+  DB.coa.filter(a=>a.type==='equity'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
+  bsHtml+=row('รวมส่วนทุน',`฿${fmt(totalEquity)}`,true,'var(--ok)');
+  bsHtml+=row('หนี้สิน + ทุน',`฿${fmt(totalLiab+totalEquity)}`,true);
+  document.getElementById('sum-bs').innerHTML=bsHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
+  // ── รายได้แยกหมวด (จากเอกสาร) ──
+  const revByCat={};
+  docFilter(DB.invoices).forEach(r=>(r.items||[]).forEach(it=>{ const k=it.cat||'ใบวางบิล'; if(!revByCat[k])revByCat[k]=0; revByCat[k]+=(it.price||0)*(it.qty||0); }));
+  docFilter(DB.cashsale).forEach(r=>(r.items||[]).forEach(it=>{ const k=it.cat||'ขายเงินสด'; if(!revByCat[k])revByCat[k]=0; revByCat[k]+=(it.price||0)*(it.qty||0); }));
+  // ถ้าไม่มี items ให้ใช้ยอดรวม
+  if(!Object.keys(revByCat).length){
+    docFilter(DB.invoices).forEach(r=>{ if(!revByCat['ใบวางบิล'])revByCat['ใบวางบิล']=0; revByCat['ใบวางบิล']+=r.amt; });
+    docFilter(DB.cashsale).forEach(r=>{ if(!revByCat['ขายเงินสด'])revByCat['ขายเงินสด']=0; revByCat['ขายเงินสด']+=r.amt; });
+  }
+  const totalRevDoc=Object.values(revByCat).reduce((a,b)=>a+b,0)||1;
+  document.getElementById('sum-rev-detail').innerHTML=Object.entries(revByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:500">${k}</span><span style="color:var(--ok);font-weight:600">฿${fmt(v)}</span>
+      </div>
+      <div style="background:var(--bd);border-radius:4px;height:6px"><div style="background:var(--ok);height:100%;border-radius:4px;width:${Math.max(4,v/totalRevDoc*100).toFixed(1)}%"></div></div>
+    </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีรายได้ในช่วงนี้</div>';
+  // ── ค่าใช้จ่ายแยกหมวด ──
+  const expByCat={};
+  docFilter(DB.expense).forEach(r=>{ const k=r.cat||'อื่นๆ'; if(!expByCat[k])expByCat[k]=0; expByCat[k]+=r.amt; });
+  const totalExpDoc=Object.values(expByCat).reduce((a,b)=>a+b,0)||1;
+  document.getElementById('sum-exp-detail').innerHTML=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+    <div style="margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+        <span style="font-weight:500">${k}</span><span style="color:var(--dg);font-weight:600">฿${fmt(v)}</span>
+      </div>
+      <div style="background:var(--bd);border-radius:4px;height:6px"><div style="background:rgba(229,62,62,.6);height:100%;border-radius:4px;width:${Math.max(4,v/totalExpDoc*100).toFixed(1)}%"></div></div>
+    </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีค่าใช้จ่ายในช่วงนี้</div>';
+  // ── กระแสเงินสด ──
+  const cfPct=cashIn>0?Math.min(cashOut/cashIn*100,100):0;
+  document.getElementById('sum-cf').innerHTML=`
+    ${row('เงินสดรับ',`฿${fmt(cashIn)}`,false,'var(--ok)')}
+    ${row('เงินสดจ่าย',`฿${fmt(cashOut)}`,false,'var(--dg)')}
+    ${row('กระแสเงินสดสุทธิ',`฿${fmt(cashIn-cashOut)}`,true,(cashIn-cashOut)>=0?'var(--ok)':'var(--dg)')}
+    <div style="margin-top:12px;font-size:11px;color:var(--mu);margin-bottom:4px">อัตราส่วนจ่าย/รับ</div>
+    <div style="background:var(--bd);border-radius:6px;height:10px"><div style="background:${cfPct<80?'var(--ok)':cfPct<100?'var(--wn)':'var(--dg)'};height:100%;border-radius:6px;width:${cfPct.toFixed(1)}%;transition:width .6s"></div></div>
+    <div style="font-size:11px;color:var(--mu);margin-top:4px;text-align:right">${cfPct.toFixed(1)}%</div>`;
+  // ── สรุปเอกสาร ──
+  document.getElementById('sum-docs').innerHTML=`
+    ${row('ใบเสนอราคา',`${qCount} ใบ`)}
+    ${row('ใบวางบิล',`${invCount} ใบ · ฿${fmt(invAmt)}`)}
+    ${row('ขายเงินสด',`${csCount} รายการ · ฿${fmt(csAmt)}`)}
+    ${row('ค่าใช้จ่าย',`${expCount} รายการ · ฿${fmt(expAmt)}`)}
+    ${row('ใบสั่งซื้อ',`${poCount} ใบ`)}
+    <div style="border-top:2px solid var(--bd);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:13px;font-weight:700">
+      <span>ยอดขายรวม</span><span style="color:var(--ok)">฿${fmt(invAmt+csAmt)}</span>
+    </div>`;
+  // ── รายการ journal ──
+  const tb=document.getElementById('sum-jv-tbl'); tb.innerHTML='';
+  const cnt=document.getElementById('sum-jv-count');
+  if(cnt) cnt.textContent=`${jvFilt.length} รายการ`;
+  if(!jvFilt.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">ไม่มีรายการในช่วงนี้</td></tr>'; return; }
+  const srcLbl={invoice:'ใบวางบิล',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',payment:'รับชำระ',manual:'บันทึกเอง',closing:'ปิดงวด'};
+  jvFilt.forEach(e=>{
+    const dr=e.lines.reduce((s,l)=>s+l.debit,0);
+    const cr=e.lines.reduce((s,l)=>s+l.credit,0);
+    tb.innerHTML+=`<tr><td style="white-space:nowrap">${fmtD(e.date)}</td><td style="max-width:220px">${e.desc||'-'}</td>
+      <td style="text-align:right;color:var(--ok);font-weight:600">฿${fmt(dr)}</td>
+      <td style="text-align:right;color:var(--dg);font-weight:600">฿${fmt(cr)}</td>
+      <td><span class="badge b-part" style="font-size:10px">${srcLbl[e.source]||e.source||'-'}</span></td></tr>`;
+  });
+}
+function exportSummaryCSV(){
+  const from=document.getElementById('sum-from')?.value||'';
+  const to=document.getElementById('sum-to')?.value||'';
+  let csv=`\uFEFFสรุปบัญชี FlowBiz\n`;
+  csv+=`ช่วงวันที่,${from||'ทั้งหมด'} ถึง ${to||'ทั้งหมด'}\n\n`;
+  csv+=`รายได้รวม,฿${fmt(sumData.rev)}\nค่าใช้จ่ายรวม,฿${fmt(sumData.exp)}\nกำไร/ขาดทุน,฿${fmt(sumData.net)}\nVAT ค้างนำส่ง,฿${fmt(sumData.vat)}\n`;
+  csv+=`เงินสดรับ,฿${fmt(sumData.cashIn||0)}\nเงินสดจ่าย,฿${fmt(sumData.cashOut||0)}\n\n`;
+  csv+=`วันที่,รายละเอียด,เดบิต,เครดิต,แหล่ง\n`;
+  const jvFilt=(DB.journal||[]).filter(e=>(!from||e.date>=from)&&(!to||e.date<=to));
+  jvFilt.forEach(e=>{
+    const dr=e.lines.reduce((s,l)=>s+l.debit,0);
+    const cr=e.lines.reduce((s,l)=>s+l.credit,0);
+    csv+=`"${fmtSlash(e.date)}","${(e.desc||'').replace(/"/g,"'")}",${dr.toFixed(2)},${cr.toFixed(2)},${e.source||''}\n`;
+  });
+  dlCSV(csv,`สรุปบัญชี_${from||'all'}_${to||'all'}.csv`);
+}
+
 function backfillJournals(){
   acctInit();
   if(DB._acctBackfilled) return;
@@ -4235,6 +5055,8 @@ try{ acctInit(); backfillJournals(); }catch(e){ console.warn('init accounting:',
 try{ renderDashboard(); }catch(e){ console.warn('init dashboard:',e); }
 try{ updateNotifDot(); }catch(e){}
 try{ updateNavBadges(); }catch(e){}
+// ดึงข้อมูลจากคลาวด์ตอนเปิดแอป (ถ้าเปิดใช้งานคลาวด์) — คลาวด์เป็นแหล่งข้อมูลหลัก
+try{ cloudStartupSync(); }catch(e){ cloudInitDone=true; }
 </script>
 </body>
 </html>
