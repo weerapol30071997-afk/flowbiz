@@ -979,7 +979,7 @@ tbody tr:hover td{background:#FAFBFD}
     <div class="ig" id="dr-info"></div>
     <div id="dr-extra"></div>
     <div style="display:flex;gap:8px">
-      <button class="btn bp" style="flex:1;justify-content:center" onclick="if(drawerCtx.type){printDoc(drawerCtx.type,drawerCtx.id)}else{toast('🖨️ เอกสารนี้ยังไม่รองรับการพิมพ์')}">🖨️ พิมพ์ / PDF</button>
+      <button class="btn bp" style="flex:1;justify-content:center" onclick="if(drawerCtx.type==='job'){printJobDelivery(drawerCtx.id)}else if(drawerCtx.type){printDoc(drawerCtx.type,drawerCtx.id)}else{toast('🖨️ เอกสารนี้ยังไม่รองรับการพิมพ์')}">🖨️ พิมพ์ / PDF</button>
       <button class="btn bo" onclick="closeDrawer()">ปิด</button>
     </div>
   </div>
@@ -2745,12 +2745,13 @@ function renderJobs(){
 }
 
 // ── ตัวแปรชั่วคราวสำหรับฟอร์มงาน ──
-let jobPhotos={survey:[],before:[],after:[]}, jobGps=null, jobEditId=null;
+let jobPhotos={survey:[],before:[],after:[]}, jobGps=null, jobEditId=null, jobItems=[];
 function openJobForm(id){
   jobEditId=id;
   const j=id?DB.jobs.find(x=>x.id===id):null;
   jobPhotos={survey:j?.surveyPhotos?[...j.surveyPhotos]:[],before:j?.beforePhotos?[...j.beforePhotos]:[],after:j?.afterPhotos?[...j.afterPhotos]:[]};
   jobGps=j?.gps||null;
+  jobItems=j?.items?JSON.parse(JSON.stringify(j.items)):[];
   const custOpts=DB.contacts.map(c=>`<option value="${c.id}"${j&&j.cust===c.id?' selected':''}>${c.name}</option>`).join('');
   document.getElementById('ml-t').textContent=id?'แก้ไขงาน':'สร้างงานใหม่';
   document.getElementById('ml-s').textContent=id?j.id:'บันทึกข้อมูลงาน + ดึงตำแหน่ง GPS';
@@ -2767,6 +2768,15 @@ function openJobForm(id){
         <div class="fg"><label class="flb">สถานะ</label><select class="fi" id="job-status">${JOB_FLOW.concat(['ไม่อนุมัติ']).map(s=>`<option${j&&j.status===s?' selected':(!j&&s==='สำรวจ')?' selected':''}>${s}</option>`).join('')}</select></div>
       </div>
       <div class="fg" style="margin-top:10px"><label class="flb">รายละเอียดงาน</label><textarea class="fi" id="job-desc" rows="2" placeholder="อธิบายขอบเขตงาน...">${j?(j.desc||''):''}</textarea></div>
+    </div>
+
+    <!-- รายการงาน/วัสดุ -->
+    <div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--p);letter-spacing:.5px">📋 รายการงานที่ทำ / วัสดุที่ใช้</div>
+        <button class="btn bp" style="font-size:11px;padding:5px 11px" onclick="jobAddItem()">⊕ เพิ่มรายการ</button>
+      </div>
+      <div id="job-items"></div>
     </div>
 
     <!-- สถานที่ + GPS -->
@@ -2786,6 +2796,25 @@ function openJobForm(id){
   document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delJob('${id}')">🗑️</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveJob()">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
   ['survey','before','after'].forEach(renderJobPhotos);
+  jobRenderItems();
+}
+function jobAddItem(){ jobItems.push({desc:'',qty:1,unit:'',note:''}); jobRenderItems(); }
+function jobDelItem(i){ jobItems.splice(i,1); jobRenderItems(); }
+function jobItemChange(i,field,val){ if(jobItems[i]) jobItems[i][field]=field==='qty'?(+val||0):val; }
+function jobRenderItems(){
+  const box=document.getElementById('job-items'); if(!box) return;
+  if(!jobItems.length){ box.innerHTML='<div style="color:var(--mu);font-size:12px;text-align:center;padding:8px">ยังไม่มีรายการ — กด "เพิ่มรายการ"</div>'; return; }
+  box.innerHTML=jobItems.map((it,i)=>`<div style="background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px">
+    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
+      <input class="fi" style="flex:1" placeholder="รายการงาน/วัสดุ" value="${(it.desc||'').replace(/"/g,'&quot;')}" oninput="jobItemChange(${i},'desc',this.value)">
+      <button onclick="jobDelItem(${i})" style="width:30px;height:30px;border-radius:7px;background:#FEE;color:var(--dg);border:none;cursor:pointer;flex-shrink:0">✕</button>
+    </div>
+    <div style="display:flex;gap:6px">
+      <input class="fi" style="width:70px" type="number" placeholder="จำนวน" value="${it.qty||''}" oninput="jobItemChange(${i},'qty',this.value)">
+      <input class="fi" style="width:80px" placeholder="หน่วย" value="${(it.unit||'').replace(/"/g,'&quot;')}" oninput="jobItemChange(${i},'unit',this.value)">
+      <input class="fi" style="flex:1" placeholder="หมายเหตุ" value="${(it.note||'').replace(/"/g,'&quot;')}" oninput="jobItemChange(${i},'note',this.value)">
+    </div>
+  </div>`).join('');
 }
 function jobPhotoSection(kind,title,sub){
   return `<div style="background:var(--bg);border-radius:14px;padding:14px;margin-bottom:14px">
@@ -2841,6 +2870,7 @@ function saveJob(){
     location:document.getElementById('job-location').value,
     gps:jobGps,
     surveyPhotos:jobPhotos.survey, beforePhotos:jobPhotos.before, afterPhotos:jobPhotos.after,
+    items:jobItems.filter(it=>it.desc&&it.desc.trim()),
   };
   if(jobEditId){ const old=DB.jobs.find(x=>x.id===jobEditId); if(old){ rec.inspectNote=old.inspectNote; rec.approved=old.approved; } const i=DB.jobs.findIndex(x=>x.id===jobEditId); DB.jobs[i]=rec; }
   else DB.jobs.unshift(rec);
@@ -2868,6 +2898,7 @@ function openJobDrawer(id){
     ${j.gps?`<span style="color:var(--mu)">พิกัด GPS</span><span><a href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank" style="color:var(--p);font-weight:600">🗺️ เปิดแผนที่ Google</a></span>`:''}
   </div>`;
   const descBox=j.desc?`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="color:var(--mu);margin-bottom:4px">รายละเอียดงาน</div>${j.desc}</div>`:'';
+  const itemsBox=(j.items&&j.items.length)?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">📋 รายการงาน/วัสดุ (${j.items.length})</div>${j.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><span style="font-weight:500">${it.desc}${it.note?`<span style="color:var(--mu);font-weight:400"> · ${it.note}</span>`:''}</span><span style="color:var(--mu);white-space:nowrap;margin-left:8px">${it.qty||''} ${it.unit||''}</span></div>`).join('')}</div>`:'';
   // ปุ่มเปลี่ยนสถานะตาม flow
   let actionBtns='';
   if(j.status==='สำรวจ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','รอทำ')">✓ ยืนยันสำรวจเสร็จ → รอทำ</button>`;
@@ -2878,13 +2909,13 @@ function openJobDrawer(id){
   else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
   else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
   const inspectBox=j.inspectNote?`<div style="background:${j.approved?'#E8F8F0':'#FEE'};border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="font-weight:700;color:${j.approved?'var(--ok)':'var(--dg)'};margin-bottom:4px">${j.approved?'✅ ผลการตรวจ: อนุมัติ':'❌ ผลการตรวจ: ไม่อนุมัติ'}</div>${j.inspectNote}</div>`:'';
-  const extra=info+descBox+inspectBox
+  const extra=info+descBox+itemsBox+inspectBox
     +photoGrid(j.surveyPhotos,'🔍 รูปสำรวจหน้างาน')
     +photoGrid(j.beforePhotos,'📸 รูปก่อนทำงาน')
     +photoGrid(j.afterPhotos,'✨ รูปหลังทำงาน')
     +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
     +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไขงาน</button></div>`;
-  openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra);
+  openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra,'job');
 }
 function jobSetStatus(id,st){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status=st; saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('🔄 เปลี่ยนสถานะเป็น: '+st); setTimeout(()=>openJobDrawer(id),100); } }
 function jobApprove(id,ok){
@@ -2897,53 +2928,84 @@ function jobApprove(id,ok){
 }
 function jobDeliver(id){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status='ส่งมอบแล้ว'; j.deliverDate=new Date().toISOString().slice(0,10); saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('📦 บันทึกการส่งมอบงานแล้ว'); setTimeout(()=>openJobDrawer(id),100); } }
 
-// ── ใบส่งมอบงาน (พิมพ์) ──
+// ── ใบส่งมอบงาน (พิมพ์) — ละเอียดระดับมืออาชีพ ──
 function printJobDelivery(id){
   const j=DB.jobs.find(x=>x.id===id); if(!j) return;
   const cust=getCust(j.cust);
-  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
-  const photoRow=(arr)=>arr&&arr.length?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${arr.slice(0,6).map(img=>`<img src="${img}" style="width:90px;height:90px;object-fit:cover;border:1px solid #ccc;border-radius:4px">`).join('')}</div>`:'<div style="color:#999;font-size:11px">— ไม่มีรูป —</div>';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const today=new Date().toISOString().slice(0,10);
+  // กล่องรูปแบบมี caption + index
+  const photoGrid=(arr,emptyTxt)=>{
+    if(!arr||!arr.length) return `<div style="color:#aaa;font-size:11px;padding:8px;text-align:center;border:1px dashed #ddd;border-radius:6px">${emptyTxt||'— ไม่มีรูป —'}</div>`;
+    return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">${arr.slice(0,9).map((img,i)=>`<div style="position:relative"><img src="${img}" style="width:100%;height:120px;object-fit:cover;border:1px solid #ccc;border-radius:6px"><span style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px">${i+1}</span></div>`).join('')}</div>`;
+  };
+  const statusTh={'สำรวจ':'สำรวจหน้างาน','รอทำ':'รอดำเนินการ','กำลังทำ':'กำลังดำเนินการ','ตรวจงาน':'รอตรวจรับ','อนุมัติแล้ว':'ตรวจรับแล้ว','ส่งมอบแล้ว':'ส่งมอบเรียบร้อย','ไม่อนุมัติ':'ไม่ผ่านการตรวจ'};
+  const sigImg=(CO.showSig!==false&&CO.sigImg)?`<div style="margin-bottom:-8px"><img src="${CO.sigImg}" style="max-height:50px;max-width:150px;object-fit:contain"></div>`:'';
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบส่งมอบงาน ${j.id}</title>
   <style>
-    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');
-    *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
-    body{padding:28px 32px;color:#1a1a1a;font-size:13px;line-height:1.5}
-    .hd{display:flex;justify-content:space-between;border-bottom:3px solid #00897B;padding-bottom:12px;margin-bottom:16px}
-    .cn{font-size:15px;font-weight:700;color:#00897B}
-    .ca{font-size:11px;color:#555;margin-top:3px;max-width:380px}
-    .ti{text-align:right}
-    .ti h1{font-size:22px;color:#00897B}
-    .ti .no{font-size:13px;margin-top:4px;color:#333}
-    .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;background:#F0F9F8;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:12px}
-    .meta b{color:#00897B}
-    .sec{margin-bottom:16px}
-    .sec-t{font-size:13px;font-weight:700;color:#00897B;border-left:4px solid #00897B;padding-left:8px;margin-bottom:8px}
-    .desc{background:#fafafa;border:1px solid #eee;border-radius:6px;padding:10px;font-size:12px}
-    .sig{display:flex;justify-content:space-between;margin-top:40px;gap:30px}
+    @import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap');
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+    body{padding:26px 30px;color:#1a1a1a;font-size:12.5px;line-height:1.5}
+    .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #00897B;padding-bottom:12px;margin-bottom:6px}
+    .logo-wrap{display:flex;gap:12px;align-items:flex-start}
+    .logo-img{width:54px;height:54px;object-fit:contain;border-radius:8px}
+    .cn{font-size:15px;font-weight:700;color:#00897B;line-height:1.25}
+    .ca{font-size:10.5px;color:#555;margin-top:4px;max-width:400px;line-height:1.5}
+    .ti{text-align:right;flex-shrink:0}
+    .ti h1{font-size:21px;color:#00897B;letter-spacing:.5px}
+    .ti .sub{font-size:10px;color:#888;letter-spacing:2px;margin-top:-2px}
+    .ti .no{font-size:12px;margin-top:6px;color:#333}
+    .badge{display:inline-block;background:#E0F2F1;color:#00897B;font-weight:700;font-size:11px;padding:2px 12px;border-radius:20px;margin-top:6px}
+    .meta{display:grid;grid-template-columns:1fr 1fr;gap:7px 24px;background:#F4FBFA;border:1px solid #D7EEEB;padding:13px 16px;border-radius:8px;margin:14px 0;font-size:12px}
+    .meta .row{display:flex;gap:6px}
+    .meta .k{color:#00897B;font-weight:600;white-space:nowrap;min-width:78px}
+    .meta .v{color:#222;font-weight:500}
+    .sec{margin-bottom:14px}
+    .sec-t{font-size:12.5px;font-weight:700;color:#00897B;border-left:4px solid #00897B;padding-left:9px;margin-bottom:7px;display:flex;justify-content:space-between}
+    .desc{background:#fafafa;border:1px solid #eee;border-radius:6px;padding:11px 13px;font-size:12px;line-height:1.6;white-space:pre-wrap}
+    .insp{border-radius:6px;padding:11px 13px;font-size:12px;line-height:1.6}
+    .insp.ok{background:#E8F8F0;border:1px solid #B6E6CC}
+    .insp.no{background:#FEECEC;border:1px solid #F5C2C2}
+    .note{font-size:10.5px;color:#888;margin-top:3px}
+    .sig{display:flex;justify-content:space-between;margin-top:30px;gap:30px;page-break-inside:avoid}
     .sig-col{flex:1;text-align:center}
-    .sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
-    @media print{body{padding:0}}
+    .sig-box{height:56px;display:flex;align-items:flex-end;justify-content:center}
+    .sig-line{border-top:1px dotted #999;padding-top:6px;font-size:12px;font-weight:600}
+    .foot{margin-top:22px;border-top:1px solid #eee;padding-top:8px;font-size:10px;color:#999;text-align:center}
+    @media print{body{padding:0 4px}}
   </style></head><body>
     <div class="hd">
-      <div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}<br>เลขประจำตัวผู้เสียภาษี ${CO.tax} · โทร ${CO.tel}</div></div>
-      <div class="ti"><h1>ใบส่งมอบงาน</h1><div class="no">เลขที่ ${j.id}</div><div class="no">วันที่ ${fmtSlash(j.deliverDate||new Date().toISOString().slice(0,10))}</div></div>
+      <div class="logo-wrap">
+        ${CO.logo?`<img src="${CO.logo}" class="logo-img">`:''}
+        <div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}<br>เลขประจำตัวผู้เสียภาษี ${CO.tax} · โทร ${CO.tel}${CO.mobile?(' , '+CO.mobile):''}</div></div>
+      </div>
+      <div class="ti"><h1>ใบส่งมอบงาน</h1><div class="sub">WORK DELIVERY NOTE</div><div class="no">เลขที่ <b>${j.id}</b></div><div class="no">วันที่ ${fmtSlash(j.deliverDate||today)}</div><div class="badge">${statusTh[j.status]||j.status}</div></div>
     </div>
     <div class="meta">
-      <div><b>ชื่องาน:</b> ${j.title}</div>
-      <div><b>ลูกค้า:</b> ${cust.name||j.cust||'-'}</div>
-      <div><b>สถานที่:</b> ${j.location||'-'}</div>
-      <div><b>ผู้รับผิดชอบ:</b> ${j.assignee||'-'}</div>
-      <div><b>วันที่เริ่ม:</b> ${j.date?fmtSlash(j.date):'-'}</div>
-      <div><b>มูลค่างาน:</b> ฿${fmt(j.value||0)}</div>
+      <div class="row"><span class="k">ชื่องาน</span><span class="v">${j.title}</span></div>
+      <div class="row"><span class="k">ลูกค้า</span><span class="v">${cust.name||j.cust||'-'}</span></div>
+      <div class="row"><span class="k">สถานที่</span><span class="v">${j.location||'-'}</span></div>
+      <div class="row"><span class="k">ผู้รับผิดชอบ</span><span class="v">${j.assignee||'-'}</span></div>
+      <div class="row"><span class="k">วันที่เริ่ม</span><span class="v">${j.date?fmtSlash(j.date):'-'}</span></div>
+      <div class="row"><span class="k">กำหนดเสร็จ</span><span class="v">${j.due?fmtSlash(j.due):'-'}</span></div>
+      <div class="row"><span class="k">มูลค่างาน</span><span class="v">฿${fmt(j.value||0)}</span></div>
+      <div class="row"><span class="k">พิกัด GPS</span><span class="v">${j.gps?`${j.gps.lat.toFixed(5)}, ${j.gps.lng.toFixed(5)}`:'-'}</span></div>
     </div>
-    <div class="sec"><div class="sec-t">รายละเอียดงาน</div><div class="desc">${j.desc||'-'}</div></div>
-    ${j.inspectNote?`<div class="sec"><div class="sec-t">ผลการตรวจรับงาน</div><div class="desc">${j.approved?'✅ อนุมัติ — ':''}${j.inspectNote}</div></div>`:''}
-    <div class="sec"><div class="sec-t">📸 รูปก่อนทำงาน</div>${photoRow(j.beforePhotos)}</div>
-    <div class="sec"><div class="sec-t">✨ รูปหลังทำงาน (ผลงานที่ส่งมอบ)</div>${photoRow(j.afterPhotos)}</div>
+    <div class="sec"><div class="sec-t">รายละเอียดขอบเขตงาน</div><div class="desc">${j.desc||'-'}</div></div>
+    ${(j.items&&j.items.length)?`<div class="sec"><div class="sec-t">รายการงานที่ทำ / วัสดุที่ใช้</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr style="background:#F4FBFA"><th style="text-align:center;padding:7px;border:1px solid #D7EEEB;width:36px">#</th><th style="text-align:left;padding:7px;border:1px solid #D7EEEB">รายการ</th><th style="text-align:center;padding:7px;border:1px solid #D7EEEB;width:70px">จำนวน</th><th style="text-align:center;padding:7px;border:1px solid #D7EEEB;width:70px">หน่วย</th><th style="text-align:left;padding:7px;border:1px solid #D7EEEB;width:140px">หมายเหตุ</th></tr></thead>
+        <tbody>${j.items.map((it,i)=>`<tr><td style="text-align:center;padding:6px;border:1px solid #e5e5e5">${i+1}</td><td style="padding:6px;border:1px solid #e5e5e5">${it.desc}</td><td style="text-align:center;padding:6px;border:1px solid #e5e5e5">${it.qty||'-'}</td><td style="text-align:center;padding:6px;border:1px solid #e5e5e5">${it.unit||'-'}</td><td style="padding:6px;border:1px solid #e5e5e5;color:#666">${it.note||''}</td></tr>`).join('')}</tbody>
+      </table></div>`:''}
+    ${j.inspectNote?`<div class="sec"><div class="sec-t">ผลการตรวจรับงาน</div><div class="insp ${j.approved?'ok':'no'}"><b>${j.approved?'✅ ผ่านการตรวจรับ':'❌ ไม่ผ่านการตรวจรับ'}</b><br>${j.inspectNote}</div></div>`:''}
+    ${(j.surveyPhotos&&j.surveyPhotos.length)?`<div class="sec"><div class="sec-t"><span>🔍 รูปสำรวจหน้างาน</span><span style="font-weight:400;color:#999">${j.surveyPhotos.length} รูป</span></div>${photoGrid(j.surveyPhotos)}</div>`:''}
+    <div class="sec"><div class="sec-t"><span>📸 รูปก่อนทำงาน</span><span style="font-weight:400;color:#999">${(j.beforePhotos||[]).length} รูป</span></div>${photoGrid(j.beforePhotos,'— ไม่มีรูปก่อนทำงาน —')}</div>
+    <div class="sec"><div class="sec-t"><span>✨ รูปหลังทำงาน (ผลงานที่ส่งมอบ)</span><span style="font-weight:400;color:#999">${(j.afterPhotos||[]).length} รูป</span></div>${photoGrid(j.afterPhotos,'— ไม่มีรูปหลังทำงาน —')}</div>
     <div class="sig">
-      <div class="sig-col"><div class="sig-line">ผู้ส่งมอบงาน (${CO.seller})</div><div style="font-size:11px;color:#777;margin-top:4px">วันที่ ........./........./.........</div></div>
-      <div class="sig-col"><div class="sig-line">ผู้รับมอบงาน</div><div style="font-size:11px;color:#777;margin-top:4px">วันที่ ........./........./.........</div></div>
+      <div class="sig-col"><div class="sig-box">${sigImg}</div><div class="sig-line">ผู้ส่งมอบงาน</div><div class="note">( ${CO.seller} )</div><div class="note">วันที่ ........./........./.........</div></div>
+      <div class="sig-col"><div class="sig-box"></div><div class="sig-line">ผู้รับมอบงาน</div><div class="note">( ........................................ )</div><div class="note">วันที่ ........./........./.........</div></div>
     </div>
+    <div class="foot">เอกสารนี้ออกโดยระบบ FlowBiz · ${CO.name} · พิมพ์เมื่อ ${fmtSlash(today)}</div>
   </body></html>`;
   if(typeof showPrintPreview==='function'){ showPrintPreview(html,'ใบส่งมอบงาน '+j.id,{}); }
   else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
@@ -3522,6 +3584,8 @@ function openCloudForm(){
     <div class="fg" style="margin-bottom:10px"><label class="flb">รหัสชุดข้อมูล (Document ID) — ต้องเหมือนกันทุกเครื่อง</label><input class="fi" id="cl-doc" value="${cloudCfg.docId||'flowbiz'}" placeholder="flowbiz"></div>
     <div style="background:var(--bg);border-radius:9px;padding:9px 12px;font-size:11.5px;color:var(--mu);margin-bottom:10px">📱 ข้อมูลในเครื่องนี้ตอนนี้: <b style="color:var(--tx)">${localN} รายการ</b></div>
     <div id="cloud-status" style="font-size:12px;text-align:center;padding:8px;color:var(--mu)">${cloudCfg.enabled?'☁️ เปิดใช้งานคลาวด์อยู่':'ยังไม่ได้เปิดใช้งาน'}</div>
+    <button class="btn bo" style="width:100%;justify-content:center;padding:11px;margin-bottom:8px;border-color:var(--p);color:var(--p)" onclick="cloudTest()">🔍 ทดสอบการเชื่อมต่อ</button>
+    <div id="cloud-test-result" style="display:none;font-size:11.5px;line-height:1.6;border-radius:10px;padding:11px;margin-bottom:10px"></div>
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
       <button class="btn bp" style="justify-content:center;padding:12px" onclick="cloudPush()">⬆️ ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์</button>
       <button class="btn bo" style="justify-content:center;padding:12px" onclick="cloudPull()">⬇️ ดึงข้อมูลจากคลาวด์มาเครื่องนี้</button>
@@ -3539,6 +3603,54 @@ function saveCloudForm(){
     cloudInitDone=true; // ผู้ใช้ตั้งค่าเอง = พร้อมซิงค์
     toast('✅ บันทึกแล้ว — เลือก "ส่งขึ้น" หรือ "ดึงลง" ตามต้องการ');
   } else { toast('💾 บันทึกการตั้งค่าคลาวด์แล้ว'); closeModal(); }
+}
+// ทดสอบการเชื่อมต่อคลาวด์ — วินิจฉัยปัญหาเป็นภาษาไทย
+async function cloudTest(){
+  // อ่านค่าจากฟอร์มก่อน (เผื่อยังไม่ได้บันทึก)
+  const pid=(document.getElementById('cl-pid')?.value||'').trim();
+  const key=(document.getElementById('cl-key')?.value||'').trim();
+  const doc=(document.getElementById('cl-doc')?.value||'flowbiz').trim()||'flowbiz';
+  const box=document.getElementById('cloud-test-result');
+  const show=(html,bg,color)=>{ if(box){ box.style.display='block'; box.style.background=bg; box.style.color=color; box.innerHTML=html; } };
+  if(!pid||!key){ show('⚠️ กรุณากรอก Project ID และ Web API Key ให้ครบก่อนทดสอบ','#FFF3E8','#b45309'); return; }
+  show('⏳ กำลังทดสอบการเชื่อมต่อ...','#E8F2FB','#0A6EBD');
+  const url=`https://firestore.googleapis.com/v1/projects/${pid}/databases/(default)/documents/flowbiz/${doc}?key=${key}`;
+  try{
+    const res=await fetch(url);
+    const txt=await res.text();
+    let j={}; try{ j=JSON.parse(txt); }catch(e){}
+    // กรณีสำเร็จ: มีเอกสารอยู่แล้ว
+    if(res.ok && j.fields){
+      let cnt='?'; try{ const d=JSON.parse(j.fields.data.stringValue); cnt=dbRecordCount(d.DB); }catch(e){}
+      show(`✅ <b>เชื่อมต่อสำเร็จ!</b><br>มีข้อมูลบนคลาวด์แล้ว (${cnt} รายการ)<br><br>• เครื่องนี้ว่าง → กด "⬇️ ดึงจากคลาวด์"<br>• เครื่องนี้มีข้อมูลใหม่กว่า → กด "⬆️ ส่งขึ้นคลาวด์"`,'#E8F8F0','#0F9D58');
+      return;
+    }
+    // กรณี 404 ที่ document ยังไม่มี แต่ database มี = พร้อมใช้!
+    const errMsg=(j.error&&j.error.message)||txt||'';
+    if(res.status===404 && /document|NOT_FOUND/i.test(errMsg) && !/database.*does not exist/i.test(errMsg)){
+      show('✅ <b>เชื่อมต่อสำเร็จ!</b><br>ฐานข้อมูลพร้อมใช้งาน (ยังไม่มีข้อมูล)<br><br>👉 กด "⬆️ ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์" ได้เลย','#E8F8F0','#0F9D58');
+      return;
+    }
+    // database ยังไม่มี / ยังไม่พร้อม
+    if(/database.*does not exist|NOT_FOUND/i.test(errMsg) && /database/i.test(errMsg)){
+      show('❌ <b>ยังไม่พบฐานข้อมูล Firestore</b><br>แก้ได้ดังนี้:<br>1. ไปที่ Firebase Console → <b>Firestore Database</b><br>2. ถ้ายังไม่มี → กด <b>Create database</b> → Start in <b>test mode</b><br>3. ถ้าเพิ่งสร้าง → รอ 2-3 นาทีให้พร้อม แล้วทดสอบใหม่<br><br>Project: <b>'+pid+'</b>','#FEECEC','#c0392b');
+      return;
+    }
+    // API key ผิด
+    if(res.status===400 || /API key not valid|API_KEY_INVALID/i.test(errMsg)){
+      show('❌ <b>Web API Key ไม่ถูกต้อง</b><br>• ตรวจว่าคัดลอกครบ (ขึ้นต้น AIzaSy...)<br>• ห้ามมีช่องว่างหน้า-หลัง<br>• คัดลอกใหม่จาก Firebase → Project settings','#FEECEC','#c0392b');
+      return;
+    }
+    // สิทธิ์ถูกปฏิเสธ = Rules ไม่ public
+    if(res.status===403 || /PERMISSION_DENIED|Missing or insufficient/i.test(errMsg)){
+      show('❌ <b>สิทธิ์ถูกปฏิเสธ (Rules)</b><br>ไปที่ Firestore → แท็บ <b>Rules</b> → แก้เป็น:<br><code style="background:#fff;padding:2px 4px;border-radius:4px">allow read, write: if true;</code><br>แล้วกด <b>Publish</b>','#FEECEC','#c0392b');
+      return;
+    }
+    // อื่นๆ
+    show('⚠️ <b>เชื่อมต่อไม่สำเร็จ</b> (รหัส '+res.status+')<br>'+(errMsg.slice(0,160)||'ไม่ทราบสาเหตุ'),'#FFF3E8','#b45309');
+  }catch(e){
+    show('⚠️ <b>เชื่อมต่ออินเทอร์เน็ตไม่ได้</b><br>ตรวจสัญญาณเน็ต แล้วลองใหม่<br>('+e.message+')','#FFF3E8','#b45309');
+  }
 }
 
 // ฟอร์มตั้งค่าเลขที่เอกสาร (คำนำหน้า + เลขเริ่มต้น แยกแต่ละชนิด)
