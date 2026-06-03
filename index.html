@@ -3576,7 +3576,8 @@ function openCloudForm(){
     <div style="background:rgba(245,130,31,.08);border:1px solid rgba(245,130,31,.3);border-radius:10px;padding:11px;font-size:11.5px;color:#b45309;margin-bottom:14px;line-height:1.6">
       ⚠️ <b>สำคัญมาก:</b> ใช้ <b>Project ID และ API Key เดียวกัน</b> ทุกเครื่อง<br>
       • เครื่องที่มีข้อมูลครบ → กด <b>"⬆️ ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์"</b> ก่อน<br>
-      • เครื่องใหม่/ว่าง → เปิดแอปจะ <b>ดึงข้อมูลอัตโนมัติ</b> หรือกด "⬇️ ดึงจากคลาวด์"
+      • เครื่องใหม่/ว่าง → เปิดแอปจะ <b>ดึงข้อมูลอัตโนมัติ</b> หรือกด "⬇️ ดึงจากคลาวด์"<br>
+      • 📷 <b>รูปภาพซิงค์ข้ามเครื่องด้วย</b> (ครั้งแรกอาจช้าหน่อยตามจำนวนรูป)
     </div>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔌</div><div style="flex:1"><div class="set-t">เปิดใช้งานคลาวด์</div><div class="set-s">เปิดแอป=ดึงอัตโนมัติ · แก้ไข=ส่งขึ้นอัตโนมัติ</div></div><button class="sw ${cloudCfg.enabled?'on':''}" id="cl-en" onclick="this.classList.toggle('on')"></button></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Project ID</label><input class="fi" id="cl-pid" value="${cloudCfg.projectId||''}" placeholder="my-project-12345"></div>
@@ -3755,19 +3756,106 @@ function dbRecordCount(d){
   return n;
 }
 
+// ── ซิงค์รูปภาพข้ามเครื่อง: เก็บรูปแต่ละรูปเป็นเอกสารแยกใน Firestore ──
+// (รูปบีบอัดแล้วเล็กกว่า 1MB ต่อรูป · ซิงค์เฉพาะรูปใหม่ · อ้างอิงด้วย hash ของเนื้อหา)
+const IMG_FIELDS_ARR=['slips','surveyPhotos','beforePhotos','afterPhotos'];
+const IMG_FIELDS_ONE=['slip','img'];
+const IMG_REF='@img:';
+function imgHash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return 'i'+(h>>>0).toString(36)+'x'+(str.length.toString(36)); }
+function cloudImgURL(id){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz_img/${id}?key=${cloudCfg.apiKey}`; }
+function isImgData(v){ return typeof v==='string' && v.indexOf('data:image')===0; }
+function isImgRef(v){ return typeof v==='string' && v.indexOf(IMG_REF)===0; }
+// แปลง DB → สำเนาที่รูปกลายเป็น ref + รวบรวมรูปจริงเป็น map {hash:base64}
+function cloudExtractImages(db,imgMap){
+  const out={};
+  Object.keys(db).forEach(k=>{
+    if(Array.isArray(db[k])){
+      out[k]=db[k].map(rec=>{
+        if(!rec||typeof rec!=='object') return rec;
+        const c=Object.assign({},rec);
+        IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(c[f])) c[f]=c[f].map(v=>{ if(isImgData(v)){ const h=imgHash(v); imgMap[h]=v; return IMG_REF+h; } return v; }); });
+        IMG_FIELDS_ONE.forEach(f=>{ if(isImgData(c[f])){ const h=imgHash(c[f]); imgMap[h]=c[f]; c[f]=IMG_REF+h; } });
+        return c;
+      });
+    } else out[k]=db[k];
+  });
+  return out;
+}
+// สร้าง map {hash:base64} จากรูปจริงใน DB ปัจจุบัน (ก่อนดึงข้อมูลทับ)
+function cloudBuildLocalImgMap(){
+  const map={};
+  const add=v=>{ if(isImgData(v)) map[imgHash(v)]=v; };
+  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])) rec[f].forEach(add); }); IMG_FIELDS_ONE.forEach(f=>add(rec[f])); } }); });
+  add(companyInfo.sigImg); add(companyInfo.logo);
+  return map;
+}
+// แทน ref กลับเป็น base64 จาก map · คืน array ของ hash ที่ยังไม่มี (ต้องโหลดจากคลาวด์)
+function cloudExpandImages(map){
+  const missing={};
+  const fix=v=>{ if(isImgRef(v)){ const h=v.slice(IMG_REF.length); if(map[h]) return map[h]; missing[h]=1; return v; } return v; };
+  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])) rec[f]=rec[f].map(fix); }); IMG_FIELDS_ONE.forEach(f=>{ rec[f]=fix(rec[f]); }); } }); });
+  if(isImgRef(companyInfo.sigImg)) companyInfo.sigImg=fix(companyInfo.sigImg);
+  if(isImgRef(companyInfo.logo)) companyInfo.logo=fix(companyInfo.logo);
+  return Object.keys(missing);
+}
+// อัปโหลดรูปใหม่ขึ้นคลาวด์ (เฉพาะที่ยังไม่เคยส่ง) แบบทีละชุด
+async function cloudUploadImages(imgMap,onProg){
+  let known; try{ known=new Set(JSON.parse(localStorage.getItem('flowbiz_cloud_imgs')||'[]')); }catch(e){ known=new Set(); }
+  const todo=Object.keys(imgMap).filter(h=>!known.has(h));
+  let done=0;
+  for(let i=0;i<todo.length;i+=4){
+    const batch=todo.slice(i,i+4);
+    await Promise.all(batch.map(async h=>{
+      try{
+        const body={fields:{b64:{stringValue:imgMap[h]}}};
+        const res=await fetch(cloudImgURL(h),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        if(res.ok) known.add(h);
+      }catch(e){}
+      done++; if(onProg) onProg(done,todo.length);
+    }));
+  }
+  try{ localStorage.setItem('flowbiz_cloud_imgs',JSON.stringify([...known])); }catch(e){}
+  return todo.length;
+}
+// โหลดรูปที่ขาดจากคลาวด์ แบบทีละชุด
+async function cloudFetchImages(hashes,onProg){
+  const map={}; let done=0;
+  for(let i=0;i<hashes.length;i+=4){
+    const batch=hashes.slice(i,i+4);
+    await Promise.all(batch.map(async h=>{
+      try{ const res=await fetch(cloudImgURL(h)); if(res.ok){ const j=await res.json(); const b=j.fields&&j.fields.b64&&j.fields.b64.stringValue; if(b) map[h]=b; } }catch(e){}
+      done++; if(onProg) onProg(done,hashes.length);
+    }));
+  }
+  return map;
+}
+
 async function cloudPush(silent){
   if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return;
-  // กันเครื่องว่างเขียนทับคลาวด์: ถ้าข้อมูลในเครื่องว่างมาก แต่ยังไม่ได้ดึงจากคลาวด์ครั้งแรก → ไม่ push
+  // กันเครื่องว่างเขียนทับคลาวด์
   if(!cloudInitDone && dbRecordCount()===0){ if(!silent) toast('⏸️ ยังไม่ได้ดึงข้อมูลจากคลาวด์ — ข้ามการซิงค์ขึ้น'); return; }
   if(cloudBusy) return; cloudBusy=true;
-  if(!silent) setCloudStatus('⏳ กำลังซิงค์ขึ้นคลาวด์...','var(--p)');
+  if(!silent) setCloudStatus('⏳ กำลังเตรียมข้อมูล...','var(--p)');
   try{
-    const payload=JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo,_date:new Date().toISOString(),_count:dbRecordCount()});
+    // แยกรูปออกเป็น ref + รวบรวมรูปจริง
+    const imgMap={};
+    const slimDB=cloudExtractImages(DB,imgMap);
+    const slimCO=Object.assign({},companyInfo);
+    if(isImgData(slimCO.sigImg)){ const h=imgHash(slimCO.sigImg); imgMap[h]=slimCO.sigImg; slimCO.sigImg=IMG_REF+h; }
+    if(isImgData(slimCO.logo)){ const h=imgHash(slimCO.logo); imgMap[h]=slimCO.logo; slimCO.logo=IMG_REF+h; }
+    // อัปโหลดรูปใหม่ก่อน
+    const nImg=Object.keys(imgMap).length;
+    if(nImg){ if(!silent) setCloudStatus('⏳ กำลังส่งรูป...','var(--p)'); await cloudUploadImages(imgMap,(d,t)=>{ if(!silent&&t) setCloudStatus(`⏳ กำลังส่งรูป ${d}/${t}...`,'var(--p)'); }); }
+    // ส่งข้อมูลหลัก (มี ref รูป ขนาดเล็ก)
+    if(!silent) setCloudStatus('⏳ กำลังส่งข้อมูล...','var(--p)');
+    const payload=JSON.stringify({DB:slimDB,idCounters,docNumbering,settingsState,companyInfo:slimCO,_date:new Date().toISOString(),_count:dbRecordCount()});
+    const sizeKB=Math.round(payload.length/1024);
+    if(payload.length>1000000){ setCloudStatus('⚠️ ข้อมูลใหญ่เกิน 1MB ('+sizeKB+'KB)','var(--dg)'); if(!silent) toast('⚠️ ข้อมูลใหญ่เกินไป'); cloudBusy=false; return; }
     const body={fields:{data:{stringValue:payload},updated:{stringValue:new Date().toISOString()},count:{integerValue:String(dbRecordCount())}}};
     const res=await fetch(cloudURL(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(!res.ok) throw new Error('HTTP '+res.status);
-    setCloudStatus('☁️ ซิงค์ขึ้นล่าสุด '+new Date().toLocaleTimeString('th-TH'),'var(--ok)');
-    if(!silent) toast('☁️ บันทึกขึ้นคลาวด์แล้ว');
+    setCloudStatus(`☁️ ซิงค์ขึ้นล่าสุด ${new Date().toLocaleTimeString('th-TH')} (${sizeKB}KB · ${nImg} รูป)`,'var(--ok)');
+    if(!silent) toast('☁️ บันทึกขึ้นคลาวด์แล้ว (รวมรูป)');
   }catch(e){ setCloudStatus('⚠️ ซิงค์ไม่สำเร็จ — ตรวจการตั้งค่า/กฎ Firestore','var(--dg)'); if(!silent) toast('⚠️ ซิงค์ขึ้นคลาวด์ไม่สำเร็จ'); }
   cloudBusy=false;
 }
@@ -3791,13 +3879,24 @@ async function cloudPull(force){
       if(force==='startup'){ cloudInitDone=true; return false; } // ตอนเปิดแอปไม่เขียนทับ
       if(!confirm('⚠️ ข้อมูลบนคลาวด์ว่างเปล่า แต่เครื่องนี้มี '+localCount+' รายการ\n\nถ้าดึงจากคลาวด์ ข้อมูลในเครื่องจะหาย!\n\nกด "ยกเลิก" แล้วใช้ "ซิงค์ขึ้น" แทน เพื่อส่งข้อมูลเครื่องนี้ขึ้นคลาวด์\n\nยืนยันดึงข้อมูลว่างทับ?')){ cloudInitDone=true; return false; }
     }
-    // แทนที่ข้อมูลทั้งหมด (ล้าง array ตัวอย่างก่อน)
+    // แทนที่ข้อมูลทั้งหมด — เก็บ map รูปในเครื่องไว้ก่อน (กันโหลดซ้ำ)
+    const localImgMap=cloudBuildLocalImgMap();
     if(d.DB){ Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].length=0; }); Object.keys(d.DB).forEach(k=>{ DB[k]=d.DB[k]; }); }
     if(d.idCounters) Object.assign(idCounters,d.idCounters);
     if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
     if(d.settingsState) Object.assign(settingsState,d.settingsState);
     if(d.companyInfo){ Object.keys(companyInfo).forEach(k=>delete companyInfo[k]); Object.assign(companyInfo,d.companyInfo); }
+    // แปลง ref รูปกลับเป็นภาพ: ใช้รูปในเครื่องก่อน แล้วโหลดที่ขาดจากคลาวด์
+    let missing=cloudExpandImages(localImgMap);
+    if(missing.length){
+      setCloudStatus(`⏳ กำลังโหลดรูป ${missing.length} รูป...`,'var(--p)');
+      const fetched=await cloudFetchImages(missing,(dn,t)=>{ if(t) setCloudStatus(`⏳ กำลังโหลดรูป ${dn}/${t}...`,'var(--p)'); });
+      Object.assign(localImgMap,fetched);
+      cloudExpandImages(localImgMap);
+    }
     cloudInitDone=true;
+    // รูปทั้งหมดหลังดึง = อยู่บนคลาวด์แล้ว → จำไว้ว่าไม่ต้องอัปโหลดซ้ำ
+    try{ localStorage.setItem('flowbiz_cloud_imgs',JSON.stringify(Object.keys(cloudBuildLocalImgMap()))); }catch(e){}
     // บันทึกลงเครื่อง (ไม่ trigger push ซ้ำ)
     try{ localStorage.setItem(STORE_KEY,JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo})); }catch(e){}
     try{ renderPage(curPage); renderDashboard(); updateNavBadges(); updateNotifDot(); acctInit&&acctInit(); }catch(e){}
