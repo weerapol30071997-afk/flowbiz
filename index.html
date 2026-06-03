@@ -3749,6 +3749,14 @@ function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${clou
 
 let cloudBusy=false, cloudTimer=null, cloudInitDone=false;
 function setCloudStatus(txt,color){ const el=document.getElementById('cloud-status'); if(el){ el.textContent=txt; el.style.color=color||'var(--mu)'; } }
+// fetch ที่มี timeout กันค้าง
+function fetchTimeout(url,opts,ms){
+  return new Promise((resolve,reject)=>{
+    const ctrl=new AbortController();
+    const t=setTimeout(()=>{ ctrl.abort(); reject(new Error('หมดเวลา')); }, ms||15000);
+    fetch(url,Object.assign({},opts,{signal:ctrl.signal})).then(r=>{ clearTimeout(t); resolve(r); }).catch(e=>{ clearTimeout(t); reject(e); });
+  });
+}
 // นับจำนวนเอกสารทั้งหมด (กันเขียนข้อมูลว่างทับ)
 function dbRecordCount(d){
   const D=d||DB; let n=0;
@@ -3789,11 +3797,11 @@ function cloudBuildLocalImgMap(){
   add(companyInfo.sigImg); add(companyInfo.logo);
   return map;
 }
-// แทน ref กลับเป็น base64 จาก map · คืน array ของ hash ที่ยังไม่มี (ต้องโหลดจากคลาวด์)
-function cloudExpandImages(map){
+// แทน ref กลับเป็น base64 จาก map · คืน array ของ hash ที่ยังไม่มี · clean=true ลบ ref ที่หาไม่เจอ (กันรูปแตก)
+function cloudExpandImages(map,clean){
   const missing={};
-  const fix=v=>{ if(isImgRef(v)){ const h=v.slice(IMG_REF.length); if(map[h]) return map[h]; missing[h]=1; return v; } return v; };
-  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])) rec[f]=rec[f].map(fix); }); IMG_FIELDS_ONE.forEach(f=>{ rec[f]=fix(rec[f]); }); } }); });
+  const fix=v=>{ if(isImgRef(v)){ const h=v.slice(IMG_REF.length); if(map[h]) return map[h]; missing[h]=1; return clean?null:v; } return v; };
+  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])){ rec[f]=rec[f].map(fix); if(clean) rec[f]=rec[f].filter(x=>x!=null); } }); IMG_FIELDS_ONE.forEach(f=>{ rec[f]=fix(rec[f]); }); } }); });
   if(isImgRef(companyInfo.sigImg)) companyInfo.sigImg=fix(companyInfo.sigImg);
   if(isImgRef(companyInfo.logo)) companyInfo.logo=fix(companyInfo.logo);
   return Object.keys(missing);
@@ -3807,8 +3815,9 @@ async function cloudUploadImages(imgMap,onProg){
     const batch=todo.slice(i,i+4);
     await Promise.all(batch.map(async h=>{
       try{
+        if(imgMap[h].length>1020000){ done++; return; } // รูปใหญ่เกิน 1MB ข้าม
         const body={fields:{b64:{stringValue:imgMap[h]}}};
-        const res=await fetch(cloudImgURL(h),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        const res=await fetchTimeout(cloudImgURL(h),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},25000);
         if(res.ok) known.add(h);
       }catch(e){}
       done++; if(onProg) onProg(done,todo.length);
@@ -3823,7 +3832,7 @@ async function cloudFetchImages(hashes,onProg){
   for(let i=0;i<hashes.length;i+=4){
     const batch=hashes.slice(i,i+4);
     await Promise.all(batch.map(async h=>{
-      try{ const res=await fetch(cloudImgURL(h)); if(res.ok){ const j=await res.json(); const b=j.fields&&j.fields.b64&&j.fields.b64.stringValue; if(b) map[h]=b; } }catch(e){}
+      try{ const res=await fetchTimeout(cloudImgURL(h),{},25000); if(res.ok){ const j=await res.json(); const b=j.fields&&j.fields.b64&&j.fields.b64.stringValue; if(b) map[h]=b; } }catch(e){}
       done++; if(onProg) onProg(done,hashes.length);
     }));
   }
@@ -3843,21 +3852,26 @@ async function cloudPush(silent){
     const slimCO=Object.assign({},companyInfo);
     if(isImgData(slimCO.sigImg)){ const h=imgHash(slimCO.sigImg); imgMap[h]=slimCO.sigImg; slimCO.sigImg=IMG_REF+h; }
     if(isImgData(slimCO.logo)){ const h=imgHash(slimCO.logo); imgMap[h]=slimCO.logo; slimCO.logo=IMG_REF+h; }
-    // อัปโหลดรูปใหม่ก่อน
     const nImg=Object.keys(imgMap).length;
-    if(nImg){ if(!silent) setCloudStatus('⏳ กำลังส่งรูป...','var(--p)'); await cloudUploadImages(imgMap,(d,t)=>{ if(!silent&&t) setCloudStatus(`⏳ กำลังส่งรูป ${d}/${t}...`,'var(--p)'); }); }
-    // ส่งข้อมูลหลัก (มี ref รูป ขนาดเล็ก)
+    // ── ส่งข้อมูลหลักก่อน (สำคัญสุด ต้องสำเร็จแน่ๆ) ──
     if(!silent) setCloudStatus('⏳ กำลังส่งข้อมูล...','var(--p)');
     const payload=JSON.stringify({DB:slimDB,idCounters,docNumbering,settingsState,companyInfo:slimCO,_date:new Date().toISOString(),_count:dbRecordCount()});
     const sizeKB=Math.round(payload.length/1024);
     if(payload.length>1000000){ setCloudStatus('⚠️ ข้อมูลใหญ่เกิน 1MB ('+sizeKB+'KB)','var(--dg)'); if(!silent) toast('⚠️ ข้อมูลใหญ่เกินไป'); cloudBusy=false; return; }
     const body={fields:{data:{stringValue:payload},updated:{stringValue:new Date().toISOString()},count:{integerValue:String(dbRecordCount())}}};
-    const res=await fetch(cloudURL(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await fetchTimeout(cloudURL(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},20000);
     if(!res.ok) throw new Error('HTTP '+res.status);
-    setCloudStatus(`☁️ ซิงค์ขึ้นล่าสุด ${new Date().toLocaleTimeString('th-TH')} (${sizeKB}KB · ${nImg} รูป)`,'var(--ok)');
-    if(!silent) toast('☁️ บันทึกขึ้นคลาวด์แล้ว (รวมรูป)');
-  }catch(e){ setCloudStatus('⚠️ ซิงค์ไม่สำเร็จ — ตรวจการตั้งค่า/กฎ Firestore','var(--dg)'); if(!silent) toast('⚠️ ซิงค์ขึ้นคลาวด์ไม่สำเร็จ'); }
-  cloudBusy=false;
+    // ข้อมูลขึ้นแล้ว — แจ้งทันที
+    setCloudStatus(`☁️ ข้อมูลขึ้นแล้ว (${sizeKB}KB)${nImg?' · กำลังส่งรูป...':''}`,'var(--ok)');
+    if(!silent && !nImg) toast('☁️ บันทึกขึ้นคลาวด์แล้ว');
+    // ── อัปโหลดรูป (เสริม ถ้าพลาดบางรูปก็ไม่กระทบข้อมูล) ──
+    if(nImg){
+      const upn=await cloudUploadImages(imgMap,(d,t)=>{ if(!silent&&t) setCloudStatus(`⏳ กำลังส่งรูป ${d}/${t}...`,'var(--p)'); });
+      setCloudStatus(`☁️ ซิงค์ขึ้นครบ ${new Date().toLocaleTimeString('th-TH')} (${sizeKB}KB · ${nImg} รูป)`,'var(--ok)');
+      if(!silent) toast('☁️ บันทึกขึ้นคลาวด์แล้ว (รวมรูป '+nImg+' รูป)');
+    }
+  }catch(e){ setCloudStatus('⚠️ ส่งไม่สำเร็จ: '+(e.message||'ตรวจการตั้งค่า/เน็ต'),'var(--dg)'); if(!silent) toast('⚠️ ซิงค์ขึ้นคลาวด์ไม่สำเร็จ ('+(e.message||'')+')'); }
+  finally{ cloudBusy=false; }
 }
 // ดึงข้อมูลจากคลาวด์ (แทนที่ทั้งหมด) — force=true ข้ามการยืนยัน
 async function cloudPull(force){
@@ -3892,7 +3906,7 @@ async function cloudPull(force){
       setCloudStatus(`⏳ กำลังโหลดรูป ${missing.length} รูป...`,'var(--p)');
       const fetched=await cloudFetchImages(missing,(dn,t)=>{ if(t) setCloudStatus(`⏳ กำลังโหลดรูป ${dn}/${t}...`,'var(--p)'); });
       Object.assign(localImgMap,fetched);
-      cloudExpandImages(localImgMap);
+      cloudExpandImages(localImgMap,true);
     }
     cloudInitDone=true;
     // รูปทั้งหมดหลังดึง = อยู่บนคลาวด์แล้ว → จำไว้ว่าไม่ต้องอัปโหลดซ้ำ
