@@ -2937,7 +2937,7 @@ function jobDeliveryHtml(id){
   // กล่องรูปแบบมี caption + index
   const photoGrid=(arr,emptyTxt)=>{
     if(!arr||!arr.length) return `<div style="color:#aaa;font-size:11px;padding:8px;text-align:center;border:1px dashed #ddd;border-radius:6px">${emptyTxt||'— ไม่มีรูป —'}</div>`;
-    return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:6px">${arr.slice(0,9).map((img,i)=>`<div style="position:relative"><img src="${img}" style="width:100%;height:120px;object-fit:cover;border:1px solid #ccc;border-radius:6px"><span style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px">${i+1}</span></div>`).join('')}</div>`;
+    return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:6px">${arr.slice(0,9).map((img,i)=>`<div style="position:relative"><img src="${img}" style="width:100%;height:104px;object-fit:cover;border:1px solid #ccc;border-radius:6px"><span style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px">${i+1}</span></div>`).join('')}</div>`;
   };
   const statusTh={'สำรวจ':'สำรวจหน้างาน','รอทำ':'รอดำเนินการ','กำลังทำ':'กำลังดำเนินการ','ตรวจงาน':'รอตรวจรับ','อนุมัติแล้ว':'ตรวจรับแล้ว','ส่งมอบแล้ว':'ส่งมอบเรียบร้อย','ไม่อนุมัติ':'ไม่ผ่านการตรวจ'};
   const sigImg=(CO.showSig!==false&&CO.sigImg)?`<div style="margin-bottom:-8px"><img src="${CO.sigImg}" style="max-height:50px;max-width:150px;object-fit:contain"></div>`:'';
@@ -2967,11 +2967,11 @@ function jobDeliveryHtml(id){
     .insp.ok{background:#E8F8F0;border:1px solid #B6E6CC}
     .insp.no{background:#FEECEC;border:1px solid #F5C2C2}
     .note{font-size:10.5px;color:#888;margin-top:3px}
-    .sig{display:flex;justify-content:space-between;margin-top:30px;gap:30px;page-break-inside:avoid}
+    .sig{display:flex;justify-content:space-between;margin-top:22px;gap:30px;page-break-inside:avoid}
     .sig-col{flex:1;text-align:center}
-    .sig-box{height:56px;display:flex;align-items:flex-end;justify-content:center}
+    .sig-box{height:50px;display:flex;align-items:flex-end;justify-content:center}
     .sig-line{border-top:1px dotted #999;padding-top:6px;font-size:12px;font-weight:600}
-    .foot{margin-top:22px;border-top:1px solid #eee;padding-top:8px;font-size:10px;color:#999;text-align:center}
+    .foot{margin-top:16px;border-top:1px solid #eee;padding-top:8px;font-size:10px;color:#999;text-align:center}
     @media print{body{padding:0 4px}}
   </style></head><body>
     <div class="hd">
@@ -4389,11 +4389,20 @@ async function pdfFromHtmlString(html, onStep){
     const canvas=await html2canvas(body,{scale:tall?1.25:1.6,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
     const { jsPDF }=window.jspdf;
     const pdf=new jsPDF('p','mm','a4');
-    const pw=210, ph=297, imgH=canvas.height*pw/canvas.width;
-    const imgData=canvas.toDataURL('image/jpeg',0.9);
-    let heightLeft=imgH, pos=0;
-    pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST'); heightLeft-=ph;
-    while(heightLeft>0){ pos-=ph; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST'); heightLeft-=ph; }
+    const pw=210, ph=297, margin=6;
+    let imgW=pw, imgH=canvas.height*pw/canvas.width;
+    const imgData=canvas.toDataURL('image/jpeg',0.92);
+    if(imgH <= ph*1.45){
+      // เอกสารสั้น → ใส่หน้าเดียว ย่อให้พอดี ไม่ตัดกลางเนื้อหา (กันลายเซ็นล้น)
+      if(imgH > ph-margin*2){ const s=(ph-margin*2)/imgH; imgH*=s; imgW*=s; }
+      const x=(pw-imgW)/2;
+      pdf.addImage(imgData,'JPEG',x,margin,imgW,imgH,'','FAST');
+    } else {
+      // เอกสารยาวจริง → แบ่งหลายหน้า
+      let heightLeft=imgH, pos=0;
+      pdf.addImage(imgData,'JPEG',0,pos,imgW,imgH,'','FAST'); heightLeft-=ph;
+      while(heightLeft>0){ pos-=ph; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,imgW,imgH,'','FAST'); heightLeft-=ph; }
+    }
     return pdf.output('blob');
   } finally { iframe.remove(); }
 }
