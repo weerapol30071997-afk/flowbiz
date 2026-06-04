@@ -2872,7 +2872,7 @@ function saveJob(){
     surveyPhotos:jobPhotos.survey, beforePhotos:jobPhotos.before, afterPhotos:jobPhotos.after,
     items:jobItems.filter(it=>it.desc&&it.desc.trim()),
   };
-  if(jobEditId){ const old=DB.jobs.find(x=>x.id===jobEditId); if(old){ rec.inspectNote=old.inspectNote; rec.approved=old.approved; } const i=DB.jobs.findIndex(x=>x.id===jobEditId); DB.jobs[i]=rec; }
+  if(jobEditId){ const old=DB.jobs.find(x=>x.id===jobEditId); if(old){ rec.inspectNote=old.inspectNote; rec.approved=old.approved; rec.startedAt=old.startedAt; rec.startGps=old.startGps; rec.finishedAt=old.finishedAt; rec.finishGps=old.finishGps; rec.deliverDate=old.deliverDate; } const i=DB.jobs.findIndex(x=>x.id===jobEditId); DB.jobs[i]=rec; }
   else DB.jobs.unshift(rec);
   saveData(); closeModal(); renderJobs(); updateNavBadges&&updateNavBadges();
   toast(jobEditId?'✅ แก้ไขงานแล้ว':'✅ สร้างงานใหม่แล้ว');
@@ -2902,20 +2902,59 @@ function openJobDrawer(id){
   // ปุ่มเปลี่ยนสถานะตาม flow
   let actionBtns='';
   if(j.status==='สำรวจ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','รอทำ')">✓ ยืนยันสำรวจเสร็จ → รอทำ</button>`;
-  else if(j.status==='รอทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 เริ่มทำงาน</button>`;
-  else if(j.status==='กำลังทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','ตรวจงาน')">🔎 ส่งตรวจงาน</button>`;
+  else if(j.status==='รอทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobStartWork('${id}')">🔧 เริ่มทำงาน (บันทึกเวลา+ตำแหน่ง)</button>`;
+  else if(j.status==='กำลังทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobFinishWork('${id}')">🔎 เสร็จงาน → ส่งตรวจ (บันทึกเวลา+ตำแหน่ง)</button>`;
   else if(j.status==='ตรวจงาน') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:var(--ok)" onclick="jobApprove('${id}',true)">✅ อนุมัติ</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="jobApprove('${id}',false)">❌ ไม่อนุมัติ</button>`;
   else if(j.status==='อนุมัติแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:#00897B" onclick="jobDeliver('${id}')">📦 ทำใบส่งมอบงาน</button>`;
   else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
   else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
   const inspectBox=j.inspectNote?`<div style="background:${j.approved?'#E8F8F0':'#FEE'};border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="font-weight:700;color:${j.approved?'var(--ok)':'var(--dg)'};margin-bottom:4px">${j.approved?'✅ ผลการตรวจ: อนุมัติ':'❌ ผลการตรวจ: ไม่อนุมัติ'}</div>${j.inspectNote}</div>`:'';
-  const extra=info+descBox+itemsBox+inspectBox
+  const gLink=g=>g?` · <a href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank" style="color:var(--p);font-weight:600">📍 ดูตำแหน่ง</a>`:' · <span style="color:var(--mu)">ไม่มี GPS</span>';
+  const timeBox=(j.startedAt||j.finishedAt)?`<div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px">
+    <div style="font-weight:700;color:var(--p);margin-bottom:8px">⏱️ บันทึกเวลาทำงานหน้างาน</div>
+    <div style="display:grid;grid-template-columns:auto 1fr;gap:7px 12px">
+      <span style="color:var(--mu);white-space:nowrap">🔧 เริ่มงาน</span><span style="font-weight:500">${j.startedAt?fmtDT(j.startedAt):'-'}${j.startedAt?gLink(j.startGps):''}</span>
+      <span style="color:var(--mu);white-space:nowrap">✅ เสร็จงาน</span><span style="font-weight:500">${j.finishedAt?fmtDT(j.finishedAt):'-'}${j.finishedAt?gLink(j.finishGps):''}</span>
+      ${jobDuration(j)?`<span style="color:var(--mu)">⏳ ระยะเวลา</span><span style="font-weight:700;color:var(--ok)">${jobDuration(j)}</span>`:''}
+    </div></div>`:'';
+  const extra=info+timeBox+descBox+itemsBox+inspectBox
     +photoGrid(j.surveyPhotos,'🔍 รูปสำรวจหน้างาน')
     +photoGrid(j.beforePhotos,'📸 รูปก่อนทำงาน')
     +photoGrid(j.afterPhotos,'✨ รูปหลังทำงาน')
     +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
     +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไขงาน</button></div>`;
   openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra,'job');
+}
+// ── บันทึกเวลา+ตำแหน่ง เริ่มงาน/เสร็จงาน (เหมือนตอกบัตรหน้างาน) ──
+function captureGpsNow(){
+  return new Promise(resolve=>{
+    if(!navigator.geolocation){ resolve(null); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos=>resolve({lat:pos.coords.latitude,lng:pos.coords.longitude,acc:pos.coords.accuracy}),
+      err=>resolve(null),
+      {enableHighAccuracy:true,timeout:10000,maximumAge:0}
+    );
+  });
+}
+function fmtDT(iso){ if(!iso) return '-'; const d=new Date(iso); if(isNaN(d)) return '-'; const th=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return `${d.getDate()} ${th[d.getMonth()]} ${(d.getFullYear()+543)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} น.`; }
+function jobDuration(j){ if(!j.startedAt||!j.finishedAt) return ''; const ms=new Date(j.finishedAt)-new Date(j.startedAt); if(!(ms>=0)) return ''; const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000); return (h?h+' ชม. ':'')+m+' นาที'; }
+async function jobStartWork(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  toast('📍 กำลังบันทึกเวลา+ตำแหน่งเริ่มงาน...');
+  const gps=await captureGpsNow();
+  j.startedAt=new Date().toISOString(); j.startGps=gps; j.status='กำลังทำ';
+  saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer();
+  toast(gps?'🔧 เริ่มงานแล้ว · บันทึกเวลา+ตำแหน่ง':'🔧 เริ่มงานแล้ว · บันทึกเวลา (ไม่มี GPS)');
+  setTimeout(()=>openJobDrawer(id),100);
+}
+async function jobFinishWork(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  toast('📍 กำลังบันทึกเวลา+ตำแหน่งเสร็จงาน...');
+  const gps=await captureGpsNow();
+  j.finishedAt=new Date().toISOString(); j.finishGps=gps; j.status='ตรวจงาน';
+  saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer();
+  toast(gps?'✅ ส่งตรวจงานแล้ว · บันทึกเวลา+ตำแหน่ง':'✅ ส่งตรวจงานแล้ว · บันทึกเวลา (ไม่มี GPS)');
+  setTimeout(()=>openJobDrawer(id),100);
 }
 function jobSetStatus(id,st){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status=st; saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('🔄 เปลี่ยนสถานะเป็น: '+st); setTimeout(()=>openJobDrawer(id),100); } }
 function jobApprove(id,ok){
@@ -2992,6 +3031,12 @@ function jobDeliveryHtml(id){
       <div class="row"><span class="k">พิกัด GPS</span><span class="v">${j.gps?`${j.gps.lat.toFixed(5)}, ${j.gps.lng.toFixed(5)}`:'-'}</span></div>
     </div>
     <div class="sec"><div class="sec-t">รายละเอียดขอบเขตงาน</div><div class="desc">${j.desc||'-'}</div></div>
+    ${(j.startedAt||j.finishedAt)?`<div class="sec"><div class="sec-t">⏱️ บันทึกเวลาปฏิบัติงานหน้างาน</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tr><td style="padding:6px 8px;border:1px solid #e5e5e5;background:#F4FBFA;width:130px;color:#00897B;font-weight:600">เริ่มงาน</td><td style="padding:6px 8px;border:1px solid #e5e5e5">${j.startedAt?fmtDT(j.startedAt):'-'}${j.startGps?` · พิกัด ${j.startGps.lat.toFixed(5)}, ${j.startGps.lng.toFixed(5)}`:''}</td></tr>
+        <tr><td style="padding:6px 8px;border:1px solid #e5e5e5;background:#F4FBFA;color:#00897B;font-weight:600">เสร็จงาน</td><td style="padding:6px 8px;border:1px solid #e5e5e5">${j.finishedAt?fmtDT(j.finishedAt):'-'}${j.finishGps?` · พิกัด ${j.finishGps.lat.toFixed(5)}, ${j.finishGps.lng.toFixed(5)}`:''}</td></tr>
+        ${jobDuration(j)?`<tr><td style="padding:6px 8px;border:1px solid #e5e5e5;background:#F4FBFA;color:#00897B;font-weight:600">ระยะเวลารวม</td><td style="padding:6px 8px;border:1px solid #e5e5e5;font-weight:700">${jobDuration(j)}</td></tr>`:''}
+      </table></div>`:''}
     ${(j.items&&j.items.length)?`<div class="sec"><div class="sec-t">รายการงานที่ทำ / วัสดุที่ใช้</div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="background:#F4FBFA"><th style="text-align:center;padding:7px;border:1px solid #D7EEEB;width:36px">#</th><th style="text-align:left;padding:7px;border:1px solid #D7EEEB">รายการ</th><th style="text-align:center;padding:7px;border:1px solid #D7EEEB;width:70px">จำนวน</th><th style="text-align:center;padding:7px;border:1px solid #D7EEEB;width:70px">หน่วย</th><th style="text-align:left;padding:7px;border:1px solid #D7EEEB;width:140px">หมายเหตุ</th></tr></thead>
