@@ -128,7 +128,7 @@ tbody tr:hover td{background:#FAFBFD}
 .ig{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ii{background:var(--bg);padding:11px 13px;border-radius:10px}.ii-lb{font-size:10px;color:var(--mu);font-weight:700;margin-bottom:2px}.ii-vl{font-size:13px;font-weight:600}
 /* MODAL */
-.ml{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.ml{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:9500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
 .ml.op{opacity:1;pointer-events:all}
 .md{background:#fff;border-radius:16px;padding:28px;width:460px;max-width:92vw;max-height:90vh;box-shadow:0 20px 60px rgba(0,0,0,.2);transform:scale(.95);transition:transform .2s;display:flex;flex-direction:column}
 .md-t,.md-s{flex-shrink:0}
@@ -399,6 +399,7 @@ tbody tr:hover td{background:#FAFBFD}
     <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="เมนู">☰</button>
     <div class="tb-title" id="tbTitle">🏠 ภาพรวมบริษัท</div>
     <div class="tb-act" id="tbAct">
+      <button class="nt" onclick="openSearch()" aria-label="ค้นหา">🔍</button>
       <button class="nt" onclick="openNotifications()">🔔<div class="nt-dot" id="nt-dot" style="display:none"></div></button>
       <div style="position:relative">
         <button class="av" id="userAv" onclick="toggleUserMenu()">WK</button>
@@ -408,6 +409,18 @@ tbody tr:hover td{background:#FAFBFD}
           <button class="ni" style="color:var(--dg);width:100%;margin:4px 0;border-radius:0" onclick="doLogout()"><span class="ni-ic">🚪</span>ออกจากระบบ</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ══ GLOBAL SEARCH OVERLAY ══ -->
+  <div id="searchOverlay" style="display:none;position:fixed;inset:0;z-index:9400;background:rgba(13,27,42,.5);backdrop-filter:blur(3px)" onclick="if(event.target===this)closeSearch()">
+    <div style="max-width:600px;margin:40px auto 0;background:#fff;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden;max-height:85vh;display:flex;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--bd)">
+        <span style="font-size:18px">🔍</span>
+        <input id="gs-input" placeholder="ค้นหา ลูกค้า / เลขที่เอกสาร / สินค้า / งาน / พนักงาน..." oninput="globalSearch()" style="flex:1;border:none;outline:none;font-size:15px;font-family:inherit;background:transparent;color:var(--tx)">
+        <button onclick="closeSearch()" style="border:none;background:var(--bg);width:30px;height:30px;border-radius:8px;cursor:pointer;font-size:14px">✕</button>
+      </div>
+      <div id="gs-results" style="overflow-y:auto;padding:8px"></div>
     </div>
   </div>
 
@@ -436,6 +449,8 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="kpi or" onclick="nav('invoices')"><div class="kpi-ic or">⏳</div><div class="kpi-lb">รอเก็บเงิน</div><div class="kpi-vl"><small>฿</small><span id="kpi-unpaid">0</span></div><div class="kpi-ch dn" id="kpi-unpaid-ch">0 เอกสารค้างรับ</div></div>
       <div class="kpi rd" onclick="nav('expense')"><div class="kpi-ic rd">💸</div><div class="kpi-lb">ค่าใช้จ่ายรวม</div><div class="kpi-vl"><small>฿</small><span id="kpi-expense">0</span></div><div class="kpi-ch up" id="kpi-profit-ch">▲ กำไรสุทธิ ฿0</div></div>
     </div>
+    <!-- การ์ดสิ่งที่ต้องทำ (ภาพรวมเจ้าของ) -->
+    <div id="dash-todo" style="margin-bottom:18px"></div>
     <div style="display:grid;grid-template-columns:1fr 340px;gap:18px">
       <div class="card">
         <div class="card-hd"><div><div class="card-t">รายได้รายเดือน</div><div class="card-s">มิ.ย. 2025 – พ.ค. 2026</div></div></div>
@@ -1208,6 +1223,7 @@ const DB = {
     {id:'EMP-003',name:'วิชัย ก่อสร้าง',role:'หัวหน้าช่าง',phone:'0834567890',payType:'monthly',rate:25000,payDay:30,pin:'3333',lineId:'',active:true},
   ],
   attendance:[],
+  payroll:{},
 };
 
 // ══════════════════════════════════
@@ -1476,6 +1492,18 @@ function collectNotifications(){
   DB.quotes.filter(q=>q.status==='รออนุมัติ').forEach(q=>{ const c=getCust(q.cust); list.push({ic:'📄',t:'ใบเสนอราคารออนุมัติ',s:q.id+' · '+c.name,act:`closeModal();nav('quotes');setTimeout(()=>openQuoteDrawer('${q.id}'),200)`,pri:2}); });
   DB.expense.filter(e=>e.status==='รออนุมัติ').forEach(e=>{ list.push({ic:'💳',t:'ค่าใช้จ่ายรออนุมัติ',s:e.id+' · '+e.desc,act:`closeModal();nav('expense');setTimeout(()=>openExpDrawer('${e.id}'),200)`,pri:2}); });
   DB.products.filter(p=>p.track&&p.min>0&&(p.stock||0)<=p.min).forEach(p=>{ list.push({ic:'📦',t:'สินค้าใกล้หมด',s:p.name+' · เหลือ '+(p.stock||0)+' '+(p.unit||''),act:`closeModal();nav('products')`,pri:1}); });
+  // งานบริการ
+  (DB.jobs||[]).forEach(j=>{
+    if(j.status!=='ส่งมอบแล้ว'&&j.due&&j.due<today) list.push({ic:'🔴',t:'งานเลยกำหนดส่ง',s:j.id+' · '+j.title+' · ครบ '+fmtD(j.due),act:`closeModal();nav('jobs');setTimeout(()=>openJobDrawer('${j.id}'),200)`,pri:0});
+    else if(j.status==='ตรวจงาน') list.push({ic:'🔎',t:'งานรอตรวจ/อนุมัติ',s:j.id+' · '+j.title,act:`closeModal();nav('jobs');setTimeout(()=>openJobDrawer('${j.id}'),200)`,pri:1});
+    else if(j.status==='อนุมัติแล้ว') list.push({ic:'📦',t:'งานพร้อมส่งมอบ',s:j.id+' · '+j.title,act:`closeModal();nav('jobs');setTimeout(()=>openJobDrawer('${j.id}'),200)`,pri:2});
+  });
+  // เงินเดือนใกล้ถึงกำหนด (พนักงานรายเดือน ภายใน 3 วัน)
+  const dnow=new Date().getDate();
+  (DB.employees||[]).filter(e=>e.active&&e.payType==='monthly'&&e.payDay).forEach(e=>{
+    const diff=e.payDay-dnow;
+    if(diff>=0&&diff<=3) list.push({ic:'💵',t:'ใกล้วันจ่ายเงินเดือน',s:e.name+' · จ่ายวันที่ '+e.payDay+(diff===0?' (วันนี้)':' (อีก '+diff+' วัน)'),act:`closeModal();nav('payroll')`,pri:1});
+  });
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -1494,12 +1522,47 @@ function updateNavBadges(){
   }catch(e){}
 }
 function openNotifications(){
-  const list=collectNotifications();
-  document.getElementById('ml-t').textContent='🔔 การแจ้งเตือน';
+  const list=collectNotifications();  document.getElementById('ml-t').textContent='🔔 การแจ้งเตือน';
   document.getElementById('ml-s').textContent=list.length?`มี ${list.length} รายการที่ต้องดำเนินการ`:'ไม่มีการแจ้งเตือนใหม่';
   document.getElementById('ml-bd').innerHTML=list.length?list.map(n=>`<div onclick="${n.act}" style="display:flex;align-items:center;gap:12px;padding:11px 8px;border-bottom:1px solid var(--bd);cursor:pointer"><div style="width:34px;height:34px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0">${n.ic}</div><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${n.t}</div><div style="font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${n.s}</div></div><div style="color:var(--mu)">›</div></div>`).join(''):'<div style="text-align:center;color:var(--mu);padding:40px;font-size:13px">✅ ไม่มีรายการค้าง ทุกอย่างเรียบร้อย</div>';
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
   document.getElementById('ml').classList.add('op');
+}
+// ── ค้นหาทั่วทั้งระบบ ──
+function openSearch(){
+  document.getElementById('searchOverlay').style.display='block';
+  const inp=document.getElementById('gs-input'); inp.value=''; globalSearch();
+  setTimeout(()=>inp.focus(),50);
+}
+function closeSearch(){ document.getElementById('searchOverlay').style.display='none'; }
+function globalSearch(){
+  const q=(document.getElementById('gs-input').value||'').trim().toLowerCase();
+  const box=document.getElementById('gs-results');
+  if(!q){ box.innerHTML='<div style="text-align:center;color:var(--mu);padding:30px;font-size:13px">พิมพ์เพื่อค้นหาทั่วทั้งระบบ<br><span style="font-size:11px">ลูกค้า · เอกสารทุกชนิด · สินค้า · งาน · พนักงาน</span></div>'; return; }
+  const groups=[];
+  const add=(title,ic,items)=>{ if(items.length) groups.push({title,ic,items}); };
+  const match=(...vals)=>vals.some(v=>v&&String(v).toLowerCase().includes(q));
+  // ลูกค้า/ผู้จัดจำหน่าย
+  add('ลูกค้า / ผู้จัดจำหน่าย','👥',(DB.contacts||[]).filter(c=>match(c.name,c.id,c.tax,c.tel,c.phone)).slice(0,6).map(c=>({label:c.name,sub:(c.type||'ลูกค้า')+(c.tel||c.phone?' · '+(c.tel||c.phone):''),act:`nav('contacts')`})));
+  // สินค้า
+  add('สินค้า / บริการ','📦',(DB.products||[]).filter(p=>match(p.name,p.code,p.barcode)).slice(0,6).map(p=>({label:p.name,sub:(p.code?p.code+' · ':'')+'฿'+fmt(p.price||0)+(p.track?' · เหลือ '+(p.stock||0):''),act:`nav('products')`})));
+  // เอกสารขาย/ซื้อ
+  const docMap=[['invoices','📋','ใบวางบิล','openInvDrawer'],['quotes','📄','ใบเสนอราคา','openQuoteDrawer'],['delivery','📦','ใบส่งสินค้า','openDelDrawer'],['cashsale','🛒','ขายเงินสด','openCashDrawer'],['po','🗂️','ใบสั่งซื้อ','openPODrawer'],['receive','📥','ใบรับสินค้า','openRecDrawer'],['installments','🗓️','ใบแบ่งจ่าย','openInstDrawer']];
+  docMap.forEach(([key,ic,label,opener])=>{
+    const arr=DB[key]||[];
+    const found=arr.filter(d=>{ const c=getCust(d.cust||d.custId||d.supp); return match(d.id,d.note,c&&c.name); }).slice(0,6).map(d=>{ const c=getCust(d.cust||d.custId||d.supp); return {label:d.id+' · '+(c&&c.name||d.cust||d.supp||''),sub:(d.amt?'฿'+fmt(d.amt):'')+(d.status?' · '+d.status:''),act:(window[opener]?`closeSearch();nav('${key}');setTimeout(()=>${opener}('${d.id}'),200)`:`closeSearch();nav('${key}')`)}; });
+    add(label,ic,found);
+  });
+  // ค่าใช้จ่าย
+  add('ค่าใช้จ่าย','💳',(DB.expense||[]).filter(e=>match(e.id,e.desc,e.cat)).slice(0,6).map(e=>({label:e.id+' · '+(e.desc||''),sub:(e.amt?'฿'+fmt(e.amt):'')+(e.status?' · '+e.status:''),act:`closeSearch();nav('expense');setTimeout(()=>openExpDrawer('${e.id}'),200)`})));
+  // งาน
+  add('งานบริการ','🛠️',(DB.jobs||[]).filter(j=>{ const c=getCust(j.cust); return match(j.id,j.title,j.location,j.assignee,c&&c.name); }).slice(0,6).map(j=>({label:j.id+' · '+(j.title||''),sub:(j.status||'')+(j.assignee?' · '+j.assignee:''),act:`closeSearch();nav('jobs');setTimeout(()=>openJobDrawer('${j.id}'),200)`})));
+  // พนักงาน
+  add('พนักงาน','👷',(DB.employees||[]).filter(e=>match(e.id,e.name,e.role,e.phone)).slice(0,6).map(e=>({label:e.name,sub:(e.role||'')+(e.phone?' · '+e.phone:''),act:`closeSearch();nav('employees');setTimeout(()=>openEmpDrawer('${e.id}'),200)`})));
+
+  const total=groups.reduce((s,g)=>s+g.items.length,0);
+  if(!total){ box.innerHTML=`<div style="text-align:center;color:var(--mu);padding:30px;font-size:13px">ไม่พบ "${q}"<br><span style="font-size:11px">ลองคำอื่น หรือเลขที่เอกสาร</span></div>`; return; }
+  box.innerHTML=groups.map(g=>`<div style="font-size:11px;font-weight:700;color:var(--mu);padding:10px 10px 4px;text-transform:uppercase">${g.ic} ${g.title} (${g.items.length})</div>`+g.items.map(it=>`<div onclick="${it.act}" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background='transparent'"><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${it.label}</div><div style="font-size:11px;color:var(--mu)">${it.sub}</div></div><span style="color:var(--mu)">›</span></div>`).join('')).join('');
 }
 function saveDoc(type){
   const custEl=document.getElementById('m-cust');
@@ -1599,6 +1662,39 @@ function renderDashboard(){
     setTimeout(()=>{ b1.style.transition='height .7s cubic-bezier(.4,0,.2,1)'; b2.style.transition='height .7s cubic-bezier(.4,0,.2,1)'; b1.style.height=Math.round(inc[i]/mx*170)+'px'; b2.style.height=Math.round(exp[i]/mx*170)+'px'; },300+i*40);
   });
   setTimeout(()=>{ const pb=document.getElementById('dbPb'); if(pb) pb.style.width=collectPct.toFixed(1)+'%'; },700);
+
+  // ── การ์ด "สิ่งที่ต้องทำ" (ภาพรวมเจ้าของกิจการ) ──
+  const todoEl=document.getElementById('dash-todo');
+  if(todoEl){
+    const today=new Date().toISOString().slice(0,10);
+    const jobs=DB.jobs||[];
+    const jobDeliver=jobs.filter(j=>j.status==='อนุมัติแล้ว').length;
+    const jobInspect=jobs.filter(j=>j.status==='ตรวจงาน').length;
+    const jobActive=jobs.filter(j=>j.status==='กำลังทำ').length;
+    const jobOverdue=jobs.filter(j=>j.status!=='ส่งมอบแล้ว'&&j.due&&j.due<today).length;
+    const overdueInv=DB.invoices.filter(i=>i.status==='รอชำระ'&&i.due&&i.due<today);
+    const overdueAmt=overdueInv.reduce((a,b)=>a+(b.amt||0),0);
+    // เงินเดือนเดือนนี้ (ประมาณการพนักงานที่ใช้งาน)
+    const monthP=new Date().toISOString().slice(0,7);
+    let payrollEst=0;
+    (DB.employees||[]).filter(e=>e.active).forEach(e=>{
+      if(e.payType==='monthly') payrollEst+=e.rate;
+      else { const recs=(DB.attendance||[]).filter(a=>a.empId===e.id&&a.date.startsWith(monthP)&&a.inTime); const h=recs.reduce((s,a)=>s+attHours(a),0); payrollEst+=Math.round(e.rate/8*h); }
+    });
+    const alertN=collectNotifications().length;
+    const card=(ic,lb,val,sub,color,act)=>`<div onclick="${act}" style="background:#fff;border:1px solid var(--bd);border-left:4px solid ${color};border-radius:12px;padding:13px 15px;cursor:pointer;transition:.15s" onmouseover="this.style.boxShadow='0 4px 14px rgba(0,0,0,.08)'" onmouseout="this.style.boxShadow='none'">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px"><span style="font-size:17px">${ic}</span><span style="font-size:12px;color:var(--mu)">${lb}</span></div>
+      <div style="font-size:22px;font-weight:800;color:${color}">${val}</div>
+      <div style="font-size:11px;color:var(--mu);margin-top:2px">${sub}</div></div>`;
+    todoEl.innerHTML=`<div style="font-size:15px;font-weight:700;margin-bottom:10px">📌 สิ่งที่ต้องทำวันนี้</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+        ${card('🔴','ลูกหนี้เกินกำหนด','฿'+fmt(overdueAmt),overdueInv.length+' ใบ ต้องตามเก็บ','#E53E3E',"nav('invoices')")}
+        ${card('📦','งานพร้อมส่งมอบ',jobDeliver+jobInspect,(jobInspect?jobInspect+' รอตรวจ · ':'')+jobDeliver+' รอส่ง','#0A6EBD',"nav('jobs')")}
+        ${card('🔧','งานกำลังทำ',jobActive,jobOverdue?(jobOverdue+' เลยกำหนด!'):'อยู่ระหว่างดำเนินการ',jobOverdue?'#E53E3E':'#00897B',"nav('jobs')")}
+        ${card('💵','เงินเดือนเดือนนี้','฿'+fmt(payrollEst),(DB.employees||[]).filter(e=>e.active).length+' คน (ประมาณการ)','#8E44AD',"nav('payroll')")}
+        ${card('🔔','รายการแจ้งเตือน',alertN,alertN?'แตะดูทั้งหมด':'ไม่มีค้าง','#E67E22',"openNotifications()")}
+      </div>`;
+  }
 
   // recent table
   const tb=document.getElementById('dashTbl'); tb.innerHTML='';
@@ -2542,22 +2638,17 @@ function openExpDrawer(id){
 function expViewImg(id,idx){
   const r=DB.expense.find(x=>x.id===id); if(!r) return;
   const imgs=r.slips||(r.slip?[r.slip]:[]);
-  let cur=idx;
+  if(!imgs.length) return;
+  const cur=Math.max(0,Math.min(idx||0,imgs.length-1));
   document.getElementById('ml-t').textContent='รูปบิล';
   document.getElementById('ml-s').textContent=`รูปที่ ${cur+1}/${imgs.length}`;
-  const render=()=>{
-    document.getElementById('ml-s').textContent=`รูปที่ ${cur+1}/${imgs.length}`;
-    document.getElementById('ml-bd').innerHTML=`<img src="${imgs[cur]}" style="width:100%;border-radius:10px;cursor:zoom-in" onclick="window.open('${imgs[cur]}')">
-    <div style="display:flex;justify-content:center;gap:8px;margin-top:10px">${imgs.map((_,i)=>`<div onclick="cur=${i};render()" style="width:10px;height:10px;border-radius:50%;background:${i===cur?'var(--p)':'var(--bd)'};cursor:pointer"></div>`).join('')}</div>`;
-  };
-  document.getElementById('ml-act').innerHTML=`${imgs.length>1?`<button class="btn bo" onclick="if(cur>0){cur--;expViewImg_render();}">◀</button>`:''}
+  document.getElementById('ml-bd').innerHTML=`<img src="${imgs[cur]}" style="width:100%;border-radius:10px;cursor:zoom-in" onclick="window.open('${imgs[cur]}')">
+    ${imgs.length>1?`<div style="display:flex;justify-content:center;gap:8px;margin-top:12px;flex-wrap:wrap">${imgs.map((img,i)=>`<img src="${img}" onclick="expViewImg('${id}',${i})" style="width:52px;height:52px;object-fit:cover;border-radius:7px;cursor:pointer;border:2px solid ${i===cur?'var(--p)':'var(--bd)'}">`).join('')}</div>`:''}`;
+  document.getElementById('ml-act').innerHTML=`${cur>0?`<button class="btn bo" onclick="expViewImg('${id}',${cur-1})">◀</button>`:''}
     <span style="flex:1"></span>
     <button class="btn bo" onclick="window.open('${imgs[cur]}')">⬇️ บันทึก</button>
     <button class="btn bp" onclick="closeModal();openExpDrawer('${id}')">← กลับ</button>
-    ${imgs.length>1?`<button class="btn bo" onclick="if(cur<${imgs.length-1}){cur++;expViewImg_render();}">▶</button>`:''}`;
-  document.getElementById('ml').classList.add('op');
-  document.getElementById('ml-bd').innerHTML=`<img src="${imgs[cur]}" style="width:100%;border-radius:10px" onclick="window.open(this.src)">
-    ${imgs.length>1?`<div style="display:flex;justify-content:center;gap:8px;margin-top:12px">${imgs.map((img,i)=>`<img src="${img}" onclick="expViewImg('${id}',${i})" style="width:52px;height:52px;object-fit:cover;border-radius:7px;cursor:pointer;border:2px solid ${i===cur?'var(--p)':'var(--bd)'}">`).join('')}</div>`:''}`; 
+    ${cur<imgs.length-1?`<button class="btn bo" onclick="expViewImg('${id}',${cur+1})">▶</button>`:''}`;
   document.getElementById('ml').classList.add('op');
 }
 
@@ -3034,7 +3125,7 @@ function openJobDrawer(id){
     +photoGrid(j.beforePhotos,'📸 รูปก่อนทำงาน')
     +photoGrid(j.afterPhotos,'✨ รูปหลังทำงาน')
     +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
-    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไขงาน</button></div>`;
+    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไขงาน</button><button class="btn bo" style="flex:1;justify-content:center" onclick="jobNotifyLine('${id}')">📲 แจ้ง LINE</button></div>`;
   openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra,'job');
 }
 // ── บันทึกเวลา+ตำแหน่ง เริ่มงาน/เสร็จงาน (เหมือนตอกบัตรหน้างาน) ──
@@ -3050,25 +3141,56 @@ function captureGpsNow(){
 }
 function fmtDT(iso){ if(!iso) return '-'; const d=new Date(iso); if(isNaN(d)) return '-'; const th=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.']; return `${d.getDate()} ${th[d.getMonth()]} ${(d.getFullYear()+543)} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} น.`; }
 function jobDuration(j){ if(!j.startedAt||!j.finishedAt) return ''; const ms=new Date(j.finishedAt)-new Date(j.startedAt); if(!(ms>=0)) return ''; const h=Math.floor(ms/3600000), m=Math.floor((ms%3600000)/60000); return (h?h+' ชม. ':'')+m+' นาที'; }
+// เลือก/ถ่ายรูป (หลายรูปได้) แล้ว callback คืน array รูปบีบอัด
+function pickPhotos(multiple, cb){
+  const inp=document.createElement('input');
+  inp.type='file'; inp.accept='image/*'; inp.setAttribute('capture','environment'); if(multiple) inp.multiple=true;
+  inp.style.display='none'; document.body.appendChild(inp);
+  inp.onchange=async ()=>{ const files=[...(inp.files||[])]; const imgs=[]; for(const f of files){ try{ imgs.push(await compressReceiptImage(f,1200,0.72)); }catch(e){} } inp.remove(); cb(imgs); };
+  inp.click();
+}
+function jobRefreshAfter(id){
+  saveData(); renderJobs&&renderJobs(); updateNavBadges&&updateNavBadges();
+  if(curUser&&curUser.isEmployee&&typeof renderEmpPortal==='function'){ closeDrawer&&closeDrawer(); renderEmpPortal(); }
+  else { closeDrawer&&closeDrawer(); setTimeout(()=>openJobDrawer(id),100); }
+}
 async function jobStartWork(id){
   const j=DB.jobs.find(x=>x.id===id); if(!j) return;
-  toast('📍 กำลังบันทึกเวลา+ตำแหน่งเริ่มงาน...');
-  const gps=await captureGpsNow();
-  j.startedAt=new Date().toISOString(); j.startGps=gps; j.status='กำลังทำ';
-  saveData(); renderJobs&&renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer&&closeDrawer();
-  toast(gps?'🔧 เริ่มงานแล้ว · บันทึกเวลา+ตำแหน่ง':'🔧 เริ่มงานแล้ว · บันทึกเวลา (ไม่มี GPS)');
-  if(!(curUser&&curUser.isEmployee)) setTimeout(()=>openJobDrawer(id),100);
+  pickPhotos(true, async imgs=>{
+    toast('📍 กำลังบันทึกเริ่มงาน...');
+    const gps=await captureGpsNow();
+    if(imgs.length) j.beforePhotos=(j.beforePhotos||[]).concat(imgs);
+    j.startedAt=new Date().toISOString(); j.startGps=gps; j.status='กำลังทำ';
+    jobRefreshAfter(id);
+    toast('🔧 เริ่มงานแล้ว'+(imgs.length?` · ${imgs.length} รูป`:'')+(gps?' · GPS':''));
+  });
 }
 async function jobFinishWork(id){
   const j=DB.jobs.find(x=>x.id===id); if(!j) return;
-  toast('📍 กำลังบันทึกเวลา+ตำแหน่งเสร็จงาน...');
-  const gps=await captureGpsNow();
-  j.finishedAt=new Date().toISOString(); j.finishGps=gps; j.status='ตรวจงาน';
-  saveData(); renderJobs&&renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer&&closeDrawer();
-  toast(gps?'✅ ส่งตรวจงานแล้ว · บันทึกเวลา+ตำแหน่ง':'✅ ส่งตรวจงานแล้ว · บันทึกเวลา (ไม่มี GPS)');
-  if(!(curUser&&curUser.isEmployee)) setTimeout(()=>openJobDrawer(id),100);
+  pickPhotos(true, async imgs=>{
+    toast('📍 กำลังบันทึกเสร็จงาน...');
+    const gps=await captureGpsNow();
+    if(imgs.length) j.afterPhotos=(j.afterPhotos||[]).concat(imgs);
+    j.finishedAt=new Date().toISOString(); j.finishGps=gps; j.status='ตรวจงาน';
+    jobRefreshAfter(id);
+    toast('✅ ส่งตรวจงานแล้ว'+(imgs.length?` · ${imgs.length} รูป`:'')+(gps?' · GPS':''));
+  });
+}
+// เพิ่มรูปก่อน/หลัง เพิ่มเติม (ในพอร์ทัล/แอดมิน)
+function jobAddPhotos(id,kind){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  pickPhotos(true, imgs=>{ if(!imgs.length) return; const f=kind==='before'?'beforePhotos':'afterPhotos'; j[f]=(j[f]||[]).concat(imgs); jobRefreshAfter(id); toast('📷 เพิ่ม '+imgs.length+' รูปแล้ว'); });
 }
 function jobSetStatus(id,st){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status=st; saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('🔄 เปลี่ยนสถานะเป็น: '+st); setTimeout(()=>openJobDrawer(id),100); } }
+// แจ้งงานทาง LINE (เปิดแชร์ LINE ให้ส่งให้พนักงาน)
+function jobNotifyLine(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+  const cust=getCust(j.cust);
+  const txt=`🛠️ มอบหมายงานใหม่\nงาน: ${j.title}\nลูกค้า: ${cust.name||j.cust||'-'}\n${j.location?'📍 สถานที่: '+j.location+'\n':''}${j.due?'⏰ กำหนดเสร็จ: '+fmtD(j.due)+'\n':''}สถานะ: ${j.status}\n\nเปิดแอปเพื่อรับงาน`;
+  const url='https://line.me/R/share?text='+encodeURIComponent(txt);
+  window.open(url,'_blank');
+  toast('📲 เปิด LINE เพื่อส่งให้พนักงาน');
+}
 function jobApprove(id,ok){
   const j=DB.jobs.find(x=>x.id===id); if(!j) return;
   const note=prompt(ok?'บันทึกผลการตรวจ (อนุมัติ):':'เหตุผลที่ไม่อนุมัติ:', j.inspectNote||'');
@@ -3729,6 +3851,7 @@ function openCloudForm(){
       • 📷 <b>รูปภาพซิงค์ข้ามเครื่องด้วย</b> (ครั้งแรกอาจช้าหน่อยตามจำนวนรูป)
     </div>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔌</div><div style="flex:1"><div class="set-t">เปิดใช้งานคลาวด์</div><div class="set-s">เปิดแอป=ดึงอัตโนมัติ · แก้ไข=ส่งขึ้นอัตโนมัติ</div></div><button class="sw ${cloudCfg.enabled?'on':''}" id="cl-en" onclick="this.classList.toggle('on')"></button></div>
+    <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔄</div><div style="flex:1"><div class="set-t">รีเฟรชอัตโนมัติ</div><div class="set-s">อัปเดตทันทีเมื่ออีกเครื่องแก้ไข/เพิ่มรายการ</div></div><button class="sw ${cloudCfg.autoRefresh!==false?'on':''}" id="cl-auto" onclick="this.classList.toggle('on')"></button></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Project ID</label><input class="fi" id="cl-pid" value="${cloudCfg.projectId||''}" placeholder="my-project-12345"></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Web API Key</label><input class="fi" id="cl-key" value="${cloudCfg.apiKey||''}" placeholder="AIzaSy..."></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">รหัสชุดข้อมูล (Document ID) — ต้องเหมือนกันทุกเครื่อง</label><input class="fi" id="cl-doc" value="${cloudCfg.docId||'flowbiz'}" placeholder="flowbiz"></div>
@@ -3745,14 +3868,16 @@ function openCloudForm(){
 }
 function saveCloudForm(){
   cloudCfg.enabled=document.getElementById('cl-en').classList.contains('on');
+  cloudCfg.autoRefresh=document.getElementById('cl-auto').classList.contains('on');
   cloudCfg.projectId=document.getElementById('cl-pid').value.trim();
   cloudCfg.apiKey=document.getElementById('cl-key').value.trim();
   cloudCfg.docId=document.getElementById('cl-doc').value.trim()||'flowbiz';
   saveCloudCfg();
   if(cloudCfg.enabled&&cloudCfg.projectId&&cloudCfg.apiKey){
     cloudInitDone=true; // ผู้ใช้ตั้งค่าเอง = พร้อมซิงค์
+    if(cloudCfg.autoRefresh) cloudWatchStart(); else cloudWatchStop();
     toast('✅ บันทึกแล้ว — เลือก "ส่งขึ้น" หรือ "ดึงลง" ตามต้องการ');
-  } else { toast('💾 บันทึกการตั้งค่าคลาวด์แล้ว'); closeModal(); }
+  } else { cloudWatchStop(); toast('💾 บันทึกการตั้งค่าคลาวด์แล้ว'); closeModal(); }
 }
 // ทดสอบการเชื่อมต่อคลาวด์ — วินิจฉัยปัญหาเป็นภาษาไทย
 async function cloudTest(){
@@ -3891,12 +4016,13 @@ function loadData(){
 // ══════════════════════════════════
 // ระบบจัดเก็บข้อมูลบนคลาวด์ (Firebase Firestore REST — ไม่ต้องมีเซิร์ฟเวอร์)
 // ══════════════════════════════════
-let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz'};
+let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true};
 try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assign(cloudCfg,JSON.parse(cc)); }catch(e){}
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
 
 let cloudBusy=false, cloudTimer=null, cloudInitDone=false;
+let cloudLastSeen=null, _cloudWatch=null;
 function setCloudStatus(txt,color){ const el=document.getElementById('cloud-status'); if(el){ el.textContent=txt; el.style.color=color||'var(--mu)'; } }
 // fetch ที่มี timeout กันค้าง
 function fetchTimeout(url,opts,ms){
@@ -4007,9 +4133,11 @@ async function cloudPush(silent){
     const payload=JSON.stringify({DB:slimDB,idCounters,docNumbering,settingsState,companyInfo:slimCO,_date:new Date().toISOString(),_count:dbRecordCount()});
     const sizeKB=Math.round(payload.length/1024);
     if(payload.length>1000000){ setCloudStatus('⚠️ ข้อมูลใหญ่เกิน 1MB ('+sizeKB+'KB)','var(--dg)'); if(!silent) toast('⚠️ ข้อมูลใหญ่เกินไป'); cloudBusy=false; return; }
-    const body={fields:{data:{stringValue:payload},updated:{stringValue:new Date().toISOString()},count:{integerValue:String(dbRecordCount())}}};
+    const stamp=new Date().toISOString();
+    const body={fields:{data:{stringValue:payload},updated:{stringValue:stamp},count:{integerValue:String(dbRecordCount())}}};
     const res=await fetchTimeout(cloudURL(),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)},20000);
     if(!res.ok) throw new Error('HTTP '+res.status);
+    cloudLastSeen=stamp; // จำเวลาที่เราเพิ่งเขียน (กันรีเฟรชทับงานตัวเอง)
     // ข้อมูลขึ้นแล้ว — แจ้งทันที
     setCloudStatus(`☁️ ข้อมูลขึ้นแล้ว (${sizeKB}KB)${nImg?' · กำลังส่งรูป...':''}`,'var(--ok)');
     if(!silent && !nImg) toast('☁️ บันทึกขึ้นคลาวด์แล้ว');
@@ -4028,12 +4156,13 @@ async function cloudPull(force){
   setCloudStatus('⏳ กำลังดึงข้อมูลจากคลาวด์...','var(--p)');
   try{
     const res=await fetch(cloudURL());
-    if(res.status===404){ setCloudStatus('ยังไม่มีข้อมูลบนคลาวด์ (กดซิงค์ขึ้นก่อน)','var(--wn)'); if(force!=='startup') toast('ยังไม่มีข้อมูลบนคลาวด์'); cloudInitDone=true; return false; }
+    if(res.status===404){ setCloudStatus('ยังไม่มีข้อมูลบนคลาวด์ (กดซิงค์ขึ้นก่อน)','var(--wn)'); if(force!=='startup'&&force!=='poll'&&force!=='watch') toast('ยังไม่มีข้อมูลบนคลาวด์'); cloudInitDone=true; return false; }
     if(!res.ok) throw new Error('HTTP '+res.status);
     const j=await res.json();
     const str=j.fields&&j.fields.data&&j.fields.data.stringValue;
     if(!str) throw new Error('no data');
     const d=JSON.parse(str);
+    cloudLastSeen=(j.fields.updated&&j.fields.updated.stringValue)||cloudLastSeen;
     const cloudCount=dbRecordCount(d.DB);
     const localCount=dbRecordCount();
     // กันข้อมูลหาย: ถ้าคลาวด์ว่างแต่เครื่องมีข้อมูล ให้ถามก่อน (ยกเว้น force)
@@ -4064,9 +4193,9 @@ async function cloudPull(force){
     try{ localStorage.setItem(STORE_KEY,JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo})); }catch(e){}
     try{ renderPage(curPage); renderDashboard(); updateNavBadges(); updateNotifDot(); acctInit&&acctInit(); }catch(e){}
     setCloudStatus('☁️ ดึงข้อมูลล่าสุดแล้ว ('+cloudCount+' รายการ)','var(--ok)');
-    if(force!=='startup') toast('✅ ดึงข้อมูลจากคลาวด์เรียบร้อย ('+cloudCount+' รายการ)');
+    if(force!=='startup'&&force!=='poll'&&force!=='watch') toast('✅ ดึงข้อมูลจากคลาวด์เรียบร้อย ('+cloudCount+' รายการ)');
     return true;
-  }catch(e){ setCloudStatus('⚠️ ดึงข้อมูลไม่สำเร็จ','var(--dg)'); if(force!=='startup') toast('⚠️ ดึงข้อมูลจากคลาวด์ไม่สำเร็จ'); cloudInitDone=true; return false; }
+  }catch(e){ setCloudStatus('⚠️ ดึงข้อมูลไม่สำเร็จ','var(--dg)'); if(force!=='startup'&&force!=='poll'&&force!=='watch') toast('⚠️ ดึงข้อมูลจากคลาวด์ไม่สำเร็จ'); cloudInitDone=true; return false; }
 }
 // เรียกอัตโนมัติหลังบันทึก (หน่วงเวลาเพื่อรวบรายการ)
 function cloudAutoSync(){
@@ -4075,11 +4204,43 @@ function cloudAutoSync(){
   clearTimeout(cloudTimer);
   cloudTimer=setTimeout(()=>cloudPush(true),2500);
 }
+// ── เฝ้าดูคลาวด์: เช็คเฉพาะเวลาแก้ล่าสุด (เบามาก) ถ้าอีกเครื่องแก้ → ดึงใหม่อัตโนมัติ ──
+async function cloudCheckRemote(){
+  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return;
+  if(cloudCfg.autoRefresh===false) return;
+  if(cloudBusy||!cloudInitDone) return;
+  // อย่ารีเฟรชระหว่างผู้ใช้กำลังแก้ไข (กันข้อมูลที่พิมพ์ค้างหาย)
+  if(document.getElementById('ml')?.classList.contains('op')) return;
+  if(document.getElementById('dr')?.classList.contains('op')) return;
+  if(curPage==='quoteEdit'||curPage==='cashier') return;
+  try{
+    const res=await fetchTimeout(cloudURL()+'&mask.fieldPaths=updated',{},12000);
+    if(!res.ok) return;
+    const j=await res.json();
+    const upd=j.fields&&j.fields.updated&&j.fields.updated.stringValue;
+    if(!upd) return;
+    if(!cloudLastSeen){ cloudLastSeen=upd; return; }
+    if(upd>cloudLastSeen){
+      // อีกเครื่องแก้ไข → ดึงข้อมูลใหม่ + รีเฟรชหน้าจอ
+      const ok=await cloudPull('watch');
+      if(ok){ cloudLastSeen=upd;
+        if(curUser&&curUser.isEmployee&&typeof renderEmpPortal==='function') renderEmpPortal();
+        toast('🔄 อัปเดตข้อมูลจากอีกเครื่องแล้ว');
+      }
+    }
+  }catch(e){}
+}
+function cloudWatchStart(){
+  if(_cloudWatch) clearInterval(_cloudWatch);
+  _cloudWatch=setInterval(cloudCheckRemote, 20000); // เช็คทุก 20 วิ
+}
+function cloudWatchStop(){ if(_cloudWatch){ clearInterval(_cloudWatch); _cloudWatch=null; } }
 // ดึงข้อมูลอัตโนมัติตอนเปิดแอป (คลาวด์ = แหล่งข้อมูลหลัก)
 async function cloudStartupSync(){
   if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey){ cloudInitDone=true; return; }
   await cloudPull('startup');
   cloudInitDone=true;
+  cloudWatchStart(); // เริ่มเฝ้าดูการแก้ไขจากอีกเครื่อง
 }
 function resetData(){
   document.getElementById('ml-t').textContent='🗑️ ล้างข้อมูล';
@@ -4237,6 +4398,7 @@ function openEmployeeForm(id){
         <div class="fg"><label class="flb" id="ef-rate-lb">${(!e||e.payType==='monthly')?'เงินเดือน (บาท)':'ค่าจ้าง/วัน (บาท)'}</label><input class="fi" type="number" id="ef-rate" value="${e?(e.rate||0):''}" placeholder="0"></div>
       </div>
       <div class="fg" id="ef-payday-box" style="margin-top:8px;${(e&&e.payType==='daily')?'display:none':''}"><label class="flb">จ่ายเงินทุกวันที่ (ของเดือน)</label><input class="fi" type="number" min="1" max="31" id="ef-payday" value="${e?(e.payDay||30):30}" placeholder="30"></div>
+      <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:12px;cursor:pointer"><input type="checkbox" id="ef-sso" ${e&&e.sso?'checked':''} style="width:17px;height:17px"> 🏥 หักประกันสังคม 5% (สูงสุด 750 บาท/เดือน)</label>
     </div>
     <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
       <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px">🔐 บัญชีเข้าระบบพนักงาน</div>
@@ -4263,6 +4425,7 @@ function saveEmployee(){
     payDay:+document.getElementById('ef-payday').value||30,
     pin:document.getElementById('ef-pin').value.trim(),
     lineId:document.getElementById('ef-line').value.trim(),
+    sso:document.getElementById('ef-sso').checked,
     active:document.getElementById('ef-active').classList.contains('on'),
   };
   if(empEditId){ const i=DB.employees.findIndex(x=>x.id===empEditId); DB.employees[i]=rec; }
@@ -4364,76 +4527,158 @@ async function tcPhotoTaken(ev){
 }
 
 // ── จ่ายเงินเดือน (รายเดือน/รายวัน) ──
-let payMode='month', payData=[];
+let payMode='month', payData=[], payFrom='', payTo='', payKeyPrefix='';
+const PAY_STD_HOURS=8, PAY_OT_MULT=1.5;
 function paySetMode(m,el){ payMode=m; document.querySelectorAll('#pay-m-month,#pay-m-daily').forEach(b=>b.classList.remove('on')); el.classList.add('on'); document.getElementById('pay-month-box').style.display=m==='month'?'flex':'none'; document.getElementById('pay-daily-box').style.display=m==='daily'?'flex':'none'; }
+function payHoursBreakdown(empId,from,to){
+  const recs=(DB.attendance||[]).filter(a=>a.empId===empId&&a.date>=from&&a.date<=to&&a.inTime);
+  let reg=0,ot=0,total=0; recs.forEach(a=>{ const h=attHours(a); total+=h; reg+=Math.min(h,PAY_STD_HOURS); ot+=Math.max(h-PAY_STD_HOURS,0); });
+  return {days:recs.length,total,reg,ot};
+}
+function payAutoCalc(e,bd){
+  let base,hourly,ot;
+  if(e.payType==='monthly'){ hourly=e.rate/30/PAY_STD_HOURS; base = payMode==='month'? e.rate : Math.round(hourly*PAY_STD_HOURS*bd.days); }
+  else { hourly=e.rate/PAY_STD_HOURS; base=Math.round(hourly*bd.reg); }
+  ot=Math.round(hourly*PAY_OT_MULT*bd.ot);
+  const sso = e.sso? Math.min(Math.round(Math.min(base,15000)*0.05),750):0;
+  return {base,hourly,ot,sso};
+}
+function payRecord(e){
+  const bd=payHoursBreakdown(e.id,payFrom,payTo);
+  const auto=payAutoCalc(e,bd);
+  const key=payKeyPrefix+'_'+e.id;
+  const s=(DB.payroll||{})[key]||{};
+  const r={emp:e,key,days:bd.days,hours:bd.total,regHours:bd.reg,otHours:bd.ot,hourly:auto.hourly,
+    base:s.base!=null?s.base:auto.base, ot:s.ot!=null?s.ot:auto.ot, diligence:s.diligence||0, allowance:s.allowance||0, otherEarn:s.otherEarn||0,
+    sso:s.sso!=null?s.sso:auto.sso, tax:s.tax||0, advance:s.advance||0, otherDeduct:s.otherDeduct||0,
+    note:s.note||'', paid:s.paid||false, adjusted:Object.keys(s).length>0};
+  r.earnings=r.base+r.ot+r.diligence+r.allowance+r.otherEarn;
+  r.deduct=r.sso+r.tax+r.advance+r.otherDeduct;
+  r.net=r.earnings-r.deduct;
+  return r;
+}
 function renderPayroll(){
-  // ค่าเริ่มต้น
   const mEl=document.getElementById('pay-month'); if(mEl&&!mEl.value) mEl.value=new Date().toISOString().slice(0,7);
   const fEl=document.getElementById('pay-from'), tEl=document.getElementById('pay-to'), pdEl=document.getElementById('pay-payday');
   if(fEl&&!fEl.value){ const n=new Date(); fEl.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`; }
   if(tEl&&!tEl.value) tEl.value=new Date().toISOString().slice(0,10);
   if(pdEl&&!pdEl.value) pdEl.value=new Date().toISOString().slice(0,10);
-  let from,to,periodLabel;
-  if(payMode==='month'){ const m=mEl.value||new Date().toISOString().slice(0,7); from=m+'-01'; const [y,mo]=m.split('-'); to=`${y}-${mo}-${String(new Date(+y,+mo,0).getDate()).padStart(2,'0')}`; periodLabel='เดือน '+fmtD(from).split(' ').slice(1).join(' '); }
-  else { from=fEl.value; to=tEl.value; periodLabel=`${fmtD(from)} - ${fmtD(to)} · จ่าย ${fmtD(pdEl.value)}`; }
+  let periodLabel;
+  if(payMode==='month'){ const m=mEl.value||new Date().toISOString().slice(0,7); payFrom=m+'-01'; const [y,mo]=m.split('-'); payTo=`${y}-${mo}-${String(new Date(+y,+mo,0).getDate()).padStart(2,'0')}`; payKeyPrefix=m; periodLabel='เดือน '+fmtD(payFrom).split(' ').slice(1).join(' '); }
+  else { payFrom=fEl.value; payTo=tEl.value; payKeyPrefix=payFrom+'_'+payTo; periodLabel=`${fmtD(payFrom)} - ${fmtD(payTo)} · จ่าย ${fmtD(pdEl.value)}`; }
   const emps=(DB.employees||[]).filter(e=>e.active);
-  payData=emps.map(e=>{
-    const recs=(DB.attendance||[]).filter(a=>a.empId===e.id&&a.date>=from&&a.date<=to&&a.inTime);
-    const days=recs.length;
-    const hrs=recs.reduce((s,a)=>s+attHours(a),0);
-    let amount=0;
-    if(e.payType==='monthly'){ amount = payMode==='month' ? e.rate : Math.round(e.rate/30*days); }
-    else { amount = e.rate*days; }
-    return {emp:e,days,hrs,amount};
-  }).filter(r=>payMode==='month'?true:r.days>0);
+  payData=emps.map(payRecord).filter(r=>payMode==='month'?true:r.days>0);
   document.getElementById('pay-k1').textContent=payData.length;
   document.getElementById('pay-k2').textContent=payData.reduce((s,r)=>s+r.days,0);
-  document.getElementById('pay-k3').textContent=payData.reduce((s,r)=>s+r.hrs,0).toFixed(1);
-  document.getElementById('pay-k4').textContent=fmt(payData.reduce((s,r)=>s+r.amount,0));
+  document.getElementById('pay-k3').textContent=payData.reduce((s,r)=>s+r.hours,0).toFixed(1);
+  document.getElementById('pay-k4').textContent=fmt(payData.reduce((s,r)=>s+r.net,0));
   document.getElementById('pay-period').textContent=periodLabel;
   const tb=document.getElementById('pay-tbl');
   if(!payData.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:24px">ไม่มีข้อมูล</td></tr>'; return; }
-  tb.innerHTML=payData.map(r=>`<tr>
-    <td><div style="font-weight:600">${r.emp.name}</div><div style="font-size:11px;color:var(--mu)">${r.emp.role||''}</div></td>
+  tb.innerHTML=payData.map(r=>`<tr style="cursor:pointer" onclick="openPayDetail('${r.emp.id}')">
+    <td><div style="font-weight:600">${r.emp.name} ${r.paid?'<span class="badge b-paid" style="font-size:9px">จ่ายแล้ว</span>':''}${r.adjusted&&!r.paid?'<span class="badge b-part" style="font-size:9px">ปรับแล้ว</span>':''}</div><div style="font-size:11px;color:var(--mu)">${r.emp.role||''}</div></td>
     <td><span class="badge ${r.emp.payType==='monthly'?'b-paid':'b-part'}">${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}</span></td>
     <td style="text-align:center">${r.days}</td>
-    <td style="text-align:right">${r.hrs.toFixed(1)}</td>
-    <td style="text-align:right">${fmt(r.emp.rate)}${r.emp.payType==='daily'?'/วัน':''}</td>
-    <td style="text-align:right;font-weight:700;color:var(--p)">฿${fmt(r.amount)}</td>
-    <td><button class="btn bo" style="font-size:11px;padding:5px 10px" onclick="printPayslip('${r.emp.id}')">🧾 สลิป</button></td>
+    <td style="text-align:right">${r.hours.toFixed(1)}${r.otHours>0?`<br><span style="font-size:10px;color:var(--ac)">OT ${r.otHours.toFixed(1)}</span>`:''}</td>
+    <td style="text-align:right">${fmt(r.emp.rate)}${r.emp.payType==='daily'?'/วัน':'/ด.'}</td>
+    <td style="text-align:right;font-weight:700;color:var(--p)">฿${fmt(r.net)}</td>
+    <td onclick="event.stopPropagation()"><button class="btn bo" style="font-size:11px;padding:5px 9px" onclick="openPayDetail('${r.emp.id}')">⚙️ ปรับ</button> <button class="btn bo" style="font-size:11px;padding:5px 9px" onclick="printPayslip('${r.emp.id}')">🧾</button></td>
   </tr>`).join('');
+}
+// ── หน้าปรับ/ดูรายละเอียดเงินเดือนรายคน ──
+function openPayDetail(empId){
+  const e=empById(empId); if(!e) return;
+  const r=payData.find(x=>x.emp.id===empId)||payRecord(e);
+  const row=(lb,id,val,color)=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><label style="flex:1;font-size:12px;color:${color||'#444'}">${lb}</label><input class="fi" type="number" id="${id}" value="${val}" style="width:120px;text-align:right" oninput="payDetailRecalc()"></div>`;
+  document.getElementById('ml-t').textContent='เงินเดือน: '+e.name;
+  document.getElementById('ml-s').textContent=`${document.getElementById('pay-period').textContent} · ${e.payType==='monthly'?'รายเดือน':'รายวัน'}`;
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="background:#EAF4FF;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;display:grid;grid-template-columns:1fr 1fr;gap:5px">
+      <span>วันทำงาน: <b>${r.days}</b> วัน</span><span>ชั่วโมงรวม: <b>${r.hours.toFixed(1)}</b> ชม.</span>
+      <span>ชม.ปกติ: <b>${r.regHours.toFixed(1)}</b></span><span>ชม. OT: <b style="color:var(--ac)">${r.otHours.toFixed(1)}</b></span>
+      <span style="grid-column:1/-1">อัตรา/ชม.: <b>฿${fmt(r.hourly)}</b> ${e.payType==='daily'?`(฿${fmt(e.rate)}/วัน ÷ ${PAY_STD_HOURS} ชม.)`:''}</span>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--ok);margin-bottom:8px">➕ รายได้</div>
+    ${row(e.payType==='monthly'?'เงินเดือน/ฐาน':'ค่าจ้าง (ตามชั่วโมง)','pd-base',r.base)}
+    ${row(`ค่าล่วงเวลา OT (${r.otHours.toFixed(1)} ชม. × ${PAY_OT_MULT})`,'pd-ot',r.ot,'#E67E22')}
+    ${row('เบี้ยขยัน','pd-diligence',r.diligence)}
+    ${row('ค่าตำแหน่ง/ค่าครองชีพ','pd-allowance',r.allowance)}
+    ${row('รายได้อื่นๆ','pd-otherEarn',r.otherEarn)}
+    <div style="font-size:11px;font-weight:700;color:var(--dg);margin:12px 0 8px">➖ รายการหัก</div>
+    ${row('ประกันสังคม 5%'+(e.sso?'':' (ปิดอยู่)'),'pd-sso',r.sso,'#c0392b')}
+    ${row('ภาษีหัก ณ ที่จ่าย','pd-tax',r.tax,'#c0392b')}
+    ${row('เบิกล่วงหน้า/หักเงินยืม','pd-advance',r.advance,'#c0392b')}
+    ${row('หักอื่นๆ (ขาด/สาย/ลา)','pd-otherDeduct',r.otherDeduct,'#c0392b')}
+    <div class="fg" style="margin-top:10px"><label class="flb">หมายเหตุ</label><input class="fi" id="pd-note" value="${(r.note||'').replace(/"/g,'&quot;')}" placeholder="บันทึกเพิ่มเติม"></div>
+    <div style="background:var(--p);color:#fff;border-radius:12px;padding:14px 16px;margin-top:14px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:11px;opacity:.85">ยอดจ่ายสุทธิ</div><div id="pd-net" style="font-size:24px;font-weight:800">฿${fmt(r.net)}</div></div>
+      <div style="text-align:right;font-size:11px;opacity:.9"><div>รายได้ <span id="pd-sum-e">฿${fmt(r.earnings)}</span></div><div>หัก <span id="pd-sum-d">฿${fmt(r.deduct)}</span></div></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="pd-paid" ${r.paid?'checked':''} style="width:18px;height:18px"> ✅ ทำเครื่องหมายว่าจ่ายแล้ว</label>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" style="margin-right:auto" onclick="printPayslip('${empId}')">🧾 พิมพ์สลิป</button><button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="savePayDetail('${empId}')">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  payDetailRecalc();
+}
+function payDetailRecalc(){
+  const g=id=>+document.getElementById(id).value||0;
+  const earn=g('pd-base')+g('pd-ot')+g('pd-diligence')+g('pd-allowance')+g('pd-otherEarn');
+  const ded=g('pd-sso')+g('pd-tax')+g('pd-advance')+g('pd-otherDeduct');
+  document.getElementById('pd-net').textContent='฿'+fmt(earn-ded);
+  document.getElementById('pd-sum-e').textContent='฿'+fmt(earn);
+  document.getElementById('pd-sum-d').textContent='฿'+fmt(ded);
+}
+function savePayDetail(empId){
+  const g=id=>+document.getElementById(id).value||0;
+  const key=payKeyPrefix+'_'+empId;
+  if(!DB.payroll) DB.payroll={};
+  DB.payroll[key]={base:g('pd-base'),ot:g('pd-ot'),diligence:g('pd-diligence'),allowance:g('pd-allowance'),otherEarn:g('pd-otherEarn'),sso:g('pd-sso'),tax:g('pd-tax'),advance:g('pd-advance'),otherDeduct:g('pd-otherDeduct'),note:document.getElementById('pd-note').value.trim(),paid:document.getElementById('pd-paid').checked};
+  saveData(); closeModal(); renderPayroll(); toast('💾 บันทึกเงินเดือนแล้ว');
 }
 function exportPayrollCSV(){
   if(!payData.length){ toast('⚠️ กดคำนวณก่อน'); return; }
-  let csv='\uFEFFสรุปค่าจ้าง FlowBiz\n'+document.getElementById('pay-period').textContent+'\n\nชื่อ,ตำแหน่ง,ประเภท,วันทำงาน,ชั่วโมง,อัตรา,ยอดจ่าย\n';
-  payData.forEach(r=>{ csv+=`"${r.emp.name}","${r.emp.role||''}","${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}",${r.days},${r.hrs.toFixed(1)},${r.emp.rate},${r.amount}\n`; });
-  csv+=`\nรวม,,,${payData.reduce((s,r)=>s+r.days,0)},${payData.reduce((s,r)=>s+r.hrs,0).toFixed(1)},,${payData.reduce((s,r)=>s+r.amount,0)}\n`;
-  dlCSV(csv,'payroll_'+(document.getElementById('pay-month')?.value||'')+'.csv');
+  let csv='\uFEFFสรุปเงินเดือน FlowBiz\n'+document.getElementById('pay-period').textContent+'\n\nชื่อ,ตำแหน่ง,ประเภท,วันทำงาน,ชั่วโมง,OT(ชม.),ฐาน,OT,เบี้ยขยัน,ค่าครองชีพ,รายได้อื่น,ประกันสังคม,ภาษี,เบิกล่วงหน้า,หักอื่น,สุทธิ\n';
+  payData.forEach(r=>{ csv+=`"${r.emp.name}","${r.emp.role||''}","${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}",${r.days},${r.hours.toFixed(1)},${r.otHours.toFixed(1)},${r.base},${r.ot},${r.diligence},${r.allowance},${r.otherEarn},${r.sso},${r.tax},${r.advance},${r.otherDeduct},${r.net}\n`; });
+  csv+=`\nรวมสุทธิ,,,,,,,,,,,,,,,${payData.reduce((s,r)=>s+r.net,0)}\n`;
+  dlCSV(csv,'payroll_'+payKeyPrefix+'.csv');
 }
 function printPayslip(empId){
   const e=empById(empId); if(!e) return;
-  const r=payData.find(x=>x.emp.id===empId)||{emp:e,days:0,hrs:0,amount:e.payType==='monthly'?e.rate:0};
+  const r=payData.find(x=>x.emp.id===empId)||payRecord(e);
   const period=document.getElementById('pay-period')?.textContent||'';
   const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',seller:'กุสุมา ชุมนวล'},companyInfo||{});
   const today=new Date().toISOString().slice(0,10);
+  const er=[]; const dd=[];
+  er.push(['เงินเดือน/ค่าจ้างฐาน'+(e.payType==='daily'?` (${r.regHours.toFixed(1)} ชม. × ฿${fmt(r.hourly)})`:''), r.base]);
+  if(r.ot) er.push([`ค่าล่วงเวลา OT (${r.otHours.toFixed(1)} ชม.)`, r.ot]);
+  if(r.diligence) er.push(['เบี้ยขยัน', r.diligence]);
+  if(r.allowance) er.push(['ค่าตำแหน่ง/ค่าครองชีพ', r.allowance]);
+  if(r.otherEarn) er.push(['รายได้อื่นๆ', r.otherEarn]);
+  if(r.sso) dd.push(['ประกันสังคม (5%)', r.sso]);
+  if(r.tax) dd.push(['ภาษีหัก ณ ที่จ่าย', r.tax]);
+  if(r.advance) dd.push(['เบิกล่วงหน้า/เงินยืม', r.advance]);
+  if(r.otherDeduct) dd.push(['หักอื่นๆ (ขาด/ลา/สาย)', r.otherDeduct]);
+  const erRows=er.map(x=>`<tr><td>${x[0]}</td><td style="text-align:right">${fmt(x[1])}</td></tr>`).join('');
+  const ddRows=dd.length?dd.map(x=>`<tr><td>${x[0]}</td><td style="text-align:right">${fmt(x[1])}</td></tr>`).join(''):'<tr><td colspan="2" style="color:#999;text-align:center">— ไม่มีรายการหัก —</td></tr>';
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>สลิปเงินเดือน ${e.id}</title>
   <style>@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact}
   body{padding:30px;color:#1a1a1a;font-size:13px}.hd{display:flex;justify-content:space-between;border-bottom:3px solid #0A6EBD;padding-bottom:12px;margin-bottom:16px}
   .cn{font-size:15px;font-weight:700;color:#0A6EBD}.ca{font-size:11px;color:#555;margin-top:3px;max-width:380px}.ti h1{font-size:22px;color:#0A6EBD;text-align:right}
   .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;background:#F0F7FF;padding:14px 16px;border-radius:8px;margin-bottom:16px;font-size:12px}.meta b{color:#0A6EBD}
-  table{width:100%;border-collapse:collapse;margin-bottom:16px}td,th{padding:9px 12px;border:1px solid #e5e5e5;font-size:12px}th{background:#F0F7FF;color:#0A6EBD;text-align:left}
-  .total{display:flex;justify-content:space-between;background:#0A6EBD;color:#fff;padding:14px 18px;border-radius:8px;font-size:16px;font-weight:700}
+  table{width:100%;border-collapse:collapse;margin-bottom:14px}td,th{padding:8px 12px;border:1px solid #e5e5e5;font-size:12px}th{background:#F0F7FF;color:#0A6EBD;text-align:left}
+  .two{display:flex;gap:14px}.two>div{flex:1}.subt{font-weight:700;margin-bottom:6px;font-size:12px}.eh{color:#0F9D58}.dh{color:#c0392b}
+  .sumr{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px dashed #ddd}
+  .total{display:flex;justify-content:space-between;background:#0A6EBD;color:#fff;padding:14px 18px;border-radius:8px;font-size:17px;font-weight:700;margin-top:8px}
   .sig{display:flex;justify-content:space-between;margin-top:40px;gap:30px}.sig-col{flex:1;text-align:center}.sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
   @media print{body{padding:0}}</style></head><body>
   <div class="hd"><div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}</div></div><div class="ti"><h1>สลิปเงินเดือน</h1><div style="text-align:right;font-size:12px;margin-top:4px">วันที่จ่าย ${fmtSlash(today)}</div></div></div>
-  <div class="meta"><div><b>ชื่อพนักงาน:</b> ${e.name}</div><div><b>รหัส:</b> ${e.id}</div><div><b>ตำแหน่ง:</b> ${e.role||'-'}</div><div><b>ประเภท:</b> ${e.payType==='monthly'?'รายเดือน':'รายวัน'}</div><div style="grid-column:1/-1"><b>งวด:</b> ${period}</div></div>
-  <table><thead><tr><th>รายการ</th><th style="text-align:center">จำนวน</th><th style="text-align:right">จำนวนเงิน (บาท)</th></tr></thead><tbody>
-    ${e.payType==='monthly'?`<tr><td>เงินเดือน</td><td style="text-align:center">1 เดือน</td><td style="text-align:right">${fmt(r.amount)}</td></tr>`:`<tr><td>ค่าจ้างรายวัน (${fmt(e.rate)}/วัน)</td><td style="text-align:center">${r.days} วัน</td><td style="text-align:right">${fmt(r.amount)}</td></tr>`}
-    <tr><td>จำนวนวันทำงาน</td><td style="text-align:center">${r.days} วัน</td><td style="text-align:right">-</td></tr>
-    <tr><td>จำนวนชั่วโมงรวม</td><td style="text-align:center">${r.hrs.toFixed(1)} ชม.</td><td style="text-align:right">-</td></tr>
-  </tbody></table>
-  <div class="total"><span>ยอดจ่ายสุทธิ</span><span>฿ ${fmt(r.amount)}</span></div>
-  <div style="text-align:center;font-size:12px;color:#666;margin-top:8px">(${bahtText(r.amount)})</div>
+  <div class="meta"><div><b>ชื่อพนักงาน:</b> ${e.name}</div><div><b>รหัส:</b> ${e.id}</div><div><b>ตำแหน่ง:</b> ${e.role||'-'}</div><div><b>ประเภท:</b> ${e.payType==='monthly'?'รายเดือน':'รายวัน'}</div><div><b>วันทำงาน:</b> ${r.days} วัน</div><div><b>ชั่วโมงรวม:</b> ${r.hours.toFixed(1)} ชม. (OT ${r.otHours.toFixed(1)})</div><div style="grid-column:1/-1"><b>งวด:</b> ${period}</div></div>
+  <div class="two">
+    <div><div class="subt eh">➕ รายได้</div><table>${erRows}<tr style="font-weight:700;background:#f6fdf9"><td>รวมรายได้</td><td style="text-align:right">${fmt(r.earnings)}</td></tr></table></div>
+    <div><div class="subt dh">➖ รายการหัก</div><table>${ddRows}<tr style="font-weight:700;background:#fdf6f6"><td>รวมหัก</td><td style="text-align:right">${fmt(r.deduct)}</td></tr></table></div>
+  </div>
+  <div class="total"><span>ยอดจ่ายสุทธิ</span><span>฿ ${fmt(r.net)}</span></div>
+  <div style="text-align:center;font-size:12px;color:#666;margin-top:8px">(${bahtText(r.net)})</div>
+  ${r.note?`<div style="font-size:11px;color:#888;margin-top:8px">หมายเหตุ: ${r.note}</div>`:''}
   <div class="sig"><div class="sig-col"><div class="sig-line">ผู้รับเงิน (${e.name})</div></div><div class="sig-col"><div class="sig-line">ผู้จ่ายเงิน (${CO.seller})</div></div></div>
   </body></html>`;
   if(typeof showPrintPreview==='function') showPrintPreview(html,'สลิปเงินเดือน '+e.id,{});
@@ -4526,27 +4771,48 @@ function openEmpPortal(){
   const tick=()=>{ const d=new Date(); const c=document.getElementById('ep-clock'); if(c) c.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0'); const dd=document.getElementById('ep-date'); if(dd) dd.textContent=fmtD(d.toISOString().slice(0,10)); };
   tick(); if(_epTimer) clearInterval(_epTimer); _epTimer=setInterval(tick,1000);
   renderEmpPortal();
+  cloudWatchStart(); // เฝ้าดูงานใหม่จากอีกเครื่อง (เบา) — ดึงเฉพาะเมื่อมีการแก้
 }
 function empMyJobs(e){
-  // จับคู่งานของฉัน: assigneeId ตรง หรือชื่อผู้รับผิดชอบมีชื่อพนักงาน
   return (DB.jobs||[]).filter(j=> j.assigneeId===e.id || (j.assignee&&e.name&&j.assignee.includes(e.name)) );
+}
+function empSeenKey(id){ return 'flowbiz_emp_seen_'+id; }
+function empNewJobs(e){
+  let seen=[]; try{ seen=JSON.parse(localStorage.getItem(empSeenKey(e.id))||'[]'); }catch(x){}
+  return empMyJobs(e).filter(j=>!seen.includes(j.id)&&j.status!=='ส่งมอบแล้ว');
+}
+function empMarkSeen(){
+  const e=empById(curUser.empId); if(!e) return;
+  try{ localStorage.setItem(empSeenKey(e.id),JSON.stringify(empMyJobs(e).map(j=>j.id))); }catch(x){}
+  renderEmpPortal();
 }
 function renderEmpPortal(){
   const e=empById(curUser.empId); if(!e) return;
   const att=attToday(e.id);
   const month=new Date().toISOString().slice(0,7);
-  const recs=(DB.attendance||[]).filter(a=>a.empId===e.id&&a.date.startsWith(month)&&a.inTime);
-  const days=recs.length, hrs=recs.reduce((s,a)=>s+attHours(a),0);
-  const estPay=e.payType==='monthly'?e.rate:e.rate*days;
+  const recs=[...(DB.attendance||[]).filter(a=>a.empId===e.id&&a.inTime)].sort((a,b)=>b.date.localeCompare(a.date));
+  const mRecs=recs.filter(a=>a.date.startsWith(month));
+  const days=mRecs.length, hrs=mRecs.reduce((s,a)=>s+attHours(a),0);
+  const estPay=e.payType==='monthly'?e.rate:Math.round(e.rate/PAY_STD_HOURS*mRecs.reduce((s,a)=>s+attHours(a),0));
   const myJobs=empMyJobs(e);
   const activeJobs=myJobs.filter(j=>j.status!=='ส่งมอบแล้ว');
-  // สถานะลงเวลาวันนี้
+  const newJobs=empNewJobs(e);
   let clockCard;
   if(!att||!att.inTime) clockCard=`<div style="background:#FFF3E8;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:#b45309;margin-bottom:10px">⚪ วันนี้ยังไม่ได้ลงเวลาเข้า</div>`;
-  else if(!att.outTime) clockCard=`<div style="background:#E8F8F0;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--ok);margin-bottom:10px">🟢 เข้างานแล้ว ${fmtTime(att.inTime)} น.</div>`;
+  else if(!att.outTime) clockCard=`<div style="background:#E8F8F0;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--ok);margin-bottom:10px">🟢 เข้างานแล้ว ${fmtTime(att.inTime)} น. ${att.inGps?`· <a href="https://maps.google.com/?q=${att.inGps.lat},${att.inGps.lng}" target="_blank" style="color:var(--p)">📍</a>`:''}</div>`;
   else clockCard=`<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;font-size:13px;margin-bottom:10px">✅ เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · ${attHours(att).toFixed(1)} ชม.</div>`;
+  // ประวัติเข้า-ออก 14 วัน
+  const histRows=recs.slice(0,14).map(a=>`<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 0.8fr;gap:6px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;align-items:center">
+      <span>${fmtD(a.date)}</span>
+      <span style="color:var(--ok)">${fmtTime(a.inTime)} ${a.inPhoto?`<img src="${a.inPhoto}" onclick="window.open('${a.inPhoto}')" style="width:22px;height:22px;border-radius:4px;object-fit:cover;vertical-align:middle">`:''}</span>
+      <span style="color:var(--dg)">${fmtTime(a.outTime)} ${a.outPhoto?`<img src="${a.outPhoto}" onclick="window.open('${a.outPhoto}')" style="width:22px;height:22px;border-radius:4px;object-fit:cover;vertical-align:middle">`:''}</span>
+      <span style="text-align:right;font-weight:700">${attHours(a)?attHours(a).toFixed(1):'-'}</span>
+    </div>`).join('');
   const body=`
-    <!-- ลงเวลา -->
+    ${newJobs.length?`<div style="background:linear-gradient(135deg,#E67E22,#F39C12);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 14px rgba(230,126,34,.3)">
+      <div style="font-size:26px">🔔</div><div style="flex:1"><div style="font-weight:700;font-size:14px">มีงานใหม่ ${newJobs.length} งาน!</div><div style="font-size:12px;opacity:.95">${newJobs.map(j=>j.title).slice(0,2).join(', ')}${newJobs.length>2?' ...':''}</div></div>
+      <button onclick="empMarkSeen()" style="background:rgba(255,255,255,.25);border:none;color:#fff;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">รับทราบ</button>
+    </div>`:''}
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
       <div style="font-weight:700;font-size:14px;margin-bottom:10px">⏰ ลงเวลาเข้า-ออกงาน</div>
       ${clockCard}
@@ -4555,7 +4821,6 @@ function renderEmpPortal(){
         <button class="btn bp" style="justify-content:center;padding:16px;background:var(--dg);font-size:14px" onclick="epClock('out')">🔴 ออกงาน<br><span style="font-size:10px;opacity:.9;font-weight:400">ถ่ายรูป+GPS</span></button>
       </div>
     </div>
-    <!-- สรุปของฉัน -->
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
       <div style="font-weight:700;font-size:14px;margin-bottom:12px">📊 สรุปเดือนนี้</div>
       <div style="display:flex;justify-content:space-around;text-align:center">
@@ -4563,26 +4828,38 @@ function renderEmpPortal(){
         <div><div style="font-size:24px;font-weight:800;color:var(--ok)">${hrs.toFixed(1)}</div><div style="font-size:11px;color:var(--mu)">ชั่วโมง</div></div>
         <div><div style="font-size:24px;font-weight:800;color:var(--ac)">฿${fmt(estPay)}</div><div style="font-size:11px;color:var(--mu)">${e.payType==='monthly'?'เงินเดือน':'ค่าจ้างสะสม'}</div></div>
       </div>
-      <div style="font-size:10.5px;color:var(--mu);text-align:center;margin-top:10px">* ยอดประมาณการ — รอบจ่ายจริงโดยฝ่ายบุคคล</div>
+      <div style="display:flex;justify-content:space-around;text-align:center;font-size:11px;color:var(--mu);margin-top:10px;border-top:1px solid #f0f0f0;padding-top:10px">
+        <span>ประเภท: <b style="color:#333">${e.payType==='monthly'?'รายเดือน':'รายวัน'}</b></span>
+        <span>อัตรา: <b style="color:#333">฿${fmt(e.rate)}${e.payType==='daily'?'/วัน':'/ด.'}</b></span>
+        ${e.sso?'<span>ปกส.: <b style="color:#333">หัก 5%</b></span>':''}
+      </div>
+      <div style="font-size:10.5px;color:var(--mu);text-align:center;margin-top:8px">* ยอดประมาณการ — รอบจ่ายจริงโดยฝ่ายบุคคล</div>
     </div>
-    <!-- งานของฉัน -->
-    <div style="background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="font-weight:700;font-size:14px">🛠️ งานที่ได้รับมอบหมาย</div>
         <span class="badge ${activeJobs.length?'b-pend':'b-paid'}">${activeJobs.length} งานค้าง</span>
       </div>
-      ${myJobs.length?myJobs.slice(0,10).map(j=>{
+      ${myJobs.length?myJobs.slice(0,12).map(j=>{
         const cust=getCust(j.cust);
+        const np=(j.beforePhotos||[]).length, na=(j.afterPhotos||[]).length;
         return `<div style="border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px">
           <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px"><div style="font-weight:600;font-size:13px">${j.title}</div>${jobStatusBadge?jobStatusBadge(j.status):'<span class="badge">'+j.status+'</span>'}</div>
           <div style="font-size:11.5px;color:var(--mu);margin-bottom:8px">${cust.name||j.cust||'-'}${j.location?' · 📍'+j.location:''}${j.due?' · กำหนด '+fmtD(j.due):''}</div>
+          ${(j.startedAt||np||na)?`<div style="font-size:11px;color:var(--mu);margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">${j.startedAt?`<span>🔧 เริ่ม ${fmtTime(j.startedAt)}</span>`:''}${j.finishedAt?`<span>✅ เสร็จ ${fmtTime(j.finishedAt)}</span>`:''}${np?`<span>📸 ก่อน ${np}</span>`:''}${na?`<span>✨ หลัง ${na}</span>`:''}</div>`:''}
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${(j.status==='รอทำ'||j.status==='สำรวจ')?`<button class="btn bp" style="font-size:11px;padding:6px 10px" onclick="epJobStart('${j.id}')">🔧 เริ่มงาน</button>`:''}
-            ${j.status==='กำลังทำ'?`<button class="btn bp" style="font-size:11px;padding:6px 10px;background:var(--ac)" onclick="epJobFinish('${j.id}')">✅ เสร็จงาน</button>`:''}
+            ${(j.status==='รอทำ'||j.status==='สำรวจ')?`<button class="btn bp" style="font-size:11px;padding:6px 10px" onclick="epJobStart('${j.id}')">🔧 เริ่มงาน (ถ่ายรูป)</button>`:''}
+            ${j.status==='กำลังทำ'?`<button class="btn bp" style="font-size:11px;padding:6px 10px;background:var(--ac)" onclick="epJobFinish('${j.id}')">✅ เสร็จงาน (ถ่ายรูป)</button>`:''}
+            ${j.status==='กำลังทำ'?`<button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="jobAddPhotos('${j.id}','before')">📷 +รูปก่อน</button>`:''}
             ${j.gps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank">🗺️ แผนที่</a>`:''}
             <button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="epJobDetail('${j.id}')">📄 รายละเอียด</button>
           </div></div>`;
       }).join(''):'<div style="text-align:center;color:var(--mu);font-size:13px;padding:20px">ยังไม่มีงานที่ได้รับมอบหมาย</div>'}
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:6px">📅 ประวัติเข้า-ออกงาน (14 วันล่าสุด)</div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 0.8fr;gap:6px;padding:6px 0;border-bottom:2px solid #eee;font-size:11px;color:var(--mu);font-weight:600"><span>วันที่</span><span>เข้า</span><span>ออก</span><span style="text-align:right">ชม.</span></div>
+      ${histRows||'<div style="text-align:center;color:var(--mu);font-size:13px;padding:16px">ยังไม่มีประวัติ</div>'}
     </div>`;
   document.getElementById('ep-body').innerHTML=body;
 }
@@ -4608,8 +4885,8 @@ function epJobDetail(id){
   document.getElementById('ml-act').innerHTML='<button class="btn bp" onclick="closeModal()">ปิด</button>';
   document.getElementById('ml').classList.add('op');
 }
-async function epJobStart(id){ await jobStartWork(id); closeDrawer(); renderEmpPortal(); }
-async function epJobFinish(id){ await jobFinishWork(id); closeDrawer(); renderEmpPortal(); }
+function epJobStart(id){ jobStartWork(id); }
+function epJobFinish(id){ jobFinishWork(id); }
 
 
 // ══════════════════════════════════
