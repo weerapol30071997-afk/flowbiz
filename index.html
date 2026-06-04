@@ -297,7 +297,11 @@ tbody tr:hover td{background:#FAFBFD}
       <div style="width:44px;height:44px;background:var(--p);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">📊</div>
       <div style="font-size:24px;font-weight:700;letter-spacing:-.5px">Flow<span style="color:var(--ac)">Biz</span></div>
     </div>
-    <div style="text-align:center;color:var(--mu);font-size:13px;margin-bottom:26px">ระบบบัญชีธุรกิจ — เข้าสู่ระบบ</div>
+    <div style="text-align:center;color:var(--mu);font-size:13px;margin-bottom:20px">ระบบบัญชีธุรกิจ — เข้าสู่ระบบ</div>
+    <div style="display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:11px;margin-bottom:20px">
+      <button class="lg-tab on" id="lgtab-admin" onclick="lgSwitch('admin')" style="flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;color:var(--p)">🔑 ผู้ดูแล/ออฟฟิศ</button>
+      <button class="lg-tab" id="lgtab-emp" onclick="lgSwitch('emp')" style="flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:transparent;color:var(--mu)">👷 พนักงาน</button>
+    </div>
     <div id="loginForm">
       <div class="fg" style="margin-bottom:14px"><label class="flb">ชื่อผู้ใช้ / อีเมล</label><input class="fi" id="lg-user" value="admin" placeholder="username"></div>
       <div class="fg" style="margin-bottom:20px"><label class="flb">รหัสผ่าน</label><input class="fi" id="lg-pass" type="password" value="1234" placeholder="••••••"></div>
@@ -305,10 +309,34 @@ tbody tr:hover td{background:#FAFBFD}
       <div id="lg-err" style="color:var(--dg);font-size:12px;text-align:center;margin-top:10px;display:none">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
       <div style="text-align:center;font-size:11px;color:var(--mu);margin-top:18px;padding-top:18px;border-top:1px solid var(--bd)">ผู้ใช้ทดสอบ: <b>admin</b> / รหัส: <b>1234</b><br><span style="color:#aaa">หรือ user01–user03 / รหัส 1234</span></div>
     </div>
+    <div id="empLoginForm" style="display:none">
+      <div class="fg" style="margin-bottom:14px"><label class="flb">เลือกชื่อพนักงาน</label><select class="fi" id="elg-emp"></select></div>
+      <div class="fg" style="margin-bottom:20px"><label class="flb">รหัส PIN</label><input class="fi" id="elg-pin" type="password" inputmode="numeric" placeholder="••••" autocomplete="off"></div>
+      <button class="btn bp" style="width:100%;justify-content:center;padding:12px;font-size:14px;background:var(--ac)" onclick="doEmpLogin()">👷 เข้าระบบพนักงาน</button>
+      <div id="elg-err" style="color:var(--dg);font-size:12px;text-align:center;margin-top:10px;display:none">❌ PIN ไม่ถูกต้อง</div>
+      <div style="text-align:center;font-size:11px;color:var(--mu);margin-top:18px;padding-top:18px;border-top:1px solid var(--bd)">พนักงานเข้าระบบด้วย PIN<br><span style="color:#aaa">ขอ PIN จากผู้ดูแลระบบ</span></div>
+    </div>
   </div>
 </div>
 
+<!-- ══ EMPLOYEE PORTAL (พอร์ทัลพนักงาน) ══ -->
+<div id="empPortal" style="position:fixed;inset:0;z-index:9000;background:#F0F4F8;overflow-y:auto;display:none">
+  <div style="max-width:560px;margin:0 auto;padding:0 0 40px">
+    <div style="background:linear-gradient(135deg,#0D1B2A,#0A6EBD);color:#fff;padding:18px 18px 22px;border-radius:0 0 22px 22px">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div id="ep-av" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px"></div>
+        <div style="flex:1;min-width:0"><div id="ep-name" style="font-weight:700;font-size:17px"></div><div id="ep-role" style="font-size:12px;opacity:.9"></div></div>
+        <button onclick="doEmpLogout()" style="background:rgba(255,255,255,.18);border:none;color:#fff;padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">ออกระบบ</button>
+      </div>
+      <div style="text-align:center;margin-top:14px"><div id="ep-clock" style="font-size:30px;font-weight:800;letter-spacing:1px">--:--:--</div><div id="ep-date" style="font-size:12px;opacity:.9"></div></div>
+    </div>
+    <div style="padding:16px" id="ep-body"></div>
+  </div>
+  <input type="file" id="ep-photo-input" accept="image/*" capture="user" style="display:none">
+</div>
+
 <!-- SIDEBAR -->
+
 <nav class="sb">
   <div class="sb-logo">
     <div class="logo">
@@ -332,6 +360,10 @@ tbody tr:hover td{background:#FAFBFD}
   <button class="ni" onclick="nav('cashsale')"><span class="ni-ic">🛒</span>ขายเงินสด</button>
   <div class="ns">งานบริการ</div>
   <button class="ni" onclick="nav('jobs')"><span class="ni-ic">🛠️</span>จัดการงาน<span class="nb" id="nb-jobs" style="display:none">0</span></button>
+  <div class="ns">พนักงาน (HR)</div>
+  <button class="ni" onclick="nav('employees')"><span class="ni-ic">👷</span>จัดการพนักงาน</button>
+  <button class="ni" onclick="nav('timeclock')"><span class="ni-ic">⏰</span>ลงเวลาเข้า-ออก</button>
+  <button class="ni" onclick="nav('payroll')"><span class="ni-ic">💵</span>จ่ายเงินเดือน</button>
   <div class="ns">เอกสารซื้อ</div>
   <button class="ni" onclick="nav('po')"><span class="ni-ic">🗂️</span>ใบสั่งซื้อ</button>
   <button class="ni" onclick="nav('receive')"><span class="ni-ic">📥</span>ใบรับสินค้า</button>
@@ -705,6 +737,78 @@ tbody tr:hover td{background:#FAFBFD}
     </div>
     <!-- Job cards grid -->
     <div id="jobsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px"></div>
+  </div>
+
+  <!-- ══ EMPLOYEES (จัดการพนักงาน) ══ -->
+  <div id="pg-employees" class="pg">
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:14px">
+      <div class="kpi bl"><div class="kpi-ic bl">👷</div><div class="kpi-lb">พนักงานทั้งหมด</div><div class="kpi-vl"><span id="emp-k1">0</span></div></div>
+      <div class="kpi gn"><div class="kpi-ic gn">📅</div><div class="kpi-lb">รายเดือน</div><div class="kpi-vl"><span id="emp-k2">0</span></div></div>
+      <div class="kpi or"><div class="kpi-ic or">📆</div><div class="kpi-lb">รายวัน</div><div class="kpi-vl"><span id="emp-k3">0</span></div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">⏰</div><div class="kpi-lb">เข้างานวันนี้</div><div class="kpi-vl"><span id="emp-k4">0</span></div></div>
+    </div>
+    <div class="fb" style="gap:8px;flex-wrap:wrap">
+      <input class="fi" placeholder="🔍 ค้นหาพนักงาน..." id="emp-search" oninput="renderEmployees()" style="min-width:160px">
+      <button class="btn bp" style="margin-left:auto" onclick="openEmployeeForm()">+ เพิ่มพนักงาน</button>
+    </div>
+    <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px"></div>
+  </div>
+
+  <!-- ══ TIME CLOCK (ลงเวลาเข้า-ออก) ══ -->
+  <div id="pg-timeclock" class="pg">
+    <div style="background:linear-gradient(135deg,#0A6EBD,#00C9A7);border-radius:16px;padding:20px;color:#fff;margin-bottom:16px;text-align:center">
+      <div style="font-size:13px;opacity:.9">เวลาปัจจุบัน</div>
+      <div id="tc-clock" style="font-size:34px;font-weight:800;letter-spacing:1px;margin:4px 0">--:--:--</div>
+      <div id="tc-date" style="font-size:13px;opacity:.9"></div>
+    </div>
+    <div class="fb" style="gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <select class="fi" id="tc-emp" style="flex:1;min-width:180px"></select>
+    </div>
+    <div id="tc-status"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px">
+      <button class="btn bp" style="justify-content:center;padding:18px;font-size:15px;background:var(--ok)" onclick="tcClock('in')">🟢 ลงเวลาเข้า<br><span style="font-size:11px;font-weight:400;opacity:.9">ถ่ายรูป + GPS</span></button>
+      <button class="btn bp" style="justify-content:center;padding:18px;font-size:15px;background:var(--dg)" onclick="tcClock('out')">🔴 ลงเวลาออก<br><span style="font-size:11px;font-weight:400;opacity:.9">ถ่ายรูป + GPS</span></button>
+    </div>
+    <input type="file" id="tc-photo-input" accept="image/*" capture="user" style="display:none">
+    <div class="tc" style="margin-top:20px">
+      <div class="tc-hd"><div class="card-t">ประวัติการลงเวลา (7 วันล่าสุด)</div></div>
+      <table><thead><tr><th>วันที่</th><th>พนักงาน</th><th>เข้า</th><th>ออก</th><th style="text-align:right">ชม.</th><th>รูป/พิกัด</th></tr></thead>
+      <tbody id="tc-history"></tbody></table>
+    </div>
+  </div>
+
+  <!-- ══ PAYROLL (จ่ายเงินเดือน) ══ -->
+  <div id="pg-payroll" class="pg">
+    <div style="background:#fff;border-radius:14px;border:1px solid var(--bd);padding:14px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:10px">💵 คำนวณค่าจ้าง</div>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;gap:4px;background:var(--bg);padding:3px;border-radius:9px">
+          <button class="pt-b on" id="pay-m-month" onclick="paySetMode('month',this)">📅 รายเดือน</button>
+          <button class="pt-b" id="pay-m-daily" onclick="paySetMode('daily',this)">📆 รายวัน</button>
+        </div>
+        <div id="pay-month-box" style="display:flex;gap:6px;align-items:center;font-size:12px">
+          <span style="color:var(--mu)">เดือน</span><input class="fi" type="month" id="pay-month" style="width:160px">
+        </div>
+        <div id="pay-daily-box" style="display:none;gap:6px;align-items:center;font-size:12px;flex-wrap:wrap">
+          <span style="color:var(--mu)">ตั้งแต่</span><input class="fi" type="date" id="pay-from" style="width:150px">
+          <span style="color:var(--mu)">ถึง</span><input class="fi" type="date" id="pay-to" style="width:150px">
+          <span style="color:var(--mu)">จ่ายวันที่</span><input class="fi" type="date" id="pay-payday" style="width:150px">
+        </div>
+        <button class="btn bp" style="padding:8px 18px" onclick="renderPayroll()">🔍 คำนวณ</button>
+        <button class="btn bo" style="padding:8px 14px" onclick="exportPayrollCSV()">📥 ส่งออก</button>
+      </div>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="kpi bl"><div class="kpi-ic bl">👷</div><div class="kpi-lb">จำนวนพนักงาน</div><div class="kpi-vl"><span id="pay-k1">0</span></div></div>
+      <div class="kpi or"><div class="kpi-ic or">📆</div><div class="kpi-lb">วันทำงานรวม</div><div class="kpi-vl"><span id="pay-k2">0</span></div></div>
+      <div class="kpi gn"><div class="kpi-ic gn">⏳</div><div class="kpi-lb">ชั่วโมงรวม</div><div class="kpi-vl"><span id="pay-k3">0</span></div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">💰</div><div class="kpi-lb">ยอดจ่ายรวม</div><div class="kpi-vl"><small>฿</small><span id="pay-k4">0</span></div></div>
+    </div>
+    <div class="tc">
+      <div class="tc-hd"><div class="card-t">ตารางสรุปค่าจ้าง</div><span id="pay-period" style="font-size:11px;color:var(--mu)"></span></div>
+      <table><thead><tr><th>พนักงาน</th><th>ประเภท</th><th style="text-align:center">วันทำงาน</th><th style="text-align:right">ชั่วโมง</th><th style="text-align:right">อัตรา</th><th style="text-align:right">ยอดจ่าย</th><th></th></tr></thead>
+      <tbody id="pay-tbl"></tbody></table>
+    </div>
   </div>
 
   <!-- ══ PRODUCTS ══ -->
@@ -1098,6 +1202,12 @@ const DB = {
     {id:'JOB-2026-0002',title:'สำรวจระบบไฟโรงงาน',cust:'C003',date:'2026-05-22',due:'2026-05-30',assignee:'วิศวกร ข',status:'ตรวจงาน',desc:'สำรวจและประเมินระบบไฟฟ้าเดิม','location':'โรงงานนิคมบางปู','gps':null,surveyPhotos:[],beforePhotos:[],afterPhotos:[],inspectNote:'',value:25000},
     {id:'JOB-2026-0001',title:'เปลี่ยนหม้อแปลง',cust:'C002',date:'2026-05-15',due:'2026-05-20',assignee:'ทีมช่าง ก',status:'ส่งมอบแล้ว',desc:'เปลี่ยนหม้อแปลงไฟฟ้า 250kVA','location':'สำนักงานใหญ่','gps':null,surveyPhotos:[],beforePhotos:[],afterPhotos:[],inspectNote:'ผ่านการตรวจสอบเรียบร้อย',approved:true,value:320000},
   ],
+  employees:[
+    {id:'EMP-001',name:'สมชาย ใจดี',role:'ช่างไฟฟ้า',phone:'0812345678',payType:'monthly',rate:18000,payDay:30,pin:'1111',lineId:'',active:true},
+    {id:'EMP-002',name:'สมหญิง รักงาน',role:'ผู้ช่วยช่าง',phone:'0823456789',payType:'daily',rate:450,payDay:0,pin:'2222',lineId:'',active:true},
+    {id:'EMP-003',name:'วิชัย ก่อสร้าง',role:'หัวหน้าช่าง',phone:'0834567890',payType:'monthly',rate:25000,payDay:30,pin:'3333',lineId:'',active:true},
+  ],
+  attendance:[],
 };
 
 // ══════════════════════════════════
@@ -1111,7 +1221,7 @@ const statusBadge = s => {
   const m={ชำระแล้ว:'b-paid',รอชำระ:'b-pend',เกินกำหนด:'b-over',อนุมัติแล้ว:'b-paid',รออนุมัติ:'b-grey',ปฏิเสธ:'b-over','ไม่อนุมัติ':'b-over','ดำเนินการแล้ว':'b-done2','แบ่งจ่าย':'b-split',รับของแล้ว:'b-paid',รอรับของ:'b-pend',จัดส่งแล้ว:'b-paid','บันทึกแล้ว':'b-paid'};
   return `<span class="badge ${m[s]||'b-pend'}">${s}</span>`;
 };
-let idCounters={quotes:46,invoices:90,delivery:33,cashsale:19,po:22,receive:16,expense:42,installments:6,jobs:3};
+let idCounters={quotes:46,invoices:90,delivery:33,cashsale:19,po:22,receive:16,expense:42,installments:6,jobs:3,employees:3,attendance:0};
 // ตั้งค่าเลขที่เอกสาร: คำนำหน้า (prefix) + เลขรันถัดไป (แก้ไขได้)
 let docNumbering={
   quotes:{prefix:'QT',year:2026,next:46,digits:4},
@@ -1123,6 +1233,7 @@ let docNumbering={
   expense:{prefix:'EXP',year:2026,next:42,digits:4},
   installments:{prefix:'INST',year:2026,next:6,digits:4},
   jobs:{prefix:'JOB',year:2026,next:4,digits:4},
+  employees:{prefix:'EMP',year:2026,next:4,digits:3},
 };
 const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน'};
 const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs'};
@@ -1164,7 +1275,7 @@ function toast(msg){
 // ══════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════
-const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:'💰 แคชเชียร์',quotes:'📄 ใบเสนอราคา',quoteEdit:'📝 แก้ไขใบเสนอราคา',invoices:'📋 ใบวางบิล',installments:'🗓️ ใบแบ่งจ่าย',delivery:'📦 ใบส่งสินค้า / ใบแจ้งหนี้',cashsale:'🛒 ขายเงินสด',po:'🗂️ ใบสั่งซื้อ',receive:'📥 ใบรับสินค้า',expense:'💳 ค่าใช้จ่าย',products:'📦 สินค้า',contacts:'👥 สมุดรายชื่อ',reports:'📊 รายงาน',settings:'⚙️ การตั้งค่า',journal:'📒 สมุดรายวัน',ledger:'📚 บัญชีแยกประเภท',financials:'📈 งบการเงิน',vat:'🧾 รายงานภาษี',coa:'🗃️ ผังบัญชี',cashflow:'💵 งบกระแสเงินสด',cogs:'📦 ต้นทุน-กำไรขั้นต้น',wht:'📑 ภาษีหัก ณ ที่จ่าย',aging:'⏰ งบอายุหนี้',closing:'🔒 ปิดงวดบัญชี',summary:'📋 สรุปบัญชี',jobs:'🛠️ จัดการงาน'};
+const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:'💰 แคชเชียร์',quotes:'📄 ใบเสนอราคา',quoteEdit:'📝 แก้ไขใบเสนอราคา',invoices:'📋 ใบวางบิล',installments:'🗓️ ใบแบ่งจ่าย',delivery:'📦 ใบส่งสินค้า / ใบแจ้งหนี้',cashsale:'🛒 ขายเงินสด',po:'🗂️ ใบสั่งซื้อ',receive:'📥 ใบรับสินค้า',expense:'💳 ค่าใช้จ่าย',products:'📦 สินค้า',contacts:'👥 สมุดรายชื่อ',reports:'📊 รายงาน',settings:'⚙️ การตั้งค่า',journal:'📒 สมุดรายวัน',ledger:'📚 บัญชีแยกประเภท',financials:'📈 งบการเงิน',vat:'🧾 รายงานภาษี',coa:'🗃️ ผังบัญชี',cashflow:'💵 งบกระแสเงินสด',cogs:'📦 ต้นทุน-กำไรขั้นต้น',wht:'📑 ภาษีหัก ณ ที่จ่าย',aging:'⏰ งบอายุหนี้',closing:'🔒 ปิดงวดบัญชี',summary:'📋 สรุปบัญชี',jobs:'🛠️ จัดการงาน',employees:'👷 จัดการพนักงาน',timeclock:'⏰ ลงเวลาเข้า-ออก',payroll:'💵 จ่ายเงินเดือน'};
 let curPage='dashboard';
 
 function nav(page){
@@ -1194,7 +1305,7 @@ function renderPage(page){
     expense:renderExpense,products:renderProducts,contacts:renderContacts,
     reports:renderReports,settings:renderSettings,installments:renderInst,
     journal:renderJournal,ledger:renderLedger,financials:renderFinancials,vat:renderVat,coa:renderCOA,
-    cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing,summary:renderSummary,jobs:renderJobs};
+    cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing,summary:renderSummary,jobs:renderJobs,employees:renderEmployees,timeclock:renderTimeclock,payroll:renderPayroll};
   if(r[page]) r[page]();
 }
 
@@ -2761,7 +2872,8 @@ function openJobForm(id){
       <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่องาน *</label><input class="fi" id="job-title" value="${j?(j.title||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ติดตั้งตู้ MDB อาคาร A"></div>
       <div class="fl2">
         <div class="fg"><label class="flb">ลูกค้า</label><select class="fi" id="job-cust"><option value="">— เลือกลูกค้า —</option>${custOpts}</select></div>
-        <div class="fg"><label class="flb">ผู้รับผิดชอบ</label><input class="fi" id="job-assignee" value="${j?(j.assignee||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ทีมช่าง ก"></div>
+        <div class="fg"><label class="flb">ผู้รับผิดชอบ (พนักงาน)</label><select class="fi" id="job-assignee-sel"><option value="">— เลือกพนักงาน —</option>${(DB.employees||[]).filter(e=>e.active).map(e=>`<option value="${e.id}" ${j&&(j.assigneeId===e.id||j.assignee===e.name)?'selected':''}>${e.name} (${e.role||''})</option>`).join('')}</select></div>
+        <div class="fg"><label class="flb">หรือระบุทีม/ชื่ออื่น</label><input class="fi" id="job-assignee" value="${j&&j.assignee&&!(DB.employees||[]).some(e=>e.id===j.assigneeId||e.name===j.assignee)?(j.assignee||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น ทีมช่าง ก"></div>
         <div class="fg"><label class="flb">วันที่เริ่ม</label><input class="fi" type="date" id="job-date" value="${j?j.date:new Date().toISOString().slice(0,10)}"></div>
         <div class="fg"><label class="flb">กำหนดเสร็จ</label><input class="fi" type="date" id="job-due" value="${j?(j.due||''):''}"></div>
         <div class="fg"><label class="flb">มูลค่างาน (บาท)</label><input class="fi" type="number" id="job-value" value="${j?(j.value||0):0}"></div>
@@ -2861,7 +2973,7 @@ function saveJob(){
   const rec={
     id: jobEditId || nextId('jobs'),
     title, cust:document.getElementById('job-cust').value,
-    assignee:document.getElementById('job-assignee').value,
+    ...(function(){ const selId=document.getElementById('job-assignee-sel')?.value||''; const free=(document.getElementById('job-assignee')?.value||'').trim(); const e=selId?empById(selId):null; return {assignee:e?e.name:free, assigneeId:selId||''}; })(),
     date:document.getElementById('job-date').value,
     due:document.getElementById('job-due').value,
     value:+document.getElementById('job-value').value||0,
@@ -2943,18 +3055,18 @@ async function jobStartWork(id){
   toast('📍 กำลังบันทึกเวลา+ตำแหน่งเริ่มงาน...');
   const gps=await captureGpsNow();
   j.startedAt=new Date().toISOString(); j.startGps=gps; j.status='กำลังทำ';
-  saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer();
+  saveData(); renderJobs&&renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer&&closeDrawer();
   toast(gps?'🔧 เริ่มงานแล้ว · บันทึกเวลา+ตำแหน่ง':'🔧 เริ่มงานแล้ว · บันทึกเวลา (ไม่มี GPS)');
-  setTimeout(()=>openJobDrawer(id),100);
+  if(!(curUser&&curUser.isEmployee)) setTimeout(()=>openJobDrawer(id),100);
 }
 async function jobFinishWork(id){
   const j=DB.jobs.find(x=>x.id===id); if(!j) return;
   toast('📍 กำลังบันทึกเวลา+ตำแหน่งเสร็จงาน...');
   const gps=await captureGpsNow();
   j.finishedAt=new Date().toISOString(); j.finishGps=gps; j.status='ตรวจงาน';
-  saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer();
+  saveData(); renderJobs&&renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer&&closeDrawer();
   toast(gps?'✅ ส่งตรวจงานแล้ว · บันทึกเวลา+ตำแหน่ง':'✅ ส่งตรวจงานแล้ว · บันทึกเวลา (ไม่มี GPS)');
-  setTimeout(()=>openJobDrawer(id),100);
+  if(!(curUser&&curUser.isEmployee)) setTimeout(()=>openJobDrawer(id),100);
 }
 function jobSetStatus(id,st){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status=st; saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('🔄 เปลี่ยนสถานะเป็น: '+st); setTimeout(()=>openJobDrawer(id),100); } }
 function jobApprove(id,ok){
@@ -3804,7 +3916,7 @@ function dbRecordCount(d){
 // ── ซิงค์รูปภาพข้ามเครื่อง: เก็บรูปแต่ละรูปเป็นเอกสารแยกใน Firestore ──
 // (รูปบีบอัดแล้วเล็กกว่า 1MB ต่อรูป · ซิงค์เฉพาะรูปใหม่ · อ้างอิงด้วย hash ของเนื้อหา)
 const IMG_FIELDS_ARR=['slips','surveyPhotos','beforePhotos','afterPhotos'];
-const IMG_FIELDS_ONE=['slip','img'];
+const IMG_FIELDS_ONE=['slip','img','inPhoto','outPhoto'];
 const IMG_REF='@img:';
 function imgHash(str){ let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h+str.charCodeAt(i))|0; } return 'i'+(h>>>0).toString(36)+'x'+(str.length.toString(36)); }
 function cloudImgURL(id){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz_img/${id}?key=${cloudCfg.apiKey}`; }
@@ -4071,6 +4183,263 @@ const _origToast=toast;
 // ══════════════════════════════════
 // LOGIN
 // ══════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// 👷 ระบบพนักงาน + ลงเวลา + เงินเดือน (HR)
+// ══════════════════════════════════════════════════════════
+function empById(id){ return (DB.employees||[]).find(e=>e.id===id); }
+function attHours(rec){ if(!rec||!rec.inTime||!rec.outTime) return 0; const ms=new Date(rec.outTime)-new Date(rec.inTime); return ms>0?ms/3600000:0; }
+function attToday(empId){ const d=new Date().toISOString().slice(0,10); return (DB.attendance||[]).find(a=>a.empId===empId&&a.date===d); }
+function fmtTime(iso){ if(!iso) return '-'; const d=new Date(iso); if(isNaN(d)) return '-'; return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
+
+// ── จัดการพนักงาน ──
+function renderEmployees(){
+  const emps=DB.employees||[];
+  const q=(document.getElementById('emp-search')?.value||'').toLowerCase();
+  const today=new Date().toISOString().slice(0,10);
+  document.getElementById('emp-k1').textContent=emps.length;
+  document.getElementById('emp-k2').textContent=emps.filter(e=>e.payType==='monthly').length;
+  document.getElementById('emp-k3').textContent=emps.filter(e=>e.payType==='daily').length;
+  document.getElementById('emp-k4').textContent=(DB.attendance||[]).filter(a=>a.date===today&&a.inTime).length;
+  const grid=document.getElementById('empGrid');
+  const list=emps.filter(e=>!q||(e.name+e.role+e.phone).toLowerCase().includes(q));
+  if(!list.length){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:32px">ยังไม่มีพนักงาน — กด "เพิ่มพนักงาน"</div>'; return; }
+  grid.innerHTML=list.map(e=>{
+    const att=attToday(e.id);
+    const statusDot=att&&att.inTime&&!att.outTime?'<span style="color:var(--ok);font-weight:600">🟢 อยู่ในงาน</span>':att&&att.outTime?'<span style="color:var(--mu)">⚪ ออกงานแล้ว</span>':'<span style="color:var(--mu)">⚪ ยังไม่เข้างาน</span>';
+    return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openEmpDrawer('${e.id}')">
+      <div style="background:linear-gradient(135deg,#0A6EBD,#00C9A7);padding:14px;color:#fff;display:flex;align-items:center;gap:12px">
+        <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initials(e.name)}</div>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div><div style="font-size:12px;opacity:.9">${e.role||'-'}</div></div>
+        ${!e.active?'<span class="badge" style="background:#fff;color:var(--dg)">พักงาน</span>':''}
+      </div>
+      <div style="padding:12px;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px">
+        <span style="color:var(--mu)">รหัส</span><span style="font-weight:500">${e.id}</span>
+        <span style="color:var(--mu)">โทร</span><span>${e.phone||'-'}</span>
+        <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+'/เดือน':'฿'+fmt(e.rate)+'/วัน'}</span>
+        <span style="color:var(--mu)">สถานะวันนี้</span><span>${statusDot}</span>
+      </div></div>`;
+  }).join('');
+}
+function openEmployeeForm(id){
+  const e=id?empById(id):null;
+  document.getElementById('ml-t').textContent=id?'แก้ไขพนักงาน':'เพิ่มพนักงาน';
+  document.getElementById('ml-s').textContent=id?e.id:'กรอกข้อมูลพนักงานและค่าจ้าง';
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อ-นามสกุล *</label><input class="fi" id="ef-name" value="${e?(e.name||'').replace(/"/g,'&quot;'):''}" placeholder="เช่น สมชาย ใจดี"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">ตำแหน่ง</label><input class="fi" id="ef-role" value="${e?(e.role||'').replace(/"/g,'&quot;'):''}" placeholder="ช่างไฟฟ้า"></div>
+      <div class="fg"><label class="flb">เบอร์โทร</label><input class="fi" id="ef-phone" value="${e?(e.phone||''):''}" placeholder="08x-xxx-xxxx"></div>
+    </div>
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin:12px 0">
+      <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px">💰 ค่าจ้าง</div>
+      <div class="fl2">
+        <div class="fg"><label class="flb">ประเภท</label><select class="fi" id="ef-paytype" onchange="efPayTypeChange()"><option value="monthly"${!e||e.payType==='monthly'?' selected':''}>รายเดือน</option><option value="daily"${e&&e.payType==='daily'?' selected':''}>รายวัน</option></select></div>
+        <div class="fg"><label class="flb" id="ef-rate-lb">${(!e||e.payType==='monthly')?'เงินเดือน (บาท)':'ค่าจ้าง/วัน (บาท)'}</label><input class="fi" type="number" id="ef-rate" value="${e?(e.rate||0):''}" placeholder="0"></div>
+      </div>
+      <div class="fg" id="ef-payday-box" style="margin-top:8px;${(e&&e.payType==='daily')?'display:none':''}"><label class="flb">จ่ายเงินทุกวันที่ (ของเดือน)</label><input class="fi" type="number" min="1" max="31" id="ef-payday" value="${e?(e.payDay||30):30}" placeholder="30"></div>
+    </div>
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px">🔐 บัญชีเข้าระบบพนักงาน</div>
+      <div class="fl2">
+        <div class="fg"><label class="flb">รหัส PIN (เข้าระบบ)</label><input class="fi" id="ef-pin" value="${e?(e.pin||''):''}" placeholder="เช่น 1234" maxlength="6"></div>
+        <div class="fg"><label class="flb">LINE ID (ไม่บังคับ)</label><input class="fi" id="ef-line" value="${e?(e.lineId||''):''}" placeholder="@lineid"></div>
+      </div>
+    </div>
+    <div class="set-row"><div class="set-ic">✅</div><div style="flex:1"><div class="set-t">สถานะใช้งาน</div><div class="set-s">ปิดเพื่อพักงาน (ไม่คิดเงินเดือน)</div></div><button class="sw ${!e||e.active?'on':''}" id="ef-active" onclick="this.classList.toggle('on')"></button></div>`;
+  document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delEmployee('${id}')">🗑️</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveEmployee()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function efPayTypeChange(){ const t=document.getElementById('ef-paytype').value; document.getElementById('ef-rate-lb').textContent=t==='monthly'?'เงินเดือน (บาท)':'ค่าจ้าง/วัน (บาท)'; document.getElementById('ef-payday-box').style.display=t==='monthly'?'':'none'; }
+let empEditId=null;
+function saveEmployee(){
+  const name=document.getElementById('ef-name').value.trim();
+  if(!name){ toast('⚠️ กรุณาใส่ชื่อพนักงาน'); return; }
+  const rec={
+    id: empEditId||nextId('employees'),
+    name, role:document.getElementById('ef-role').value.trim(),
+    phone:document.getElementById('ef-phone').value.trim(),
+    payType:document.getElementById('ef-paytype').value,
+    rate:+document.getElementById('ef-rate').value||0,
+    payDay:+document.getElementById('ef-payday').value||30,
+    pin:document.getElementById('ef-pin').value.trim(),
+    lineId:document.getElementById('ef-line').value.trim(),
+    active:document.getElementById('ef-active').classList.contains('on'),
+  };
+  if(empEditId){ const i=DB.employees.findIndex(x=>x.id===empEditId); DB.employees[i]=rec; }
+  else DB.employees.unshift(rec);
+  empEditId=null; saveData(); closeModal(); renderEmployees();
+  toast('✅ บันทึกข้อมูลพนักงานแล้ว');
+}
+function openEmpForm(id){ empEditId=id||null; openEmployeeForm(id); }
+function delEmployee(id){ if(confirm('ลบพนักงานคนนี้?')){ const i=DB.employees.findIndex(x=>x.id===id); if(i>=0) DB.employees.splice(i,1); empEditId=null; saveData(); closeModal(); renderEmployees(); toast('🗑️ ลบพนักงานแล้ว'); } }
+function openEmpDrawer(id){
+  const e=empById(id); if(!e) return;
+  const month=new Date().toISOString().slice(0,7);
+  const recs=(DB.attendance||[]).filter(a=>a.empId===id&&a.date.startsWith(month));
+  const days=recs.filter(a=>a.inTime).length;
+  const hrs=recs.reduce((s,a)=>s+attHours(a),0);
+  const info=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:12px">
+    <span style="color:var(--mu)">ตำแหน่ง</span><span style="font-weight:500">${e.role||'-'}</span>
+    <span style="color:var(--mu)">เบอร์โทร</span><span>${e.phone||'-'}</span>
+    <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+' /เดือน':'฿'+fmt(e.rate)+' /วัน'}</span>
+    ${e.payType==='monthly'?`<span style="color:var(--mu)">จ่ายทุกวันที่</span><span>${e.payDay||30}</span>`:''}
+    <span style="color:var(--mu)">PIN เข้าระบบ</span><span style="font-weight:600">${e.pin||'-'}</span>
+    <span style="color:var(--mu)">สถานะ</span><span>${e.active?'<span class="badge b-paid">ใช้งาน</span>':'<span class="badge b-over">พักงาน</span>'}</span>
+  </div>
+  <div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px">
+    <div style="font-weight:700;color:var(--p);margin-bottom:6px">📊 สรุปเดือนนี้</div>
+    <div style="display:flex;justify-content:space-around;text-align:center">
+      <div><div style="font-size:20px;font-weight:800;color:var(--p)">${days}</div><div style="color:var(--mu)">วันทำงาน</div></div>
+      <div><div style="font-size:20px;font-weight:800;color:var(--ok)">${hrs.toFixed(1)}</div><div style="color:var(--mu)">ชั่วโมง</div></div>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEmpForm('${e.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="closeDrawer();nav('payroll')">💵 ดูเงินเดือน</button></div>`;
+  openDrawer(e.id,null,[['พนักงาน',e.name],['รหัส',e.id]],info);
+}
+
+// ── ลงเวลาเข้า-ออก (GPS + รูป) ──
+let _tcTimer=null;
+function renderTimeclock(){
+  // นาฬิกาเรียลไทม์
+  const tick=()=>{ const d=new Date(); const c=document.getElementById('tc-clock'); if(c) c.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0'); const dd=document.getElementById('tc-date'); if(dd) dd.textContent=fmtD(d.toISOString().slice(0,10)); };
+  tick(); if(_tcTimer) clearInterval(_tcTimer); _tcTimer=setInterval(tick,1000);
+  // dropdown พนักงาน
+  const sel=document.getElementById('tc-emp');
+  if(sel){ const cur=sel.value; sel.innerHTML='<option value="">— เลือกพนักงาน —</option>'+(DB.employees||[]).filter(e=>e.active).map(e=>`<option value="${e.id}">${e.name} (${e.role||''})</option>`).join(''); if(cur) sel.value=cur; }
+  // สถานะวันนี้ของพนักงานที่เลือก
+  tcRenderStatus();
+  // ประวัติ 7 วัน
+  const tb=document.getElementById('tc-history'); if(tb){
+    const recent=[...(DB.attendance||[])].sort((a,b)=>(b.date+(b.inTime||'')).localeCompare(a.date+(a.inTime||''))).slice(0,30);
+    if(!recent.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีการลงเวลา</td></tr>'; }
+    else tb.innerHTML=recent.map(a=>{
+      const e=empById(a.empId);
+      const ph=[a.inPhoto,a.outPhoto].filter(Boolean);
+      const gpsLink=g=>g?`<a href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank" style="color:var(--p)">📍</a>`:'';
+      return `<tr><td style="white-space:nowrap">${fmtD(a.date)}</td><td>${e?e.name:a.empId}</td>
+        <td style="color:var(--ok);font-weight:600">${fmtTime(a.inTime)} ${gpsLink(a.inGps)}</td>
+        <td style="color:var(--dg);font-weight:600">${fmtTime(a.outTime)} ${gpsLink(a.outGps)}</td>
+        <td style="text-align:right;font-weight:700">${attHours(a)?attHours(a).toFixed(1):'-'}</td>
+        <td>${ph.map(p=>`<img src="${p}" onclick="window.open('${p}')" style="width:28px;height:28px;border-radius:5px;object-fit:cover;cursor:pointer;margin-right:3px;vertical-align:middle">`).join('')||'-'}</td></tr>`;
+    }).join('');
+  }
+}
+function tcRenderStatus(){
+  const empId=document.getElementById('tc-emp')?.value;
+  const box=document.getElementById('tc-status'); if(!box) return;
+  if(!empId){ box.innerHTML='<div style="text-align:center;color:var(--mu);font-size:13px;padding:10px">เลือกพนักงานเพื่อลงเวลา</div>'; return; }
+  const att=attToday(empId);
+  if(!att||!att.inTime){ box.innerHTML='<div style="background:#FFF3E8;border-radius:10px;padding:12px;text-align:center;font-size:13px;color:#b45309">⚪ วันนี้ยังไม่ได้ลงเวลาเข้า</div>'; }
+  else if(!att.outTime){ box.innerHTML=`<div style="background:#E8F8F0;border-radius:10px;padding:12px;text-align:center;font-size:13px;color:var(--ok)">🟢 เข้างานแล้วเมื่อ ${fmtTime(att.inTime)} น. — ยังไม่ลงเวลาออก</div>`; }
+  else { box.innerHTML=`<div style="background:var(--bg);border-radius:10px;padding:12px;text-align:center;font-size:13px">✅ วันนี้: เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · รวม ${attHours(att).toFixed(1)} ชม.</div>`; }
+}
+document.addEventListener('change',e=>{ if(e.target&&e.target.id==='tc-emp') tcRenderStatus(); });
+let _tcPending=null;
+function tcClock(dir){
+  const empId=document.getElementById('tc-emp')?.value;
+  if(!empId){ toast('⚠️ เลือกพนักงานก่อน'); return; }
+  const att=attToday(empId);
+  if(dir==='in'&&att&&att.inTime){ if(!confirm('วันนี้ลงเวลาเข้าแล้ว — ลงใหม่ทับ?')) return; }
+  if(dir==='out'&&(!att||!att.inTime)){ if(!confirm('ยังไม่ได้ลงเวลาเข้า — ลงเวลาออกเลยไหม?')) return; }
+  _tcPending={dir,empId};
+  const inp=document.getElementById('tc-photo-input');
+  inp.value=''; inp.onchange=tcPhotoTaken; inp.click();
+}
+async function tcPhotoTaken(ev){
+  const file=ev.target.files&&ev.target.files[0];
+  if(!_tcPending) return; const {dir,empId}=_tcPending;
+  toast('📍 กำลังบันทึกเวลา+ตำแหน่ง...');
+  let photo=null;
+  if(file){ try{ photo=await compressReceiptImage(file,900,0.7); }catch(e){} }
+  const gps=await captureGpsNow();
+  const today=new Date().toISOString().slice(0,10);
+  let rec=(DB.attendance||[]).find(a=>a.empId===empId&&a.date===today);
+  if(!rec){ rec={id:nextId('attendance'),empId,date:today}; DB.attendance.unshift(rec); }
+  if(dir==='in'){ rec.inTime=new Date().toISOString(); rec.inGps=gps; rec.inPhoto=photo; }
+  else { rec.outTime=new Date().toISOString(); rec.outGps=gps; rec.outPhoto=photo; }
+  _tcPending=null; saveData();
+  if(typeof renderTimeclock==='function'&&document.getElementById('pg-timeclock')?.classList.contains('active')) renderTimeclock();
+  if(typeof renderEmpPortal==='function'&&curUser&&curUser.isEmployee) renderEmpPortal();
+  toast(dir==='in'?'🟢 ลงเวลาเข้าสำเร็จ'+(gps?' (มี GPS)':''):'🔴 ลงเวลาออกสำเร็จ'+(gps?' (มี GPS)':''));
+}
+
+// ── จ่ายเงินเดือน (รายเดือน/รายวัน) ──
+let payMode='month', payData=[];
+function paySetMode(m,el){ payMode=m; document.querySelectorAll('#pay-m-month,#pay-m-daily').forEach(b=>b.classList.remove('on')); el.classList.add('on'); document.getElementById('pay-month-box').style.display=m==='month'?'flex':'none'; document.getElementById('pay-daily-box').style.display=m==='daily'?'flex':'none'; }
+function renderPayroll(){
+  // ค่าเริ่มต้น
+  const mEl=document.getElementById('pay-month'); if(mEl&&!mEl.value) mEl.value=new Date().toISOString().slice(0,7);
+  const fEl=document.getElementById('pay-from'), tEl=document.getElementById('pay-to'), pdEl=document.getElementById('pay-payday');
+  if(fEl&&!fEl.value){ const n=new Date(); fEl.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`; }
+  if(tEl&&!tEl.value) tEl.value=new Date().toISOString().slice(0,10);
+  if(pdEl&&!pdEl.value) pdEl.value=new Date().toISOString().slice(0,10);
+  let from,to,periodLabel;
+  if(payMode==='month'){ const m=mEl.value||new Date().toISOString().slice(0,7); from=m+'-01'; const [y,mo]=m.split('-'); to=`${y}-${mo}-${String(new Date(+y,+mo,0).getDate()).padStart(2,'0')}`; periodLabel='เดือน '+fmtD(from).split(' ').slice(1).join(' '); }
+  else { from=fEl.value; to=tEl.value; periodLabel=`${fmtD(from)} - ${fmtD(to)} · จ่าย ${fmtD(pdEl.value)}`; }
+  const emps=(DB.employees||[]).filter(e=>e.active);
+  payData=emps.map(e=>{
+    const recs=(DB.attendance||[]).filter(a=>a.empId===e.id&&a.date>=from&&a.date<=to&&a.inTime);
+    const days=recs.length;
+    const hrs=recs.reduce((s,a)=>s+attHours(a),0);
+    let amount=0;
+    if(e.payType==='monthly'){ amount = payMode==='month' ? e.rate : Math.round(e.rate/30*days); }
+    else { amount = e.rate*days; }
+    return {emp:e,days,hrs,amount};
+  }).filter(r=>payMode==='month'?true:r.days>0);
+  document.getElementById('pay-k1').textContent=payData.length;
+  document.getElementById('pay-k2').textContent=payData.reduce((s,r)=>s+r.days,0);
+  document.getElementById('pay-k3').textContent=payData.reduce((s,r)=>s+r.hrs,0).toFixed(1);
+  document.getElementById('pay-k4').textContent=fmt(payData.reduce((s,r)=>s+r.amount,0));
+  document.getElementById('pay-period').textContent=periodLabel;
+  const tb=document.getElementById('pay-tbl');
+  if(!payData.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:24px">ไม่มีข้อมูล</td></tr>'; return; }
+  tb.innerHTML=payData.map(r=>`<tr>
+    <td><div style="font-weight:600">${r.emp.name}</div><div style="font-size:11px;color:var(--mu)">${r.emp.role||''}</div></td>
+    <td><span class="badge ${r.emp.payType==='monthly'?'b-paid':'b-part'}">${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}</span></td>
+    <td style="text-align:center">${r.days}</td>
+    <td style="text-align:right">${r.hrs.toFixed(1)}</td>
+    <td style="text-align:right">${fmt(r.emp.rate)}${r.emp.payType==='daily'?'/วัน':''}</td>
+    <td style="text-align:right;font-weight:700;color:var(--p)">฿${fmt(r.amount)}</td>
+    <td><button class="btn bo" style="font-size:11px;padding:5px 10px" onclick="printPayslip('${r.emp.id}')">🧾 สลิป</button></td>
+  </tr>`).join('');
+}
+function exportPayrollCSV(){
+  if(!payData.length){ toast('⚠️ กดคำนวณก่อน'); return; }
+  let csv='\uFEFFสรุปค่าจ้าง FlowBiz\n'+document.getElementById('pay-period').textContent+'\n\nชื่อ,ตำแหน่ง,ประเภท,วันทำงาน,ชั่วโมง,อัตรา,ยอดจ่าย\n';
+  payData.forEach(r=>{ csv+=`"${r.emp.name}","${r.emp.role||''}","${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}",${r.days},${r.hrs.toFixed(1)},${r.emp.rate},${r.amount}\n`; });
+  csv+=`\nรวม,,,${payData.reduce((s,r)=>s+r.days,0)},${payData.reduce((s,r)=>s+r.hrs,0).toFixed(1)},,${payData.reduce((s,r)=>s+r.amount,0)}\n`;
+  dlCSV(csv,'payroll_'+(document.getElementById('pay-month')?.value||'')+'.csv');
+}
+function printPayslip(empId){
+  const e=empById(empId); if(!e) return;
+  const r=payData.find(x=>x.emp.id===empId)||{emp:e,days:0,hrs:0,amount:e.payType==='monthly'?e.rate:0};
+  const period=document.getElementById('pay-period')?.textContent||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const today=new Date().toISOString().slice(0,10);
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>สลิปเงินเดือน ${e.id}</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact}
+  body{padding:30px;color:#1a1a1a;font-size:13px}.hd{display:flex;justify-content:space-between;border-bottom:3px solid #0A6EBD;padding-bottom:12px;margin-bottom:16px}
+  .cn{font-size:15px;font-weight:700;color:#0A6EBD}.ca{font-size:11px;color:#555;margin-top:3px;max-width:380px}.ti h1{font-size:22px;color:#0A6EBD;text-align:right}
+  .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;background:#F0F7FF;padding:14px 16px;border-radius:8px;margin-bottom:16px;font-size:12px}.meta b{color:#0A6EBD}
+  table{width:100%;border-collapse:collapse;margin-bottom:16px}td,th{padding:9px 12px;border:1px solid #e5e5e5;font-size:12px}th{background:#F0F7FF;color:#0A6EBD;text-align:left}
+  .total{display:flex;justify-content:space-between;background:#0A6EBD;color:#fff;padding:14px 18px;border-radius:8px;font-size:16px;font-weight:700}
+  .sig{display:flex;justify-content:space-between;margin-top:40px;gap:30px}.sig-col{flex:1;text-align:center}.sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
+  @media print{body{padding:0}}</style></head><body>
+  <div class="hd"><div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}</div></div><div class="ti"><h1>สลิปเงินเดือน</h1><div style="text-align:right;font-size:12px;margin-top:4px">วันที่จ่าย ${fmtSlash(today)}</div></div></div>
+  <div class="meta"><div><b>ชื่อพนักงาน:</b> ${e.name}</div><div><b>รหัส:</b> ${e.id}</div><div><b>ตำแหน่ง:</b> ${e.role||'-'}</div><div><b>ประเภท:</b> ${e.payType==='monthly'?'รายเดือน':'รายวัน'}</div><div style="grid-column:1/-1"><b>งวด:</b> ${period}</div></div>
+  <table><thead><tr><th>รายการ</th><th style="text-align:center">จำนวน</th><th style="text-align:right">จำนวนเงิน (บาท)</th></tr></thead><tbody>
+    ${e.payType==='monthly'?`<tr><td>เงินเดือน</td><td style="text-align:center">1 เดือน</td><td style="text-align:right">${fmt(r.amount)}</td></tr>`:`<tr><td>ค่าจ้างรายวัน (${fmt(e.rate)}/วัน)</td><td style="text-align:center">${r.days} วัน</td><td style="text-align:right">${fmt(r.amount)}</td></tr>`}
+    <tr><td>จำนวนวันทำงาน</td><td style="text-align:center">${r.days} วัน</td><td style="text-align:right">-</td></tr>
+    <tr><td>จำนวนชั่วโมงรวม</td><td style="text-align:center">${r.hrs.toFixed(1)} ชม.</td><td style="text-align:right">-</td></tr>
+  </tbody></table>
+  <div class="total"><span>ยอดจ่ายสุทธิ</span><span>฿ ${fmt(r.amount)}</span></div>
+  <div style="text-align:center;font-size:12px;color:#666;margin-top:8px">(${bahtText(r.amount)})</div>
+  <div class="sig"><div class="sig-col"><div class="sig-line">ผู้รับเงิน (${e.name})</div></div><div class="sig-col"><div class="sig-line">ผู้จ่ายเงิน (${CO.seller})</div></div></div>
+  </body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'สลิปเงินเดือน '+e.id,{});
+  else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
+}
+
 const USERS={
   admin:{pass:'1234',name:'ผู้ดูแลระบบ',role:'Admin',av:'WK'},
   user01:{pass:'1234',name:'สมชาย ใจดี',role:'พนักงานบัญชี',av:'สช'},
@@ -4108,6 +4477,140 @@ function doLogout(){
 function toggleUserMenu(){ const m=document.getElementById('userMenu'); m.style.display=m.style.display==='none'?'block':'none'; }
 document.addEventListener('click',e=>{ if(!e.target.closest('#userAv')&&!e.target.closest('#userMenu')){ const m=document.getElementById('userMenu'); if(m)m.style.display='none'; } });
 document.getElementById('lg-pass').addEventListener('keydown',e=>{ if(e.key==='Enter') doLogin(); });
+
+// ── สลับแท็บ ผู้ดูแล / พนักงาน ──
+function lgSwitch(mode){
+  const admin=mode==='admin';
+  document.getElementById('lgtab-admin').classList.toggle('on',admin);
+  document.getElementById('lgtab-emp').classList.toggle('on',!admin);
+  document.getElementById('lgtab-admin').style.background=admin?'#fff':'transparent';
+  document.getElementById('lgtab-admin').style.color=admin?'var(--p)':'var(--mu)';
+  document.getElementById('lgtab-emp').style.background=!admin?'#fff':'transparent';
+  document.getElementById('lgtab-emp').style.color=!admin?'var(--p)':'var(--mu)';
+  document.getElementById('loginForm').style.display=admin?'block':'none';
+  document.getElementById('empLoginForm').style.display=admin?'none':'block';
+  if(!admin){ const sel=document.getElementById('elg-emp'); sel.innerHTML=(DB.employees||[]).filter(e=>e.active).map(e=>`<option value="${e.id}">${e.name} (${e.role||''})</option>`).join('')||'<option value="">ยังไม่มีพนักงาน</option>'; }
+}
+// ── ล็อกอินพนักงาน ──
+function doEmpLogin(){
+  const empId=document.getElementById('elg-emp').value;
+  const pin=document.getElementById('elg-pin').value.trim();
+  const e=empById(empId);
+  if(e&&e.active&&e.pin&&e.pin===pin){
+    curUser={id:empId,isEmployee:true,empId,name:e.name,role:e.role||'พนักงาน',av:initials(e.name)};
+    try{ sessionStorage.setItem('flowbiz_emp',empId); }catch(err){}
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('elg-pin').value='';
+    document.getElementById('elg-err').style.display='none';
+    openEmpPortal();
+    toast('👋 สวัสดี '+e.name);
+  } else { document.getElementById('elg-err').style.display='block'; }
+}
+document.getElementById('elg-pin').addEventListener('keydown',e=>{ if(e.key==='Enter') doEmpLogin(); });
+function doEmpLogout(){
+  try{ sessionStorage.removeItem('flowbiz_emp'); }catch(e){}
+  curUser=null;
+  if(_epTimer){ clearInterval(_epTimer); _epTimer=null; }
+  document.getElementById('empPortal').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  lgSwitch('emp');
+}
+// ── พอร์ทัลพนักงาน ──
+let _epTimer=null;
+function openEmpPortal(){
+  document.getElementById('empPortal').style.display='block';
+  const e=empById(curUser.empId);
+  document.getElementById('ep-av').textContent=initials(e.name);
+  document.getElementById('ep-name').textContent=e.name;
+  document.getElementById('ep-role').textContent=e.role||'พนักงาน';
+  const tick=()=>{ const d=new Date(); const c=document.getElementById('ep-clock'); if(c) c.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0'); const dd=document.getElementById('ep-date'); if(dd) dd.textContent=fmtD(d.toISOString().slice(0,10)); };
+  tick(); if(_epTimer) clearInterval(_epTimer); _epTimer=setInterval(tick,1000);
+  renderEmpPortal();
+}
+function empMyJobs(e){
+  // จับคู่งานของฉัน: assigneeId ตรง หรือชื่อผู้รับผิดชอบมีชื่อพนักงาน
+  return (DB.jobs||[]).filter(j=> j.assigneeId===e.id || (j.assignee&&e.name&&j.assignee.includes(e.name)) );
+}
+function renderEmpPortal(){
+  const e=empById(curUser.empId); if(!e) return;
+  const att=attToday(e.id);
+  const month=new Date().toISOString().slice(0,7);
+  const recs=(DB.attendance||[]).filter(a=>a.empId===e.id&&a.date.startsWith(month)&&a.inTime);
+  const days=recs.length, hrs=recs.reduce((s,a)=>s+attHours(a),0);
+  const estPay=e.payType==='monthly'?e.rate:e.rate*days;
+  const myJobs=empMyJobs(e);
+  const activeJobs=myJobs.filter(j=>j.status!=='ส่งมอบแล้ว');
+  // สถานะลงเวลาวันนี้
+  let clockCard;
+  if(!att||!att.inTime) clockCard=`<div style="background:#FFF3E8;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:#b45309;margin-bottom:10px">⚪ วันนี้ยังไม่ได้ลงเวลาเข้า</div>`;
+  else if(!att.outTime) clockCard=`<div style="background:#E8F8F0;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--ok);margin-bottom:10px">🟢 เข้างานแล้ว ${fmtTime(att.inTime)} น.</div>`;
+  else clockCard=`<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;font-size:13px;margin-bottom:10px">✅ เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · ${attHours(att).toFixed(1)} ชม.</div>`;
+  const body=`
+    <!-- ลงเวลา -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:10px">⏰ ลงเวลาเข้า-ออกงาน</div>
+      ${clockCard}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <button class="btn bp" style="justify-content:center;padding:16px;background:var(--ok);font-size:14px" onclick="epClock('in')">🟢 เข้างาน<br><span style="font-size:10px;opacity:.9;font-weight:400">ถ่ายรูป+GPS</span></button>
+        <button class="btn bp" style="justify-content:center;padding:16px;background:var(--dg);font-size:14px" onclick="epClock('out')">🔴 ออกงาน<br><span style="font-size:10px;opacity:.9;font-weight:400">ถ่ายรูป+GPS</span></button>
+      </div>
+    </div>
+    <!-- สรุปของฉัน -->
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+      <div style="font-weight:700;font-size:14px;margin-bottom:12px">📊 สรุปเดือนนี้</div>
+      <div style="display:flex;justify-content:space-around;text-align:center">
+        <div><div style="font-size:24px;font-weight:800;color:var(--p)">${days}</div><div style="font-size:11px;color:var(--mu)">วันทำงาน</div></div>
+        <div><div style="font-size:24px;font-weight:800;color:var(--ok)">${hrs.toFixed(1)}</div><div style="font-size:11px;color:var(--mu)">ชั่วโมง</div></div>
+        <div><div style="font-size:24px;font-weight:800;color:var(--ac)">฿${fmt(estPay)}</div><div style="font-size:11px;color:var(--mu)">${e.payType==='monthly'?'เงินเดือน':'ค่าจ้างสะสม'}</div></div>
+      </div>
+      <div style="font-size:10.5px;color:var(--mu);text-align:center;margin-top:10px">* ยอดประมาณการ — รอบจ่ายจริงโดยฝ่ายบุคคล</div>
+    </div>
+    <!-- งานของฉัน -->
+    <div style="background:#fff;border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:700;font-size:14px">🛠️ งานที่ได้รับมอบหมาย</div>
+        <span class="badge ${activeJobs.length?'b-pend':'b-paid'}">${activeJobs.length} งานค้าง</span>
+      </div>
+      ${myJobs.length?myJobs.slice(0,10).map(j=>{
+        const cust=getCust(j.cust);
+        return `<div style="border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px">
+          <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px"><div style="font-weight:600;font-size:13px">${j.title}</div>${jobStatusBadge?jobStatusBadge(j.status):'<span class="badge">'+j.status+'</span>'}</div>
+          <div style="font-size:11.5px;color:var(--mu);margin-bottom:8px">${cust.name||j.cust||'-'}${j.location?' · 📍'+j.location:''}${j.due?' · กำหนด '+fmtD(j.due):''}</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            ${(j.status==='รอทำ'||j.status==='สำรวจ')?`<button class="btn bp" style="font-size:11px;padding:6px 10px" onclick="epJobStart('${j.id}')">🔧 เริ่มงาน</button>`:''}
+            ${j.status==='กำลังทำ'?`<button class="btn bp" style="font-size:11px;padding:6px 10px;background:var(--ac)" onclick="epJobFinish('${j.id}')">✅ เสร็จงาน</button>`:''}
+            ${j.gps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank">🗺️ แผนที่</a>`:''}
+            <button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="epJobDetail('${j.id}')">📄 รายละเอียด</button>
+          </div></div>`;
+      }).join(''):'<div style="text-align:center;color:var(--mu);font-size:13px;padding:20px">ยังไม่มีงานที่ได้รับมอบหมาย</div>'}
+    </div>`;
+  document.getElementById('ep-body').innerHTML=body;
+}
+// ลงเวลาในพอร์ทัล (ตัวเองเท่านั้น)
+function epClock(dir){
+  const empId=curUser.empId; const att=attToday(empId);
+  if(dir==='in'&&att&&att.inTime){ if(!confirm('วันนี้ลงเวลาเข้าแล้ว — ลงใหม่ทับ?')) return; }
+  if(dir==='out'&&(!att||!att.inTime)){ if(!confirm('ยังไม่ได้ลงเวลาเข้า — ลงเวลาออกเลยไหม?')) return; }
+  _tcPending={dir,empId};
+  const inp=document.getElementById('ep-photo-input');
+  inp.value=''; inp.onchange=tcPhotoTaken; inp.click();
+}
+function epJobDetail(id){
+  const j=(DB.jobs||[]).find(x=>x.id===id); if(!j) return;
+  const cust=getCust(j.cust);
+  const ph=arr=>(arr&&arr.length)?`<div style="display:flex;gap:6px;overflow-x:auto;margin:6px 0">${arr.map(p=>`<img src="${p}" onclick="window.open('${p}')" style="height:80px;width:68px;object-fit:cover;border-radius:8px;flex-shrink:0">`).join('')}</div>`:'';
+  const html=`<div style="font-weight:700;font-size:15px;margin-bottom:8px">${j.title}</div>
+    <div style="font-size:12px;color:var(--mu);line-height:1.7">
+    สถานะ: ${j.status}<br>ลูกค้า: ${cust.name||j.cust||'-'}<br>สถานที่: ${j.location||'-'}<br>กำหนดเสร็จ: ${j.due?fmtD(j.due):'-'}<br>${j.desc?'รายละเอียด: '+j.desc:''}</div>`;
+  document.getElementById('ml-t').textContent='รายละเอียดงาน';
+  document.getElementById('ml-s').textContent=j.id;
+  document.getElementById('ml-bd').innerHTML=html+ph(j.surveyPhotos)+ph(j.beforePhotos)+ph(j.afterPhotos);
+  document.getElementById('ml-act').innerHTML='<button class="btn bp" onclick="closeModal()">ปิด</button>';
+  document.getElementById('ml').classList.add('op');
+}
+async function epJobStart(id){ await jobStartWork(id); closeDrawer(); renderEmpPortal(); }
+async function epJobFinish(id){ await jobFinishWork(id); closeDrawer(); renderEmpPortal(); }
+
 
 // ══════════════════════════════════
 // PRINT / PDF
@@ -5371,6 +5874,8 @@ loadData();
 // auto-login if session exists
 (function(){
   try{
+    const se=sessionStorage.getItem('flowbiz_emp');
+    if(se){ const e=empById(se); if(e&&e.active){ curUser={id:se,isEmployee:true,empId:se,name:e.name,role:e.role||'พนักงาน',av:initials(e.name)}; document.getElementById('loginScreen').style.display='none'; openEmpPortal(); return; } }
     const su=sessionStorage.getItem('flowbiz_user');
     if(su&&USERS[su]){ curUser={id:su,...USERS[su]}; applyUser(); document.getElementById('loginScreen').style.display='none'; }
   }catch(e){}
