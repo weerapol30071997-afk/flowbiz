@@ -2928,9 +2928,9 @@ function jobApprove(id,ok){
 }
 function jobDeliver(id){ const j=DB.jobs.find(x=>x.id===id); if(j){ j.status='ส่งมอบแล้ว'; j.deliverDate=new Date().toISOString().slice(0,10); saveData(); renderJobs(); updateNavBadges&&updateNavBadges(); closeDrawer(); toast('📦 บันทึกการส่งมอบงานแล้ว'); setTimeout(()=>openJobDrawer(id),100); } }
 
-// ── ใบส่งมอบงาน (พิมพ์) — ละเอียดระดับมืออาชีพ ──
-function printJobDelivery(id){
-  const j=DB.jobs.find(x=>x.id===id); if(!j) return;
+// ── ใบส่งมอบงาน — สร้าง HTML (ใช้ร่วมกันทั้งพิมพ์และแชร์ PDF) ──
+function jobDeliveryHtml(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j) return '';
   const cust=getCust(j.cust);
   const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
   const today=new Date().toISOString().slice(0,10);
@@ -3007,31 +3007,23 @@ function printJobDelivery(id){
     </div>
     <div class="foot">เอกสารนี้ออกโดยระบบ FlowBiz · ${CO.name} · พิมพ์เมื่อ ${fmtSlash(today)}</div>
   </body></html>`;
+  return html;
+}
+function printJobDelivery(id){
+  const html=jobDeliveryHtml(id); if(!html) return;
+  const j=DB.jobs.find(x=>x.id===id);
   if(typeof showPrintPreview==='function'){ showPrintPreview(html,'ใบส่งมอบงาน '+j.id,{}); }
   else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),500); }
 }
-// ── แชร์ใบส่งมอบงานช่องทางอื่น (LINE/อีเมล/บันทึกรูป) ──
+// ── แชร์ใบส่งมอบงานเป็น PDF จริง (ชื่อไฟล์ = เลขที่งาน) ──
 async function shareJobDelivery(id){
   const j=DB.jobs.find(x=>x.id===id); if(!j) return;
-  const cust=getCust(j.cust);
-  const txt=`📦 ใบส่งมอบงาน ${j.id}\nงาน: ${j.title}\nลูกค้า: ${cust.name||j.cust||'-'}\nสถานที่: ${j.location||'-'}\nมูลค่างาน: ฿${fmt(j.value||0)}\nสถานะ: ส่งมอบแล้ว${j.gps?`\n📍 พิกัด: https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}`:''}\n\nจาก ${(companyInfo&&companyInfo.name)||'W.K Engineering'}`;
-  if(navigator.share){
-    try{ await navigator.share({title:'ใบส่งมอบงาน '+j.id,text:txt}); toast('📤 แชร์แล้ว'); return; }catch(e){ if(e.name==='AbortError') return; }
-  }
-  // fallback: เลือกช่องทาง
-  document.getElementById('ml-t').textContent='📤 แชร์ใบส่งมอบงาน';
-  document.getElementById('ml-s').textContent=j.id;
-  const enc=encodeURIComponent(txt);
-  document.getElementById('ml-bd').innerHTML=`
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <a class="btn bo" style="justify-content:center;text-decoration:none;padding:13px" href="https://line.me/R/share?text=${enc}" target="_blank">💚 แชร์ผ่าน LINE</a>
-      <a class="btn bo" style="justify-content:center;text-decoration:none;padding:13px" href="mailto:?subject=${encodeURIComponent('ใบส่งมอบงาน '+j.id)}&body=${enc}">✉️ ส่งอีเมล</a>
-      <a class="btn bo" style="justify-content:center;text-decoration:none;padding:13px" href="https://wa.me/?text=${enc}" target="_blank">📱 WhatsApp</a>
-      <button class="btn bo" style="justify-content:center;padding:13px" onclick="navigator.clipboard.writeText(\`${txt.replace(/`/g,'')}\`).then(()=>toast('📋 คัดลอกข้อความแล้ว'))">📋 คัดลอกข้อความ</button>
-      <button class="btn bp" style="justify-content:center;padding:13px" onclick="closeModal();printJobDelivery('${id}')">🖨️ พิมพ์ / บันทึก PDF</button>
-    </div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
-  document.getElementById('ml').classList.add('op');
+  const html=jobDeliveryHtml(id); if(!html) return;
+  toast('⏳ กำลังสร้าง PDF ใบส่งมอบงาน...');
+  try{
+    const blob=await pdfFromHtmlString(html,(s)=>toast('⏳ '+s+'...'));
+    await sharePdfBlob(blob, j.id+'.pdf');
+  }catch(e){ toast('⚠️ สร้าง PDF ไม่สำเร็จ: '+(e.message||'ลองใหม่')); }
 }
 
 
@@ -4376,6 +4368,46 @@ function doPrintPreview(){
   try{ f.contentWindow.focus(); f.contentWindow.print(); }
   catch(e){ window.print(); }
 }
+// สร้าง PDF จาก HTML string (เรนเดอร์ในเฟรมซ่อน) — ใช้ตอนแชร์โดยไม่เปิดพรีวิว
+async function pdfFromHtmlString(html, onStep){
+  await loadPdfLibs();
+  const iframe=document.createElement('iframe');
+  iframe.style.cssText='position:fixed;left:0;top:0;width:794px;height:1123px;border:0;opacity:0.01;z-index:-1;pointer-events:none';
+  document.body.appendChild(iframe);
+  try{
+    const doc=iframe.contentDocument; doc.open(); doc.write(html); doc.close();
+    if(onStep) onStep('เตรียมเอกสาร');
+    await new Promise(r=>setTimeout(r,350));
+    try{ if(doc.fonts&&doc.fonts.ready) await doc.fonts.ready; }catch(e){}
+    // รอรูปโหลดครบ
+    const imgs=[...doc.images];
+    await Promise.all(imgs.map(im=>im.complete?Promise.resolve():new Promise(res=>{ im.onload=im.onerror=res; setTimeout(res,5000); })));
+    await new Promise(r=>setTimeout(r,200));
+    if(onStep) onStep('กำลังสร้าง PDF');
+    const body=doc.body;
+    const tall=body.scrollHeight>3200;
+    const canvas=await html2canvas(body,{scale:tall?1.25:1.6,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pw=210, ph=297, imgH=canvas.height*pw/canvas.width;
+    const imgData=canvas.toDataURL('image/jpeg',0.9);
+    let heightLeft=imgH, pos=0;
+    pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST'); heightLeft-=ph;
+    while(heightLeft>0){ pos-=ph; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST'); heightLeft-=ph; }
+    return pdf.output('blob');
+  } finally { iframe.remove(); }
+}
+// แชร์/บันทึก PDF blob (ตั้งชื่อไฟล์)
+async function sharePdfBlob(blob, filename){
+  const file=new File([blob],filename,{type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file],title:filename}); return; }
+    catch(e){ if(e&&e.name==='AbortError') return; }
+  }
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  toast('📥 บันทึก PDF แล้ว: '+filename);
+}
 // โหลดไลบรารีสร้าง PDF (html2canvas + jsPDF) ครั้งเดียว
 let _pdfLibs=null;
 function loadPdfLibs(){
@@ -4396,7 +4428,7 @@ function printDocFileId(){
   const m=t.match(/[A-Z]{2,5}-\d{4}-\d+/); if(m) return m[0];
   return 'document';
 }
-// แชร์/บันทึกเอกสารเป็น PDF จริง (ชื่อไฟล์ = เลขที่เอกสาร)
+// แชร์/บันทึกเอกสารในพรีวิวเป็น PDF จริง (ชื่อไฟล์ = เลขที่เอกสาร)
 async function shareDoc(){
   const f=document.getElementById('printFrame');
   if(!f||!f.contentDocument){ toast('⚠️ ไม่พบเอกสาร'); return; }
@@ -4404,33 +4436,9 @@ async function shareDoc(){
   toast('⏳ กำลังสร้าง PDF...');
   const btn=event&&event.target; if(btn){ btn.disabled=true; btn.style.opacity='.6'; }
   try{
-    await loadPdfLibs();
-    const doc=f.contentDocument, body=doc.body;
-    // รอฟอนต์ในเฟรมพร้อม
-    try{ if(doc.fonts&&doc.fonts.ready) await doc.fonts.ready; }catch(e){}
-    await new Promise(r=>setTimeout(r,250));
-    const tall=body.scrollHeight>3200;
-    const canvas=await html2canvas(body,{scale:tall?1.25:1.6,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
-    const { jsPDF }=window.jspdf;
-    const pdf=new jsPDF('p','mm','a4');
-    const pw=210, ph=297;
-    const imgH=canvas.height*pw/canvas.width;
-    const imgData=canvas.toDataURL('image/jpeg',0.9);
-    let heightLeft=imgH, pos=0;
-    pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST');
-    heightLeft-=ph;
-    while(heightLeft>0){ pos-=ph; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST'); heightLeft-=ph; }
-    const blob=pdf.output('blob');
-    const file=new File([blob],fname,{type:'application/pdf'});
-    // แชร์ไฟล์ PDF (iOS/Android)
-    if(navigator.canShare && navigator.canShare({files:[file]})){
-      try{ await navigator.share({files:[file],title:fname}); if(btn){btn.disabled=false;btn.style.opacity='1';} return; }
-      catch(e){ if(e&&e.name==='AbortError'){ if(btn){btn.disabled=false;btn.style.opacity='1';} return; } }
-    }
-    // สำรอง: ดาวน์โหลด PDF
-    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
-    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-    toast('📥 บันทึก PDF แล้ว: '+fname);
+    const html='<!DOCTYPE html>'+f.contentDocument.documentElement.outerHTML;
+    const blob=await pdfFromHtmlString(html);
+    await sharePdfBlob(blob, fname);
   }catch(e){ toast('⚠️ สร้าง PDF ไม่สำเร็จ: '+(e.message||'ลองใหม่')); }
   if(btn){ btn.disabled=false; btn.style.opacity='1'; }
 }
