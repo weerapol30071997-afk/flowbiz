@@ -3002,7 +3002,7 @@ function printJobDelivery(id){
     <div class="sec"><div class="sec-t"><span>📸 รูปก่อนทำงาน</span><span style="font-weight:400;color:#999">${(j.beforePhotos||[]).length} รูป</span></div>${photoGrid(j.beforePhotos,'— ไม่มีรูปก่อนทำงาน —')}</div>
     <div class="sec"><div class="sec-t"><span>✨ รูปหลังทำงาน (ผลงานที่ส่งมอบ)</span><span style="font-weight:400;color:#999">${(j.afterPhotos||[]).length} รูป</span></div>${photoGrid(j.afterPhotos,'— ไม่มีรูปหลังทำงาน —')}</div>
     <div class="sig">
-      <div class="sig-col"><div class="sig-box">${sigImg}</div><div class="sig-line">ผู้ส่งมอบงาน</div><div class="note">( ${CO.seller} )</div><div class="note">วันที่ ........./........./.........</div></div>
+      <div class="sig-col"><div class="sig-box">${sigImg}</div><div class="sig-line">ผู้ส่งมอบงาน</div><div class="note">${(CO.showSig!==false&&CO.sigImg)?'&nbsp;':'( '+CO.seller+' )'}</div><div class="note">วันที่ ........./........./.........</div></div>
       <div class="sig-col"><div class="sig-box"></div><div class="sig-line">ผู้รับมอบงาน</div><div class="note">( ........................................ )</div><div class="note">วันที่ ........./........./.........</div></div>
     </div>
     <div class="foot">เอกสารนี้ออกโดยระบบ FlowBiz · ${CO.name} · พิมพ์เมื่อ ${fmtSlash(today)}</div>
@@ -4108,11 +4108,11 @@ function printDoc(type,id,opts){
     ? (r.desc||'ผู้รับเงิน')
     : (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
   const disc=r.disc||0;
-  const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+(b.price||0)*(b.qty||0),0):(r.amt/(r.vat?1.07:1));
+  const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+(b.price||0)*(b.qty||0),0):((r.amt||0)/(r.vat?1.07:1));
   const discAmt=itemsSub*disc/100;
   const afterDisc=itemsSub-discAmt;
   const vat=r.vat?afterDisc*0.07:0;
-  const total=r.amt||r.total;
+  const total=(typeof r.amt==='number'&&!isNaN(r.amt))?r.amt:(typeof r.total==='number'&&!isNaN(r.total))?r.total:(afterDisc+vat);
   const docDate=fmtSlash(r.date);
 
   // เลือกชนิดสำเนา: original / copy / both
@@ -4194,7 +4194,7 @@ function printDoc(type,id,opts){
       ${r.note?`<div class="note">หมายเหตุ: ${r.note}</div>`:''}
       <div class="ft">
         <div class="ft-col"><div class="ft-name">ในนาม ${custName}</div><div class="sig-sign">&nbsp;</div><div class="sig-row"><span>${sigLeft}</span><span>วันที่</span></div></div>
-        <div class="ft-col"><div class="ft-name">ในนาม ${CO.shortName}</div>${(CO.showSig!==false&&CO.sigImg)?`<div style="text-align:center;height:auto;margin-bottom:-6px"><img src="${CO.sigImg}" style="max-height:54px;max-width:160px;object-fit:contain"></div>`:''}<div class="sig-sign">${CO.showSig!==false?CO.seller:'&nbsp;'}</div><div class="sig-row"><span>${sigRight}</span><span>${docDate}</span></div></div>
+        <div class="ft-col"><div class="ft-name">ในนาม ${CO.shortName}</div>${(CO.showSig!==false&&CO.sigImg)?`<div style="text-align:center;height:auto;margin-bottom:-6px"><img src="${CO.sigImg}" style="max-height:54px;max-width:160px;object-fit:contain"></div>`:''}<div class="sig-sign">${(CO.showSig!==false&&!CO.sigImg)?CO.seller:'&nbsp;'}</div><div class="sig-row"><span>${sigRight}</span><span>${docDate}</span></div></div>
       </div>
     </div>`;
   }
@@ -4251,7 +4251,8 @@ function printDoc(type,id,opts){
 
 // แปลงตัวเลขเป็นข้อความภาษาไทย (บาท/สตางค์)
 function bahtText(num){
-  num=Math.round((+num+Number.EPSILON)*100)/100;
+  num=+num; if(!isFinite(num)) num=0;
+  num=Math.round((num+Number.EPSILON)*100)/100;
   const baht=Math.floor(num); const satang=Math.round((num-baht)*100);
   const tnum=['','หนึ่ง','สอง','สาม','สี่','ห้า','หก','เจ็ด','แปด','เก้า'];
   const tpos=['','สิบ','ร้อย','พัน','หมื่น','แสน','ล้าน'];
@@ -4312,7 +4313,7 @@ function showPrintPreview(html, type, id, opts){
           <button id="pv-sig" onclick="toggleSigPreview()" style="padding:6px 12px;border-radius:7px;border:none;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600;background:#00C9A7;color:#fff">✓ แสดง</button>
         </div>
         <div style="margin-left:auto;display:flex;gap:8px">
-          <button onclick="shareDoc()" style="padding:9px 18px;border-radius:8px;border:none;background:#00C9A7;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">📤 แชร์</button>
+          <button onclick="shareDoc()" style="padding:9px 18px;border-radius:8px;border:none;background:#00C9A7;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">📤 แชร์ PDF</button>
           <button onclick="doPrintPreview()" style="padding:9px 18px;border-radius:8px;border:none;background:#6B2FA6;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">พิมพ์ / บันทึก PDF</button>
           <button onclick="closePrintPreview()" style="padding:9px 18px;border-radius:8px;border:none;background:rgba(255,255,255,.15);color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">✕ ปิด</button>
         </div>
@@ -4375,27 +4376,63 @@ function doPrintPreview(){
   try{ f.contentWindow.focus(); f.contentWindow.print(); }
   catch(e){ window.print(); }
 }
-// แชร์เอกสาร: สร้างไฟล์ HTML แล้วใช้ Web Share API (มือถือ) หรือดาวน์โหลด (เดสก์ท็อป)
+// โหลดไลบรารีสร้าง PDF (html2canvas + jsPDF) ครั้งเดียว
+let _pdfLibs=null;
+function loadPdfLibs(){
+  if(_pdfLibs) return _pdfLibs;
+  const load=src=>new Promise((res,rej)=>{ const s=document.createElement('script'); s.src=src; s.onload=res; s.onerror=()=>rej(new Error('โหลดไลบรารีไม่ได้ (เน็ต?)')); document.head.appendChild(s); });
+  _pdfLibs=Promise.all([
+    load('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'),
+    load('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js')
+  ]);
+  return _pdfLibs;
+}
+// หาเลขที่เอกสารสำหรับตั้งชื่อไฟล์
+function printDocFileId(){
+  if(typeof printCtx.id==='string' && printCtx.id) return printCtx.id;
+  if(typeof printCtx.type==='string'){ const m=printCtx.type.match(/[A-Za-z]+-\d{4}-\d+/); if(m) return m[0]; }
+  const f=document.getElementById('printFrame');
+  const t=f&&f.contentDocument?(f.contentDocument.body.textContent||''):'';
+  const m=t.match(/[A-Z]{2,5}-\d{4}-\d+/); if(m) return m[0];
+  return 'document';
+}
+// แชร์/บันทึกเอกสารเป็น PDF จริง (ชื่อไฟล์ = เลขที่เอกสาร)
 async function shareDoc(){
   const f=document.getElementById('printFrame');
-  const html=f&&f.contentDocument?'<!DOCTYPE html>'+f.contentDocument.documentElement.outerHTML:'';
-  if(!html){ toast('⚠️ ไม่พบเอกสาร'); return; }
-  const fname=(printCtx.id||'document')+'.html';
-  const blob=new Blob([html],{type:'text/html'});
-  // ลองแชร์เป็นไฟล์ก่อน (iOS/Android รองรับ)
+  if(!f||!f.contentDocument){ toast('⚠️ ไม่พบเอกสาร'); return; }
+  const fname=printDocFileId()+'.pdf';
+  toast('⏳ กำลังสร้าง PDF...');
+  const btn=event&&event.target; if(btn){ btn.disabled=true; btn.style.opacity='.6'; }
   try{
-    if(navigator.canShare){
-      const file=new File([blob],fname,{type:'text/html'});
-      if(navigator.canShare({files:[file]})){
-        await navigator.share({files:[file],title:printCtx.id||'เอกสาร',text:(printCtx.docType||'เอกสาร')+' '+(printCtx.id||'')});
-        return;
-      }
+    await loadPdfLibs();
+    const doc=f.contentDocument, body=doc.body;
+    // รอฟอนต์ในเฟรมพร้อม
+    try{ if(doc.fonts&&doc.fonts.ready) await doc.fonts.ready; }catch(e){}
+    await new Promise(r=>setTimeout(r,250));
+    const tall=body.scrollHeight>3200;
+    const canvas=await html2canvas(body,{scale:tall?1.25:1.6,backgroundColor:'#ffffff',useCORS:true,logging:false,width:794,windowWidth:794});
+    const { jsPDF }=window.jspdf;
+    const pdf=new jsPDF('p','mm','a4');
+    const pw=210, ph=297;
+    const imgH=canvas.height*pw/canvas.width;
+    const imgData=canvas.toDataURL('image/jpeg',0.9);
+    let heightLeft=imgH, pos=0;
+    pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST');
+    heightLeft-=ph;
+    while(heightLeft>0){ pos-=ph; pdf.addPage(); pdf.addImage(imgData,'JPEG',0,pos,pw,imgH,'','FAST'); heightLeft-=ph; }
+    const blob=pdf.output('blob');
+    const file=new File([blob],fname,{type:'application/pdf'});
+    // แชร์ไฟล์ PDF (iOS/Android)
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      try{ await navigator.share({files:[file],title:fname}); if(btn){btn.disabled=false;btn.style.opacity='1';} return; }
+      catch(e){ if(e&&e.name==='AbortError'){ if(btn){btn.disabled=false;btn.style.opacity='1';} return; } }
     }
-    if(navigator.share){ await navigator.share({title:printCtx.id||'เอกสาร',text:(printCtx.docType||'เอกสาร')+' '+(printCtx.id||'')}); return; }
-  }catch(e){ if(e&&e.name==='AbortError') return; }
-  // สำรอง: ดาวน์โหลดไฟล์
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
-  toast('📤 ดาวน์โหลดเอกสารแล้ว (อุปกรณ์นี้ไม่รองรับแชร์ตรง)');
+    // สำรอง: ดาวน์โหลด PDF
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=fname; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast('📥 บันทึก PDF แล้ว: '+fname);
+  }catch(e){ toast('⚠️ สร้าง PDF ไม่สำเร็จ: '+(e.message||'ลองใหม่')); }
+  if(btn){ btn.disabled=false; btn.style.opacity='1'; }
 }
 function fitPrintPreview(){
   try{
