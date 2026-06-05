@@ -222,6 +222,7 @@ tbody tr:hover td{background:#FAFBFD}
 .pt-b.on{background:var(--p);color:#fff;box-shadow:0 2px 6px rgba(10,110,189,.25)}
 /* ANIM */
 @keyframes fiu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .kpi{animation:fiu .4s ease both}
 .kpi:nth-child(1){animation-delay:.05s}.kpi:nth-child(2){animation-delay:.1s}
 .kpi:nth-child(3){animation-delay:.15s}.kpi:nth-child(4){animation-delay:.2s}
@@ -787,10 +788,9 @@ tbody tr:hover td{background:#FAFBFD}
     </div>
     <input type="file" id="tc-photo-input" accept="image/*" capture="user" style="display:none">
     <div id="tc-tracking" style="margin-top:20px"></div>
-    <div class="tc" style="margin-top:20px">
-      <div class="tc-hd"><div class="card-t">ประวัติการลงเวลา (7 วันล่าสุด)</div></div>
-      <table><thead><tr><th>วันที่</th><th>พนักงาน</th><th>เข้า</th><th>ออก</th><th style="text-align:right">ชม.</th><th>รูป/พิกัด</th></tr></thead>
-      <tbody id="tc-history"></tbody></table>
+    <div style="margin-top:20px">
+      <div class="tc-hd" style="margin-bottom:10px"><div class="card-t">📋 ประวัติการลงเวลา (ล่าสุด)</div></div>
+      <div id="tc-history"></div>
     </div>
   </div>
 
@@ -1322,6 +1322,7 @@ const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:
 let curPage='dashboard';
 
 function nav(page){
+  if(!navAllowed(page)){ toast('🔒 ไม่มีสิทธิ์เข้าถึงเมนูนี้'); return; }
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
   document.getElementById('pg-'+page).classList.add('on');
@@ -3133,7 +3134,7 @@ function renderJobPhotos(kind){
   const cnt=document.getElementById('jobph-count-'+kind); if(cnt) cnt.textContent=jobPhotos[kind].length;
   if(!jobPhotos[kind].length){ box.innerHTML=`<div onclick="document.getElementById('jobph-input-${kind}').click()" style="width:100%;height:60px;border:2px dashed var(--bd);border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--mu);font-size:12px">แตะเพื่อเพิ่มรูป</div>`; return; }
   box.innerHTML=jobPhotos[kind].map((img,i)=>`<div style="position:relative;flex-shrink:0">
-    <img src="${img}" style="width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--bd);cursor:pointer" onclick="window.open('${img}')">
+    <img src="${img}" style="width:78px;height:78px;object-fit:cover;border-radius:9px;border:1px solid var(--bd);cursor:pointer" onclick="photoView('${img}')">
     <button onclick="jobPhotos['${kind}'].splice(${i},1);renderJobPhotos('${kind}')" style="position:absolute;top:-6px;right:-6px;width:21px;height:21px;border-radius:50%;background:var(--dg);color:#fff;border:none;font-size:11px;cursor:pointer;line-height:1;padding:0">✕</button>
   </div>`).join('');
 }
@@ -3177,7 +3178,7 @@ function openJobDrawer(id){
   const photoGrid=(arr,label)=>{
     if(!arr||!arr.length) return '';
     return `<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">${label} (${arr.length})</div>
-      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">${arr.map(img=>`<img src="${img}" onclick="window.open('${img}')" style="height:100px;width:84px;object-fit:cover;border-radius:9px;border:1px solid var(--bd);cursor:pointer;flex-shrink:0">`).join('')}</div></div>`;
+      <div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:4px">${arr.map(img=>`<img src="${img}" onclick="photoView('${img}')" style="height:100px;width:84px;object-fit:cover;border-radius:9px;border:1px solid var(--bd);cursor:pointer;flex-shrink:0">`).join('')}</div></div>`;
   };
   const info=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:14px;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:12px">
     <span style="color:var(--mu)">สถานะ</span><span>${jobStatusBadge(j.status)}</span>
@@ -3362,6 +3363,20 @@ function pickPhotos(multiple, cb){
   inp.style.display='none'; document.body.appendChild(inp);
   inp.onchange=async ()=>{ const files=[...(inp.files||[])]; const imgs=[]; for(const f of files){ try{ imgs.push(await compressReceiptImage(f,1200,0.72)); }catch(e){} } inp.remove(); cb(imgs); };
   inp.click();
+}
+// ── Lightbox ดูรูปเต็มจอ (แตะรูปไหนก็ได้) ──
+function photoView(src,cap){
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.93);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;animation:fadeIn .15s';
+  ov.onclick=()=>ov.remove();
+  ov.innerHTML=`<img src="${src}" onclick="event.stopPropagation()" style="max-width:100%;max-height:84vh;object-fit:contain;border-radius:10px;box-shadow:0 12px 50px rgba(0,0,0,.6)">
+    ${cap?`<div style="color:#fff;font-size:13px;margin-top:14px;text-align:center;max-width:90%">${cap}</div>`:''}
+    <div style="position:absolute;top:16px;right:16px;display:flex;gap:10px">
+      <a href="${src}" download="photo-${Date.now()}.jpg" onclick="event.stopPropagation()" style="background:rgba(255,255,255,.22);color:#fff;width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;text-decoration:none">⬇</a>
+      <button style="background:rgba(255,255,255,.22);color:#fff;border:none;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer;font-family:inherit">✕</button>
+    </div>
+    <div style="position:absolute;bottom:18px;color:rgba(255,255,255,.6);font-size:11px">แตะพื้นที่ว่างเพื่อปิด · แตะรูปเพื่อซูม (นิ้ว)</div>`;
+  document.body.appendChild(ov);
 }
 function jobRefreshAfter(id){
   saveData(); renderJobs&&renderJobs(); updateNavBadges&&updateNavBadges();
@@ -4781,7 +4796,8 @@ function empMonthView(id,ym){
     const isOff=off.includes(wd);
     let cell;
     if(a&&a.inTime){ const h=attHours(a); totHrs+=h; workDays++;
-      cell=`<span style="color:var(--ok);font-weight:600">${fmtTime(a.inTime)}</span> - <span style="color:var(--dg);font-weight:600">${fmtTime(a.outTime)}</span> <b style="float:right">${h?h.toFixed(1):'-'} ชม.${isOff?' <span style="color:var(--ac);font-size:10px">(หยุด)</span>':''}</b>`;
+      const thumb=(photo,lbl)=>photo?`<img src="${photo}" onclick="event.stopPropagation();photoView('${photo}','${lbl} ${fmtD(a.date)}')" style="width:30px;height:30px;border-radius:5px;object-fit:cover;cursor:pointer;vertical-align:middle;margin-left:3px">`:'';
+      cell=`<span style="color:var(--ok);font-weight:600">${fmtTime(a.inTime)}</span>${thumb(a.inPhoto,'เข้างาน')} - <span style="color:var(--dg);font-weight:600">${fmtTime(a.outTime)}</span>${thumb(a.outPhoto,'ออกงาน')} <b style="float:right">${h?h.toFixed(1):'-'} ชม.${isOff?' <span style="color:var(--ac);font-size:10px">(หยุด)</span>':''}</b>`;
     } else if(isOff){ cell='<span style="color:var(--ac)">วันหยุด</span>'; }
     else { cell='<span style="color:#c0392b">— ไม่ได้ลงเวลา —</span>'; }
     rows+=`<div style="display:flex;gap:8px;padding:7px 0;border-bottom:1px solid #f0f0f0;font-size:12px;${isOff?'background:#fafbfc':''}"><span style="width:62px;color:${isOff?'var(--ac)':'var(--tx)'};font-weight:600">${dayNames[wd]} ${d}/${m}</span><span style="flex:1">${cell}</span></div>`;
@@ -4879,18 +4895,39 @@ function renderTimeclock(){
   }
   const tb=document.getElementById('tc-history'); if(tb){
     const recent=[...(DB.attendance||[])].sort((a,b)=>(b.date+(b.inTime||'')).localeCompare(a.date+(a.inTime||''))).slice(0,30);
-    if(!recent.length){ tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีการลงเวลา</td></tr>'; }
-    else tb.innerHTML=recent.map(a=>{
-      const e=empById(a.empId);
-      const ph=[a.inPhoto,a.outPhoto].filter(Boolean);
-      const gpsLink=g=>g?`<a href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank" style="color:var(--p)">📍</a>`:'';
-      return `<tr><td style="white-space:nowrap">${fmtD(a.date)}</td><td>${e?e.name:a.empId}</td>
-        <td style="color:var(--ok);font-weight:600">${fmtTime(a.inTime)} ${gpsLink(a.inGps)}</td>
-        <td style="color:var(--dg);font-weight:600">${fmtTime(a.outTime)} ${gpsLink(a.outGps)}</td>
-        <td style="text-align:right;font-weight:700">${attHours(a)?attHours(a).toFixed(1):'-'}</td>
-        <td>${ph.map(p=>`<img src="${p}" onclick="window.open('${p}')" style="width:28px;height:28px;border-radius:5px;object-fit:cover;cursor:pointer;margin-right:3px;vertical-align:middle">`).join('')||'-'}</td></tr>`;
-    }).join('');
+    if(!recent.length){ tb.innerHTML='<div style="text-align:center;color:var(--mu);padding:28px;font-size:13px">ยังไม่มีการลงเวลา</div>'; }
+    else tb.innerHTML=recent.map(a=>attnCard(a,true)).join('');
   }
+}
+// การ์ดประวัติลงเวลา 1 รายการ (รูปเข้า/ออกใหญ่ แตะดูได้)
+function attnCard(a,showName){
+  const e=empById(a.empId);
+  const h=attHours(a);
+  const working=a.inTime&&!a.outTime;
+  const slot=(label,time,photo,gps,color)=>{
+    const mapL=gps?`<a href="https://maps.google.com/?q=${gps.lat},${gps.lng}" target="_blank" onclick="event.stopPropagation()" style="color:var(--p);font-size:10.5px;text-decoration:none">📍 แผนที่</a>`:'';
+    const img=photo
+      ? `<img src="${photo}" onclick="photoView('${photo}','${label} ${fmtTime(time)} น.')" style="width:100%;height:96px;object-fit:cover;border-radius:9px;cursor:pointer;display:block">`
+      : `<div style="width:100%;height:96px;border-radius:9px;background:var(--bg);display:flex;align-items:center;justify-content:center;color:#c4ccd4;font-size:22px">📷</div>`;
+    return `<div style="flex:1;min-width:0">
+      <div style="font-size:11px;font-weight:700;color:${color};margin-bottom:4px">${label} ${time?fmtTime(time)+' น.':'<span style="color:var(--mu);font-weight:400">—</span>'}</div>
+      ${img}
+      <div style="text-align:center;margin-top:3px">${mapL}</div>
+    </div>`;
+  };
+  return `<div class="card" style="padding:12px;margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;gap:8px">
+      <div>${showName?`<span style="font-weight:700;font-size:13px">${e?e.name:a.empId}</span> · `:''}<span style="font-size:12px;color:var(--mu)">${fmtD(a.date)}</span></div>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${working?'<span class="badge b-paid" style="font-size:10px">🟢 อยู่ในงาน</span>':''}
+        <span style="background:#EAF4FF;color:var(--p);font-weight:700;font-size:12px;padding:3px 10px;border-radius:20px">${h?h.toFixed(1)+' ชม.':'-'}</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px">
+      ${slot('🟢 เข้า',a.inTime,a.inPhoto,a.inGps,'var(--ok)')}
+      ${slot('🔴 ออก',a.outTime,a.outPhoto,a.outGps,'var(--dg)')}
+    </div>
+  </div>`;
 }
 function tcRenderStatus(){
   const empId=document.getElementById('tc-emp')?.value;
@@ -5146,11 +5183,29 @@ function doLogin(){
     document.getElementById('lg-err').style.display='block';
   }
 }
+const NAV_MODULE={dashboard:'core',cashier:'sales',quotes:'sales',invoices:'sales',installments:'sales',delivery:'sales',cashsale:'sales',contacts:'sales',products:'sales',po:'purchase',receive:'purchase',expense:'acct',summary:'acct',journal:'acct',ledger:'acct',financials:'acct',cashflow:'acct',cogs:'acct',vat:'acct',wht:'acct',aging:'acct',coa:'acct',closing:'acct',reports:'acct',jobs:'jobs',employees:'hr',timeclock:'hr',payroll:'hr',tracking:'hr',settings:'settings'};
+const ROLE_MODULES={full:null,manager:['core','sales','purchase','jobs','hr'],accountant:['core','sales','purchase','acct']};
+function navAllowed(page){ const lvl=curUser&&curUser.accessLevel; const allow=lvl&&ROLE_MODULES[lvl]; if(!allow) return true; const mod=NAV_MODULE[page]||'core'; return mod==='core'||allow.includes(mod); }
+function applyPermissions(){
+  const lvl=(curUser&&curUser.accessLevel)||'full';
+  const allowed=ROLE_MODULES[lvl];
+  document.querySelectorAll('nav.sb .ni').forEach(btn=>{
+    const oc=btn.getAttribute('onclick')||''; const mt=oc.match(/nav\('([a-zA-Z]+)'\)/); if(!mt) return;
+    const mod=NAV_MODULE[mt[1]]||'core';
+    btn.style.display=(!allowed||mod==='core'||allowed.includes(mod))?'':'none';
+  });
+  document.querySelectorAll('nav.sb .ns').forEach(h=>{
+    let n=h.nextElementSibling, vis=false;
+    while(n&&!n.classList.contains('ns')){ if(n.classList&&n.classList.contains('ni')&&n.style.display!=='none') vis=true; n=n.nextElementSibling; }
+    h.style.display=vis?'':'none';
+  });
+}
 function applyUser(){
   if(!curUser) return;
   document.getElementById('userAv').textContent=curUser.av;
   document.getElementById('um-name').textContent=curUser.name;
   document.getElementById('um-role').textContent=curUser.role;
+  try{ applyPermissions(); }catch(e){}
 }
 function doLogout(){
   try{ sessionStorage.removeItem('flowbiz_user'); }catch(e){}
@@ -5255,12 +5310,7 @@ function renderEmpPortal(){
   else if(!att.outTime) clockCard=`<div style="background:#E8F8F0;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--ok);margin-bottom:10px">🟢 เข้างานแล้ว ${fmtTime(att.inTime)} น. ${att.inGps?`· <a href="https://maps.google.com/?q=${att.inGps.lat},${att.inGps.lng}" target="_blank" style="color:var(--p)">📍</a>`:''}<div id="ep-geo" style="font-size:12px;margin-top:6px;color:var(--mu)">📡 กำลังตรวจตำแหน่ง... (อนุญาตให้เข้าถึงตำแหน่ง)</div></div>`;
   else clockCard=`<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;font-size:13px;margin-bottom:10px">✅ เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · ${attHours(att).toFixed(1)} ชม.</div>`;
   // ประวัติเข้า-ออก 14 วัน
-  const histRows=recs.slice(0,14).map(a=>`<div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 0.8fr;gap:6px;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12px;align-items:center">
-      <span>${fmtD(a.date)}</span>
-      <span style="color:var(--ok)">${fmtTime(a.inTime)} ${a.inPhoto?`<img src="${a.inPhoto}" onclick="window.open('${a.inPhoto}')" style="width:22px;height:22px;border-radius:4px;object-fit:cover;vertical-align:middle">`:''}</span>
-      <span style="color:var(--dg)">${fmtTime(a.outTime)} ${a.outPhoto?`<img src="${a.outPhoto}" onclick="window.open('${a.outPhoto}')" style="width:22px;height:22px;border-radius:4px;object-fit:cover;vertical-align:middle">`:''}</span>
-      <span style="text-align:right;font-weight:700">${attHours(a)?attHours(a).toFixed(1):'-'}</span>
-    </div>`).join('');
+  const histRows=recs.slice(0,14).map(a=>attnCard(a,false)).join('');
   const body=`
     ${newJobs.length?`<div style="background:linear-gradient(135deg,#E67E22,#F39C12);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 14px rgba(230,126,34,.3)">
       <div style="font-size:26px">🔔</div><div style="flex:1"><div style="font-weight:700;font-size:14px">มีงานใหม่ ${newJobs.length} งาน!</div><div style="font-size:12px;opacity:.95">${newJobs.map(j=>j.title).slice(0,2).join(', ')}${newJobs.length>2?' ...':''}</div></div>
@@ -5310,8 +5360,7 @@ function renderEmpPortal(){
       }).join(''):'<div style="text-align:center;color:var(--mu);font-size:13px;padding:20px">ยังไม่มีงานที่ได้รับมอบหมาย</div>'}
     </div>
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="font-weight:700;font-size:14px;margin-bottom:6px">📅 ประวัติเข้า-ออกงาน (14 วันล่าสุด)</div>
-      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 0.8fr;gap:6px;padding:6px 0;border-bottom:2px solid #eee;font-size:11px;color:var(--mu);font-weight:600"><span>วันที่</span><span>เข้า</span><span>ออก</span><span style="text-align:right">ชม.</span></div>
+      <div style="font-weight:700;font-size:14px;margin-bottom:10px">📅 ประวัติเข้า-ออกงาน (14 วันล่าสุด)</div>
       ${histRows||'<div style="text-align:center;color:var(--mu);font-size:13px;padding:16px">ยังไม่มีประวัติ</div>'}
     </div>`;
   document.getElementById('ep-body').innerHTML=body;
@@ -5328,7 +5377,7 @@ function epClock(dir){
 function epJobDetail(id){
   const j=(DB.jobs||[]).find(x=>x.id===id); if(!j) return;
   const cust=getCust(j.cust);
-  const ph=arr=>(arr&&arr.length)?`<div style="display:flex;gap:6px;overflow-x:auto;margin:6px 0">${arr.map(p=>`<img src="${p}" onclick="window.open('${p}')" style="height:80px;width:68px;object-fit:cover;border-radius:8px;flex-shrink:0">`).join('')}</div>`:'';
+  const ph=arr=>(arr&&arr.length)?`<div style="display:flex;gap:6px;overflow-x:auto;margin:6px 0">${arr.map(p=>`<img src="${p}" onclick="photoView('${p}')" style="height:80px;width:68px;object-fit:cover;border-radius:8px;flex-shrink:0">`).join('')}</div>`:'';
   const html=`<div style="font-weight:700;font-size:15px;margin-bottom:8px">${j.title}</div>
     <div style="font-size:12px;color:var(--mu);line-height:1.7">
     สถานะ: ${j.status}<br>ลูกค้า: ${cust.name||j.cust||'-'}<br>สถานที่: ${j.location||'-'}<br>กำหนดเสร็จ: ${j.due?fmtD(j.due):'-'}<br>${j.desc?'รายละเอียด: '+j.desc:''}</div>`;
