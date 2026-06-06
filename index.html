@@ -345,7 +345,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.06b · 📷 เลือกรูปจากคลังได้</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.06g · 👥 รอบจ่ายแยกรายคน</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -368,6 +368,7 @@ tbody tr:hover td{background:#FAFBFD}
   <button class="ni" onclick="nav('timeclock')"><span class="ni-ic">⏰</span>ลงเวลาเข้า-ออก</button>
   <button class="ni" onclick="nav('payroll')"><span class="ni-ic">💵</span>จ่ายเงินเดือน</button>
   <button class="ni" onclick="nav('leaves')"><span class="ni-ic">🏖️</span>อนุมัติการลา</button>
+  <button class="ni" onclick="nav('paytax')"><span class="ni-ic">📑</span>ภาษี/ประกันสังคม</button>
   <button class="ni" onclick="nav('tracking')"><span class="ni-ic">📡</span>ติดตามพนักงาน</button>
   <div class="ns">เอกสารซื้อ</div>
   <button class="ni" onclick="nav('po')"><span class="ni-ic">🗂️</span>ใบสั่งซื้อ</button>
@@ -806,15 +807,30 @@ tbody tr:hover td{background:#FAFBFD}
           <button class="pt-b on" id="pay-m-month" onclick="paySetMode('month',this)">📅 รายเดือน</button>
           <button class="pt-b" id="pay-m-daily" onclick="paySetMode('daily',this)">📆 รายวัน</button>
         </div>
+        <select class="fi" id="pay-group" style="width:auto" onchange="renderPayroll()" title="เลือกกลุ่มพนักงานที่จะจ่าย">
+          <option value="all">👥 ทุกคน</option>
+          <option value="monthly">📅 เฉพาะรายเดือน</option>
+          <option value="daily">📆 เฉพาะรายวัน</option>
+        </select>
         <div id="pay-month-box" style="display:flex;gap:6px;align-items:center;font-size:12px">
           <span style="color:var(--mu)">เดือน</span><input class="fi" type="month" id="pay-month" style="width:160px">
         </div>
         <div id="pay-daily-box" style="display:none;gap:6px;align-items:center;font-size:12px;flex-wrap:wrap">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;width:100%;margin-bottom:6px">
+            <span style="color:var(--mu);align-self:center;font-size:11px">💡 เลือกช่วงวันแล้วจ่ายได้เลย (จ่ายวันต่อวัน / 2 วัน / 4 วันก็ได้ · ระบบแยกแต่ละครั้งไม่จ่ายซ้ำ) ช่วงด่วน:</span>
+            <button class="pt-b" onclick="payQuick(1)">วันนี้</button>
+            <button class="pt-b" onclick="payQuick(1,1)">เมื่อวาน</button>
+            <button class="pt-b" onclick="payQuick(2)">2 วัน</button>
+            <button class="pt-b" onclick="payQuick(3)">3 วัน</button>
+            <button class="pt-b" onclick="payQuick(4)">4 วัน</button>
+            <button class="pt-b" onclick="payQuick(7)">7 วัน</button>
+          </div>
           <span style="color:var(--mu)">ตั้งแต่</span><input class="fi" type="date" id="pay-from" style="width:150px">
           <span style="color:var(--mu)">ถึง</span><input class="fi" type="date" id="pay-to" style="width:150px">
           <span style="color:var(--mu)">จ่ายวันที่</span><input class="fi" type="date" id="pay-payday" style="width:150px">
         </div>
         <button class="btn bp" style="padding:8px 18px" onclick="renderPayroll()">🔍 คำนวณ</button>
+        <button class="btn" style="padding:8px 14px;background:#16a34a;color:#fff;border-color:#16a34a" onclick="payAll()">💵 จ่ายทั้งหมด</button>
         <button class="btn bo" style="padding:8px 14px" onclick="exportPayrollCSV()">📥 ส่งออก</button>
       </div>
     </div>
@@ -822,8 +838,9 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="kpi bl"><div class="kpi-ic bl">👷</div><div class="kpi-lb">จำนวนพนักงาน</div><div class="kpi-vl"><span id="pay-k1">0</span></div></div>
       <div class="kpi or"><div class="kpi-ic or">📆</div><div class="kpi-lb">วันทำงานรวม</div><div class="kpi-vl"><span id="pay-k2">0</span></div></div>
       <div class="kpi gn"><div class="kpi-ic gn">⏳</div><div class="kpi-lb">ชั่วโมงรวม</div><div class="kpi-vl"><span id="pay-k3">0</span></div></div>
-      <div class="kpi rd"><div class="kpi-ic rd">💰</div><div class="kpi-lb">ยอดจ่ายรวม</div><div class="kpi-vl"><small>฿</small><span id="pay-k4">0</span></div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">💰</div><div class="kpi-lb">ยอดจ่ายสุทธิรวม</div><div class="kpi-vl"><small>฿</small><span id="pay-k4">0</span></div></div>
     </div>
+    <div id="pay-summary"></div>
     <div class="tc">
       <div class="tc-hd"><div class="card-t">ตารางสรุปค่าจ้าง</div><span id="pay-period" style="font-size:11px;color:var(--mu)"></span></div>
       <table><thead><tr><th>พนักงาน</th><th>ประเภท</th><th style="text-align:center">วันทำงาน</th><th style="text-align:right">ชั่วโมง</th><th style="text-align:right">อัตรา</th><th style="text-align:right">ยอดจ่าย</th><th></th></tr></thead>
@@ -865,6 +882,26 @@ tbody tr:hover td{background:#FAFBFD}
       <button class="btn bp" style="margin-left:auto" onclick="openLeaveForm()">+ บันทึกการลา</button>
     </div>
     <div id="lv-list"></div>
+  </div>
+
+  <!-- ══ PAYTAX (ภาษี/ประกันสังคม เงินเดือน) ══ -->
+  <div id="pg-paytax" class="pg">
+    <div style="background:linear-gradient(135deg,#0D1B2A,#0A6EBD);border-radius:16px;padding:16px 18px;color:#fff;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:700">📑 เอกสารภาษี & ประกันสังคม</div>
+      <div style="font-size:12px;opacity:.9">สร้างจากข้อมูลเงินเดือนที่จ่ายแล้ว · 50 ทวิ · ภ.ง.ด.1 · สปส.1-10</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px">
+      <div style="display:flex;gap:8px" id="paytax-tabs">
+        <button class="pt-b on" onclick="payTaxTab(this,'pnd1')">📋 ภ.ง.ด.1</button>
+        <button class="pt-b" onclick="payTaxTab(this,'sps')">🛡️ สปส.1-10</button>
+        <button class="pt-b" onclick="payTaxTab(this,'tawi')">📜 50 ทวิ</button>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+        <input class="fi" type="month" id="paytax-month" style="width:auto" value="" onchange="renderPayTax()">
+        <select class="fi" id="paytax-year" style="width:auto;display:none" onchange="renderPayTax()"></select>
+      </div>
+    </div>
+    <div id="paytax-body"></div>
   </div>
 
   <div id="pg-products" class="pg">
@@ -1345,7 +1382,7 @@ function toast(msg){
 // ══════════════════════════════════
 // NAVIGATION
 // ══════════════════════════════════
-const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:'💰 แคชเชียร์',quotes:'📄 ใบเสนอราคา',quoteEdit:'📝 แก้ไขใบเสนอราคา',invoices:'📋 ใบวางบิล',installments:'🗓️ ใบแบ่งจ่าย',delivery:'📦 ใบส่งสินค้า / ใบแจ้งหนี้',cashsale:'🛒 ขายเงินสด',po:'🗂️ ใบสั่งซื้อ',receive:'📥 ใบรับสินค้า',expense:'💳 ค่าใช้จ่าย',products:'📦 สินค้า',contacts:'👥 สมุดรายชื่อ',reports:'📊 รายงาน',settings:'⚙️ การตั้งค่า',journal:'📒 สมุดรายวัน',ledger:'📚 บัญชีแยกประเภท',financials:'📈 งบการเงิน',vat:'🧾 รายงานภาษี',coa:'🗃️ ผังบัญชี',cashflow:'💵 งบกระแสเงินสด',cogs:'📦 ต้นทุน-กำไรขั้นต้น',wht:'📑 ภาษีหัก ณ ที่จ่าย',aging:'⏰ งบอายุหนี้',closing:'🔒 ปิดงวดบัญชี',summary:'📋 สรุปบัญชี',jobs:'🛠️ จัดการงาน',employees:'👷 จัดการพนักงาน',timeclock:'⏰ ลงเวลาเข้า-ออก',payroll:'💵 จ่ายเงินเดือน',tracking:'📡 ติดตามพนักงาน',leaves:'🏖️ อนุมัติการลา'};
+const pageLabels={dashboard:'🏠 ภาพรวมบริษัท',cashier:'💰 แคชเชียร์',quotes:'📄 ใบเสนอราคา',quoteEdit:'📝 แก้ไขใบเสนอราคา',invoices:'📋 ใบวางบิล',installments:'🗓️ ใบแบ่งจ่าย',delivery:'📦 ใบส่งสินค้า / ใบแจ้งหนี้',cashsale:'🛒 ขายเงินสด',po:'🗂️ ใบสั่งซื้อ',receive:'📥 ใบรับสินค้า',expense:'💳 ค่าใช้จ่าย',products:'📦 สินค้า',contacts:'👥 สมุดรายชื่อ',reports:'📊 รายงาน',settings:'⚙️ การตั้งค่า',journal:'📒 สมุดรายวัน',ledger:'📚 บัญชีแยกประเภท',financials:'📈 งบการเงิน',vat:'🧾 รายงานภาษี',coa:'🗃️ ผังบัญชี',cashflow:'💵 งบกระแสเงินสด',cogs:'📦 ต้นทุน-กำไรขั้นต้น',wht:'📑 ภาษีหัก ณ ที่จ่าย',aging:'⏰ งบอายุหนี้',closing:'🔒 ปิดงวดบัญชี',summary:'📋 สรุปบัญชี',jobs:'🛠️ จัดการงาน',employees:'👷 จัดการพนักงาน',timeclock:'⏰ ลงเวลาเข้า-ออก',payroll:'💵 จ่ายเงินเดือน',tracking:'📡 ติดตามพนักงาน',leaves:'🏖️ อนุมัติการลา',paytax:'📑 ภาษี/ประกันสังคม (เงินเดือน)'};
 let curPage='dashboard';
 
 function nav(page){
@@ -1376,7 +1413,7 @@ function renderPage(page){
     expense:renderExpense,products:renderProducts,contacts:renderContacts,
     reports:renderReports,settings:renderSettings,installments:renderInst,
     journal:renderJournal,ledger:renderLedger,financials:renderFinancials,vat:renderVat,coa:renderCOA,
-    cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing,summary:renderSummary,jobs:renderJobs,employees:renderEmployees,timeclock:renderTimeclock,payroll:renderPayroll,tracking:renderTracking,leaves:renderLeaves};
+    cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing,summary:renderSummary,jobs:renderJobs,employees:renderEmployees,timeclock:renderTimeclock,payroll:renderPayroll,tracking:renderTracking,leaves:renderLeaves,paytax:renderPayTax};
   if(r[page]) r[page]();
 }
 
@@ -4862,6 +4899,9 @@ function openEmployeeForm(id){
        <div class="fg"><label class="flb">ประเภทการจ้าง</label><select class="fi" id="ef-paytype" onchange="efPayTypeChange()"><option value="monthly"${!e||e.payType==='monthly'?' selected':''}>รายเดือน</option><option value="daily"${e&&e.payType==='daily'?' selected':''}>รายวัน</option></select></div>
        <div class="fg"><label class="flb" id="ef-rate-lb">${(!e||e.payType==='monthly')?'เงินเดือน (บาท)':'ค่าแรงรายวัน (บาท)'}</label><input class="fi" type="number" id="ef-rate" value="${e?(e.rate||0):''}" placeholder="0"></div>
      </div>
+     <div class="fg" style="margin-top:8px"><label class="flb">รอบการจ่าย (ความถี่)</label><select class="fi" id="ef-paycycle">
+       ${['รายเดือน','ทุก 15 วัน','รายสัปดาห์','ทุก 4 วัน','ทุก 2 วัน','รายวัน'].map(c=>`<option value="${c}"${(e&&e.payCycle===c)||(!e&&c==='รายเดือน')||(e&&!e.payCycle&&((e.payType==='daily'&&c==='รายวัน')||(e.payType!=='daily'&&c==='รายเดือน')))?' selected':''}>${c}</option>`).join('')}
+     </select></div>
      <div class="fl2" style="margin-top:8px">
        <div class="fg"><label class="flb">ชั่วโมงงานปกติ/วัน</label><input class="fi" type="number" id="ef-normalhours" value="${e&&e.normalHours?e.normalHours:8}" placeholder="8"></div>
        <div class="fg" id="ef-payday-box" style="${(e&&e.payType==='daily')?'display:none':''}"><label class="flb">จ่ายทุกวันที่</label><input class="fi" type="number" min="1" max="31" id="ef-payday" value="${e?(e.payDay||30):30}"></div>
@@ -4888,8 +4928,13 @@ function openEmployeeForm(id){
    <div class="ef-pane" id="efpane-welfare" style="display:none">
      <div class="fg" style="margin-bottom:10px"><label class="flb">ค่าเดินทาง/อาหาร (฿/วันทำงาน)</label><input class="fi" type="number" id="ef-travel" value="${e&&e.travel?e.travel:0}"></div>
      <div class="fg" style="margin-bottom:10px"><label class="flb">เบี้ยขยัน (฿/เดือน — ได้เมื่อไม่สาย/ไม่ลา)</label><input class="fi" type="number" id="ef-diligence" value="${e&&e.diligence?e.diligence:0}"></div>
-     <div class="set-row" style="background:var(--bg);border-radius:10px;padding:11px 12px;margin-bottom:10px"><div style="flex:1"><div class="set-t">หักประกันสังคม 5%</div><div class="set-s">สูงสุด 750 บาท/เดือน</div></div><button class="sw ${e&&e.sso?'on':''}" id="ef-sso" onclick="this.classList.toggle('on')"></button></div>
-     <div class="fg"><label class="flb">ภาษีหัก ณ ที่จ่าย (%)</label><input class="fi" type="number" step="0.5" id="ef-taxpct" value="${e&&e.taxPct?e.taxPct:0}"></div>
+     <div class="set-row" style="background:var(--bg);border-radius:10px;padding:11px 12px;margin-bottom:10px"><div style="flex:1"><div class="set-t">หักประกันสังคม 5%</div><div class="set-s">นายจ้างสมทบเท่ากัน · สูงสุด 750 บาท/เดือน</div></div><button class="sw ${e&&e.sso?'on':''}" id="ef-sso" onclick="this.classList.toggle('on')"></button></div>
+     <div class="fg" style="margin-bottom:10px"><label class="flb">วิธีคิดภาษีหัก ณ ที่จ่าย</label><select class="fi" id="ef-taxmode" onchange="efTaxModeChange()">
+       <option value="none"${(!e||!e.taxMode||e.taxMode==='none')&&!(e&&e.taxPct)?' selected':''}>ไม่หักภาษี</option>
+       <option value="flat"${(e&&(e.taxMode==='flat'||(e.taxPct&&!e.taxMode)))?' selected':''}>หักแบบกำหนด % เอง</option>
+       <option value="progressive"${e&&e.taxMode==='progressive'?' selected':''}>คำนวณขั้นบันได (อัตโนมัติตามกฎหมาย)</option>
+     </select></div>
+     <div class="fg" id="ef-taxpct-box" style="display:${(e&&(e.taxMode==='flat'||(e.taxPct&&!e.taxMode)))?'block':'none'}"><label class="flb">อัตราภาษี (%)</label><input class="fi" type="number" step="0.5" id="ef-taxpct" value="${e&&e.taxPct?e.taxPct:0}"></div>
    </div>
    <div class="ef-pane" id="efpane-holiday" style="display:none">
      <div style="font-size:12px;color:var(--mu);margin-bottom:12px">เลือก<b style="color:var(--tx)">วันหยุดประจำสัปดาห์</b>ของพนักงานคนนี้<br>(วันที่เลือก = วันหยุด · ถ้ามาทำงานวันหยุดจะคิด OT วันหยุด)</div>
@@ -4913,6 +4958,7 @@ function efTab(name){
 }
 function efSetOff(arr){ document.querySelectorAll('.ef-offday').forEach(c=>{ c.checked=arr.includes(+c.dataset.d); const lb=c.parentElement; lb.style.background=c.checked?'#FFE9E6':'#fff'; lb.style.borderColor=c.checked?'var(--dg)':'var(--bd)'; lb.style.color=c.checked?'var(--dg)':'var(--tx)'; }); }
 function efPayTypeChange(){ const t=document.getElementById('ef-paytype').value; document.getElementById('ef-rate-lb').textContent=t==='monthly'?'เงินเดือน (บาท)':'ค่าแรงรายวัน (บาท)'; document.getElementById('ef-payday-box').style.display=t==='monthly'?'':'none'; }
+function efTaxModeChange(){ const m=document.getElementById('ef-taxmode').value; const box=document.getElementById('ef-taxpct-box'); if(box) box.style.display=m==='flat'?'block':'none'; }
 let empEditId=null;
 function saveEmployee(){
   const g=id=>document.getElementById(id);
@@ -4926,11 +4972,11 @@ function saveEmployee(){
     phone:g('ef-phone').value.trim(), startDate:g('ef-start').value, idCard:g('ef-idcard').value.trim(),
     addr:g('ef-addr').value.trim(), emgName:g('ef-emg').value.trim(), emgPhone:g('ef-emgphone').value.trim(),
     bankName:g('ef-bank').value.trim(), bankAcc:g('ef-bankacc').value.trim(), bankAccName:g('ef-bankname').value.trim(),
-    payType:g('ef-paytype').value, rate:num('ef-rate'), normalHours:num('ef-normalhours')||8, payDay:num('ef-payday')||30,
+    payType:g('ef-paytype').value, payCycle:g('ef-paycycle')?g('ef-paycycle').value:'', rate:num('ef-rate'), normalHours:num('ef-normalhours')||8, payDay:num('ef-payday')||30,
     otMult:+(g('ef-otmult').value)||1.5, holidayOtMult:+(g('ef-hotmult').value)||2,
     workStart:g('ef-wstart').value||'08:00', workEnd:g('ef-wend').value||'17:00',
     lateGrace:num('ef-lategrace'), lateFine:num('ef-latefine'), earlyFine:num('ef-earlyfine'),
-    travel:num('ef-travel'), diligence:num('ef-diligence'), taxPct:+(g('ef-taxpct').value)||0, geoRadius:num('ef-georadius')||100,
+    travel:num('ef-travel'), diligence:num('ef-diligence'), taxPct:+(g('ef-taxpct')?.value)||0, taxMode:g('ef-taxmode')?g('ef-taxmode').value:'none', geoRadius:num('ef-georadius')||100,
     sso:g('ef-sso').classList.contains('on'), accessLevel:g('ef-access').value, isAdmin:g('ef-access').value!=='staff', offDays,
     pin:g('ef-pin').value.trim(), lineId:g('ef-line').value.trim(),
     active:g('ef-active').classList.contains('on'),
@@ -5290,6 +5336,16 @@ async function tcPhotoTaken(ev){
 let payMode='month', payData=[], payFrom='', payTo='', payKeyPrefix='';
 const PAY_STD_HOURS=8, PAY_OT_MULT=1.5;
 function paySetMode(m,el){ payMode=m; document.querySelectorAll('#pay-m-month,#pay-m-daily').forEach(b=>b.classList.remove('on')); el.classList.add('on'); document.getElementById('pay-month-box').style.display=m==='month'?'flex':'none'; document.getElementById('pay-daily-box').style.display=m==='daily'?'flex':'none'; }
+// ปุ่มลัดเลือกช่วงจ่ายรายวัน (จ่ายวันต่อวัน / 2 วัน / 4 วัน ฯลฯ — นับถอยหลังจากวันนี้)
+function payQuick(days,backDays){
+  const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  const end=new Date(); if(backDays) end.setDate(end.getDate()-backDays);
+  const start=new Date(end); start.setDate(start.getDate()-(days-1));
+  const f=document.getElementById('pay-from'), t=document.getElementById('pay-to'), pd=document.getElementById('pay-payday');
+  if(f) f.value=iso(start); if(t) t.value=iso(end); if(pd) pd.value=iso(new Date());
+  renderPayroll();
+  toast(days===1&&!backDays?'📆 จ่ายของวันนี้':days===1?'📆 จ่ายของเมื่อวาน':'📆 จ่ายย้อนหลัง '+days+' วัน');
+}
 function payHoursBreakdown(empId,from,to){
   const e=empById(empId)||{};
   const std=e.normalHours||PAY_STD_HOURS;
@@ -5311,6 +5367,30 @@ function payHoursBreakdown(empId,from,to){
   });
   return {days:recs.length,total,reg,ot,holiday,regDays,holiDays,lateMin,earlyMin};
 }
+// ── เครื่องคำนวณภาษี/ประกันสังคม ตามกฎหมายไทย ──
+const TAX_BRACKETS=[[150000,0],[300000,.05],[500000,.10],[750000,.15],[1000000,.20],[2000000,.25],[5000000,.30],[Infinity,.35]];
+function annualTax(net){ let tax=0,prev=0; for(const [cap,rate] of TAX_BRACKETS){ if(net>prev){ tax+=(Math.min(net,cap)-prev)*rate; prev=cap; } else break; } return Math.max(0,tax); }
+// ภาษีหัก ณ ที่จ่ายรายเดือน (วิธีคำนวณภาษีทั้งปี ÷ 12)
+function calcMonthlyWHT(monthlyTaxable, monthlySSO){
+  const annualInc=monthlyTaxable*12;
+  const expense=Math.min(annualInc*0.5,100000);   // หักค่าใช้จ่าย 50% สูงสุด 100,000
+  const personal=60000;                            // ค่าลดหย่อนส่วนตัว
+  const ssoYear=Math.min((monthlySSO||0)*12,9000); // ประกันสังคมทั้งปี สูงสุด 9,000
+  const net=Math.max(0, annualInc-expense-personal-ssoYear);
+  return Math.round(annualTax(net)/12);
+}
+// ประกันสังคม 5% ฐาน 1,650–15,000 สูงสุด 750/เดือน
+function calcSSO(monthlyWage){ if(!monthlyWage) return 0; const baseW=Math.min(Math.max(monthlyWage,1650),15000); return Math.min(Math.round(baseW*0.05),750); }
+// ยอดสะสมทั้งปี (จากงวดที่จ่ายแล้ว)
+function payrollYTD(empId,year){
+  let income=0,tax=0,sso=0,months=0;
+  Object.keys(DB.payroll||{}).forEach(key=>{ const d=DB.payroll[key]; if(!d||!d.paid||!key.endsWith('_'+empId)) return;
+    const yr=(d.payDate||key).slice(0,4); if(String(year)!==yr) return;
+    income+=(d.base||0)+(d.ot||0)+(d.holidayPay||0)+(d.travel||0)+(d.diligence||0)+(d.allowance||0)+(d.otherEarn||0);
+    tax+=(d.tax||0); sso+=(d.sso||0); months++;
+  });
+  return {income,tax,sso,months};
+}
 function payAutoCalc(e,bd){
   const std=e.normalHours||PAY_STD_HOURS;
   const otM=e.otMult||PAY_OT_MULT, hotM=e.holidayOtMult||2;
@@ -5320,24 +5400,31 @@ function payAutoCalc(e,bd){
   const ot=Math.round(hourly*otM*bd.ot);
   const holidayPay=Math.round(hourly*hotM*bd.holiday);
   const travel=Math.round((e.travel||0)*bd.regDays);
-  const sso = e.sso? Math.min(Math.round(Math.min(base,15000)*0.05),750):0;
+  const monthlyWage = e.payType==='monthly' ? e.rate : Math.round(hourly*std*26); // ประมาณค่าจ้างต่อเดือน
+  const sso = e.sso? calcSSO(monthlyWage):0;
+  const ssoEmployer = sso; // นายจ้างสมทบเท่ากัน
   const lateFine=Math.round((e.lateFine||0)*bd.lateMin);
   const earlyFine=Math.round((e.earlyFine||0)*bd.earlyMin);
-  return {base,hourly,ot,holidayPay,travel,sso,lateFine,earlyFine};
+  return {base,hourly,ot,holidayPay,travel,sso,ssoEmployer,lateFine,earlyFine};
 }
 function payRecord(e){
   const bd=payHoursBreakdown(e.id,payFrom,payTo);
   const auto=payAutoCalc(e,bd);
   const key=payKeyPrefix+'_'+e.id;
   const s=(DB.payroll||{})[key]||{};
-  const taxAutoBase=auto.base+auto.ot+auto.holidayPay;
-  const taxAuto=e.taxPct?Math.round(taxAutoBase*e.taxPct/100):0;
+  const taxableMonthly=auto.base+auto.ot+auto.holidayPay+(e.allowance||0)+(e.diligence||0);
+  let taxAuto;
+  if(e.taxMode==='progressive') taxAuto=calcMonthlyWHT(taxableMonthly,auto.sso);
+  else if(e.taxPct) taxAuto=Math.round((auto.base+auto.ot+auto.holidayPay)*e.taxPct/100);
+  else taxAuto=0;
   const r={emp:e,key,days:bd.days,hours:bd.total,regHours:bd.reg,otHours:bd.ot,holidayHours:bd.holiday,holiDays:bd.holiDays,regDays:bd.regDays,lateMin:bd.lateMin,earlyMin:bd.earlyMin,hourly:auto.hourly,
     base:s.base!=null?s.base:auto.base, ot:s.ot!=null?s.ot:auto.ot, holidayPay:s.holidayPay!=null?s.holidayPay:auto.holidayPay,
     travel:s.travel!=null?s.travel:auto.travel, diligence:s.diligence!=null?s.diligence:(e.diligence||0), allowance:s.allowance||0, otherEarn:s.otherEarn||0,
-    sso:s.sso!=null?s.sso:auto.sso, tax:s.tax!=null?s.tax:taxAuto, lateFine:s.lateFine!=null?s.lateFine:auto.lateFine, earlyFine:s.earlyFine!=null?s.earlyFine:auto.earlyFine,
+    sso:s.sso!=null?s.sso:auto.sso, ssoEmployer:auto.ssoEmployer||0, taxMode:e.taxMode||(e.taxPct?'flat':'none'), tax:s.tax!=null?s.tax:taxAuto, lateFine:s.lateFine!=null?s.lateFine:auto.lateFine, earlyFine:s.earlyFine!=null?s.earlyFine:auto.earlyFine,
     advance:s.advance||0, otherDeduct:s.otherDeduct||0,
+    payDate:s.payDate||'', payMethod:s.payMethod||'โอนเงิน', slip:s.slip||null,
     note:s.note||'', paid:s.paid||false, adjusted:Object.keys(s).length>0};
+  r.leaveDays=(typeof leaveDaysInRange==='function')?leaveDaysInRange(e.id,payFrom,payTo):0;
   r.earnings=r.base+r.ot+r.holidayPay+r.travel+r.diligence+r.allowance+r.otherEarn;
   r.deduct=r.sso+r.tax+r.lateFine+r.earlyFine+r.advance+r.otherDeduct;
   r.net=r.earnings-r.deduct;
@@ -5352,8 +5439,15 @@ function renderPayroll(){
   let periodLabel;
   if(payMode==='month'){ const m=mEl.value||new Date().toISOString().slice(0,7); payFrom=m+'-01'; const [y,mo]=m.split('-'); payTo=`${y}-${mo}-${String(new Date(+y,+mo,0).getDate()).padStart(2,'0')}`; payKeyPrefix=m; periodLabel='เดือน '+fmtD(payFrom).split(' ').slice(1).join(' '); }
   else { payFrom=fEl.value; payTo=tEl.value; payKeyPrefix=payFrom+'_'+payTo; periodLabel=`${fmtD(payFrom)} - ${fmtD(payTo)} · จ่าย ${fmtD(pdEl.value)}`; }
-  const emps=(DB.employees||[]).filter(e=>e.active);
-  payData=emps.map(payRecord).filter(r=>payMode==='month'?true:r.days>0);
+  const grp=document.getElementById('pay-group')?.value||'all';
+  let emps=(DB.employees||[]).filter(e=>e.active);
+  if(grp==='monthly') emps=emps.filter(e=>e.payType==='monthly');
+  else if(grp==='daily') emps=emps.filter(e=>e.payType!=='monthly');
+  payData=emps.map(payRecord).filter(r=>{
+    // รายเดือนแสดงเสมอ · รายวันแสดงเฉพาะมีวันทำงานในช่วง (เว้นแต่โหมดเดือน)
+    if(r.emp.payType==='monthly') return true;
+    return payMode==='month'?true:r.days>0;
+  });
   document.getElementById('pay-k1').textContent=payData.length;
   document.getElementById('pay-k2').textContent=payData.reduce((s,r)=>s+r.days,0);
   document.getElementById('pay-k3').textContent=payData.reduce((s,r)=>s+r.hours,0).toFixed(1);
@@ -5363,13 +5457,49 @@ function renderPayroll(){
   if(!payData.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:24px">ไม่มีข้อมูล</td></tr>'; return; }
   tb.innerHTML=payData.map(r=>`<tr style="cursor:pointer" onclick="openPayDetail('${r.emp.id}')">
     <td><div style="font-weight:600">${r.emp.name} ${r.paid?'<span class="badge b-paid" style="font-size:9px">จ่ายแล้ว</span>':''}${r.adjusted&&!r.paid?'<span class="badge b-part" style="font-size:9px">ปรับแล้ว</span>':''}</div><div style="font-size:11px;color:var(--mu)">${r.emp.role||''}</div></td>
-    <td><span class="badge ${r.emp.payType==='monthly'?'b-paid':'b-part'}">${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}</span></td>
+    <td><span class="badge ${r.emp.payType==='monthly'?'b-paid':'b-part'}">${r.emp.payType==='monthly'?'รายเดือน':'รายวัน'}</span>${r.emp.payCycle?`<div style="font-size:9.5px;color:var(--mu);margin-top:2px">จ่าย${r.emp.payCycle}</div>`:''}</td>
     <td style="text-align:center">${r.days}</td>
     <td style="text-align:right">${r.hours.toFixed(1)}${r.otHours>0?`<br><span style="font-size:10px;color:var(--ac)">OT ${r.otHours.toFixed(1)}</span>`:''}</td>
     <td style="text-align:right">${fmt(r.emp.rate)}${r.emp.payType==='daily'?'/วัน':'/ด.'}</td>
     <td style="text-align:right;font-weight:700;color:var(--p)">฿${fmt(r.net)}</td>
     <td onclick="event.stopPropagation()"><button class="btn bo" style="font-size:11px;padding:5px 9px" onclick="openPayDetail('${r.emp.id}')">⚙️ ปรับ</button> <button class="btn bo" style="font-size:11px;padding:5px 9px" onclick="printPayslip('${r.emp.id}')">🧾</button></td>
   </tr>`).join('');
+  // สรุปต้นทุนเงินเดือน
+  const sum=(k)=>payData.reduce((s,r)=>s+(r[k]||0),0);
+  const gross=sum('earnings'), net=sum('net'), ded=sum('deduct'), ssoE=sum('sso'), ssoR=payData.reduce((s,r)=>s+(r.ssoEmployer||0),0), tax=sum('tax');
+  const paidN=payData.filter(r=>r.paid).length;
+  const sm=document.getElementById('pay-summary');
+  if(sm) sm.innerHTML=`<div class="card" style="padding:14px 16px;margin-bottom:16px">
+    <div style="font-weight:700;font-size:13px;margin-bottom:10px">💼 สรุปต้นทุนเงินเดือนงวดนี้ <span style="font-weight:400;color:var(--mu);font-size:11px">· จ่ายแล้ว ${paidN}/${payData.length} คน</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;font-size:12px">
+      <div style="background:#f6fdf9;border-radius:8px;padding:10px"><div style="color:var(--mu);font-size:11px">รายได้รวม (gross)</div><div style="font-weight:700;font-size:15px;color:#0F9D58">฿${fmt(gross)}</div></div>
+      <div style="background:#fdf6f6;border-radius:8px;padding:10px"><div style="color:var(--mu);font-size:11px">หักรวม (ปกส.+ภาษี+อื่นๆ)</div><div style="font-weight:700;font-size:15px;color:#c0392b">฿${fmt(ded)}</div></div>
+      <div style="background:#EAF4FF;border-radius:8px;padding:10px"><div style="color:var(--mu);font-size:11px">จ่ายสุทธิ (net)</div><div style="font-weight:700;font-size:15px;color:var(--p)">฿${fmt(net)}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px;font-size:11.5px;color:var(--tx)">
+      <div>🛡️ ปกส.พนักงาน: <b>฿${fmt(ssoE)}</b></div>
+      <div>🏢 ปกส.นายจ้าง: <b>฿${fmt(ssoR)}</b></div>
+      <div>🧾 ภาษีหัก ณ ที่จ่าย: <b>฿${fmt(tax)}</b></div>
+    </div>
+    <div style="border-top:1px dashed var(--bd);margin-top:10px;padding-top:8px;display:flex;justify-content:space-between;font-size:13px"><span style="font-weight:600">ต้นทุนรวมต่อบริษัท (net + ปกส.นายจ้าง)</span><span style="font-weight:800;color:var(--p)">฿${fmt(net+ssoR+ssoE+tax)}</span></div>
+    <div style="font-size:10.5px;color:var(--mu);margin-top:4px">* ต้นทุนรวม = เงินที่จ่ายพนักงาน + ส่วนที่ต้องนำส่งประกันสังคม/สรรพากร</div>
+  </div>`;
+}
+// จ่ายเงินเดือนทั้งหมดทีเดียว (ลงบัญชี+ตัดยอด)
+function payAll(){
+  if(!payData||!payData.length){ toast('⚠️ กดคำนวณก่อน'); return; }
+  const unpaid=payData.filter(r=>!r.paid);
+  if(!unpaid.length){ toast('✓ จ่ายครบทุกคนแล้ว'); return; }
+  if(!confirm(`จ่ายเงินเดือน ${unpaid.length} คน เป็นเงิน ฿${fmt(unpaid.reduce((s,r)=>s+r.net,0))} ?\nระบบจะลงบัญชีตัดยอดให้อัตโนมัติ`)) return;
+  const payday=document.getElementById('pay-payday')?.value||new Date().toISOString().slice(0,10);
+  if(!DB.payroll) DB.payroll={};
+  unpaid.forEach(r=>{
+    const key=r.key;
+    DB.payroll[key]={base:r.base,ot:r.ot,holidayPay:r.holidayPay,travel:r.travel,diligence:r.diligence,allowance:r.allowance,otherEarn:r.otherEarn,sso:r.sso,tax:r.tax,lateFine:r.lateFine,earlyFine:r.earlyFine,advance:r.advance,otherDeduct:r.otherDeduct,note:r.note||'',paid:true,payDate:payday,payMethod:'โอนเงิน',slip:(DB.payroll[key]||{}).slip||null};
+    try{ autoPostPayroll(key,DB.payroll[key]); }catch(e){}
+  });
+  saveData(); renderPayroll();
+  toast(`✅ จ่ายเงินเดือน ${unpaid.length} คนแล้ว · ลงบัญชีเรียบร้อย`);
 }
 // ── หน้าปรับ/ดูรายละเอียดเงินเดือนรายคน ──
 function openPayDetail(empId){
@@ -5471,7 +5601,11 @@ function printPayslip(empId){
   const r=payData.find(x=>x.emp.id===empId)||payRecord(e);
   const period=document.getElementById('pay-period')?.textContent||'';
   const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',seller:'กุสุมา ชุมนวล'},companyInfo||{});
-  const today=new Date().toISOString().slice(0,10);
+  const payDate=r.payDate||today;
+  const method=r.payMethod||'โอนเงิน';
+  const yr=String(payDate).slice(0,4);
+  const ytd=payrollYTD(empId,yr);
+  const bankLine=(e.bankName||e.bankAcc)?`${e.bankName||''} ${e.bankAcc||''}${e.bankAccName?' ('+e.bankAccName+')':''}`:'—';
   const er=[]; const dd=[];
   er.push(['เงินเดือน/ค่าจ้างฐาน'+(e.payType==='daily'?` (${r.regHours.toFixed(1)} ชม. × ฿${fmt(r.hourly)})`:''), r.base]);
   if(r.ot) er.push([`ค่าล่วงเวลา OT (${r.otHours.toFixed(1)} ชม.)`, r.ot]);
@@ -5481,7 +5615,7 @@ function printPayslip(empId){
   if(r.allowance) er.push(['ค่าตำแหน่ง/ค่าครองชีพ', r.allowance]);
   if(r.otherEarn) er.push(['รายได้อื่นๆ', r.otherEarn]);
   if(r.sso) dd.push(['ประกันสังคม (5%)', r.sso]);
-  if(r.tax) dd.push(['ภาษีหัก ณ ที่จ่าย', r.tax]);
+  if(r.tax) dd.push(['ภาษีหัก ณ ที่จ่าย'+(r.taxMode==='progressive'?' (ขั้นบันได)':''), r.tax]);
   if(r.lateFine) dd.push([`หักมาสาย (${r.lateMin} นาที)`, r.lateFine]);
   if(r.earlyFine) dd.push([`หักออกก่อน (${r.earlyMin} นาที)`, r.earlyFine]);
   if(r.advance) dd.push(['เบิกล่วงหน้า/เงินยืม', r.advance]);
@@ -5495,23 +5629,159 @@ function printPayslip(empId){
   .meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;background:#F0F7FF;padding:14px 16px;border-radius:8px;margin-bottom:16px;font-size:12px}.meta b{color:#0A6EBD}
   table{width:100%;border-collapse:collapse;margin-bottom:14px}td,th{padding:8px 12px;border:1px solid #e5e5e5;font-size:12px}th{background:#F0F7FF;color:#0A6EBD;text-align:left}
   .two{display:flex;gap:14px}.two>div{flex:1}.subt{font-weight:700;margin-bottom:6px;font-size:12px}.eh{color:#0F9D58}.dh{color:#c0392b}
-  .sumr{display:flex;justify-content:space-between;padding:5px 0;font-size:12px;border-bottom:1px dashed #ddd}
   .total{display:flex;justify-content:space-between;background:#0A6EBD;color:#fff;padding:14px 18px;border-radius:8px;font-size:17px;font-weight:700;margin-top:8px}
-  .sig{display:flex;justify-content:space-between;margin-top:40px;gap:30px}.sig-col{flex:1;text-align:center}.sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
+  .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .info-box{border:1px solid #e5e5e5;border-radius:8px;padding:10px 12px;font-size:11px}.info-box .bt{font-weight:700;color:#0A6EBD;margin-bottom:5px;font-size:11px}
+  .info-box .ir{display:flex;justify-content:space-between;padding:2px 0;color:#444}
+  .sig{display:flex;justify-content:space-between;margin-top:36px;gap:30px}.sig-col{flex:1;text-align:center}.sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
   @media print{body{padding:0}}</style></head><body>
-  <div class="hd"><div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}</div></div><div class="ti"><h1>สลิปเงินเดือน</h1><div style="text-align:right;font-size:12px;margin-top:4px">วันที่จ่าย ${fmtSlash(today)}</div></div></div>
-  <div class="meta"><div><b>ชื่อพนักงาน:</b> ${e.name}</div><div><b>รหัส:</b> ${e.id}</div><div><b>ตำแหน่ง:</b> ${e.role||'-'}</div><div><b>ประเภท:</b> ${e.payType==='monthly'?'รายเดือน':'รายวัน'}</div><div><b>วันทำงาน:</b> ${r.days} วัน</div><div><b>ชั่วโมงรวม:</b> ${r.hours.toFixed(1)} ชม. (OT ${r.otHours.toFixed(1)})</div><div style="grid-column:1/-1"><b>งวด:</b> ${period}</div></div>
+  <div class="hd"><div><div class="cn">${CO.name}</div><div class="ca">${CO.addr}</div></div><div class="ti"><h1>สลิปเงินเดือน</h1><div style="text-align:right;font-size:12px;margin-top:4px">วันที่จ่าย ${fmtSlash(payDate)}</div></div></div>
+  <div class="meta"><div><b>ชื่อพนักงาน:</b> ${e.name}</div><div><b>รหัส:</b> ${e.id}</div><div><b>ตำแหน่ง:</b> ${e.role||'-'}</div><div><b>ประเภท:</b> ${e.payType==='monthly'?'รายเดือน':'รายวัน'}</div><div><b>วันทำงาน:</b> ${r.days} วัน${r.leaveDays?' · ลา '+r.leaveDays+' วัน':''}</div><div><b>ชั่วโมงรวม:</b> ${r.hours.toFixed(1)} ชม. (OT ${r.otHours.toFixed(1)})</div><div><b>จ่ายโดย:</b> ${method}</div><div><b>บัญชีรับเงิน:</b> ${bankLine}</div><div style="grid-column:1/-1"><b>งวด:</b> ${period}</div></div>
   <div class="two">
     <div><div class="subt eh">➕ รายได้</div><table>${erRows}<tr style="font-weight:700;background:#f6fdf9"><td>รวมรายได้</td><td style="text-align:right">${fmt(r.earnings)}</td></tr></table></div>
     <div><div class="subt dh">➖ รายการหัก</div><table>${ddRows}<tr style="font-weight:700;background:#fdf6f6"><td>รวมหัก</td><td style="text-align:right">${fmt(r.deduct)}</td></tr></table></div>
   </div>
   <div class="total"><span>ยอดจ่ายสุทธิ</span><span>฿ ${fmt(r.net)}</span></div>
   <div style="text-align:center;font-size:12px;color:#666;margin-top:8px">(${bahtText(r.net)})</div>
-  ${r.note?`<div style="font-size:11px;color:#888;margin-top:8px">หมายเหตุ: ${r.note}</div>`:''}
+  <div class="info-grid">
+    <div class="info-box"><div class="bt">📊 ยอดสะสมที่จ่ายแล้วปี ${(+yr)+543}</div><div class="ir"><span>รายได้สะสม</span><span>฿${fmt(ytd.income)}</span></div><div class="ir"><span>ภาษีสะสม</span><span>฿${fmt(ytd.tax)}</span></div><div class="ir"><span>ประกันสังคมสะสม</span><span>฿${fmt(ytd.sso)}</span></div><div class="ir"><span>จ่ายแล้ว</span><span>${ytd.months} งวด</span></div></div>
+    <div class="info-box"><div class="bt">🏢 เงินสมทบนายจ้าง (ไม่หักจากพนักงาน)</div><div class="ir"><span>ประกันสังคมนายจ้าง 5%</span><span>฿${fmt(r.ssoEmployer||0)}</span></div><div class="ir" style="border-top:1px dashed #ddd;margin-top:4px;padding-top:4px"><span>ต้นทุนรวมต่อบริษัท</span><span>฿${fmt(r.earnings+(r.ssoEmployer||0))}</span></div></div>
+  </div>
+  ${r.note?`<div style="font-size:11px;color:#888;margin-top:10px">หมายเหตุ: ${r.note}</div>`:''}
   <div class="sig"><div class="sig-col"><div class="sig-line">ผู้รับเงิน (${e.name})</div></div><div class="sig-col"><div class="sig-line">ผู้จ่ายเงิน (${CO.seller})</div></div></div>
   </body></html>`;
   if(typeof showPrintPreview==='function') showPrintPreview(html,'สลิปเงินเดือน '+e.id,{});
   else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
+}
+
+// ══════════════════════════════════════════════════════════
+// เอกสารภาษี & ประกันสังคม (จากเงินเดือนที่จ่ายแล้ว)
+// ══════════════════════════════════════════════════════════
+let payTaxMode='pnd1';
+const TH_MONTHS=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม'];
+function thMonth(ym){ const [y,m]=ym.split('-'); return TH_MONTHS[(+m)-1]+' '+(+y+543); }
+function payTaxCompany(){ return Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'',seller:'กุสุมา ชุมนวล'},companyInfo||{}); }
+function payTaxTab(el,m){ document.querySelectorAll('#paytax-tabs .pt-b').forEach(b=>b.classList.remove('on')); el.classList.add('on'); payTaxMode=m;
+  document.getElementById('paytax-month').style.display=(m==='tawi')?'none':'block';
+  document.getElementById('paytax-year').style.display=(m==='tawi')?'block':'none';
+  renderPayTax();
+}
+function payrollPaidRecords(){
+  const out=[];
+  Object.keys(DB.payroll||{}).forEach(key=>{ const d=DB.payroll[key]; if(!d||!d.paid) return;
+    const empId=key.split('_').pop(); const e=empById(empId); if(!e) return;
+    const income=(d.base||0)+(d.ot||0)+(d.holidayPay||0)+(d.travel||0)+(d.diligence||0)+(d.allowance||0)+(d.otherEarn||0);
+    const ref=(d.payDate||key);
+    out.push({key,emp:e,income,tax:d.tax||0,sso:d.sso||0,ym:ref.slice(0,7),year:ref.slice(0,4)});
+  });
+  return out;
+}
+function emptyPayTax(msg){ return `<div style="text-align:center;color:var(--mu);padding:40px;font-size:13px">${msg}<br><span style="font-size:11px">ไปที่ "จ่ายเงินเดือน" → คำนวณ → ติ๊กจ่ายแล้ว เพื่อให้มีข้อมูล</span></div>`; }
+function renderPayTax(){
+  const mEl=document.getElementById('paytax-month'); if(mEl&&!mEl.value) mEl.value=new Date().toISOString().slice(0,7);
+  const yEl=document.getElementById('paytax-year');
+  if(yEl&&!yEl.options.length){ const y=new Date().getFullYear(); let h=''; for(let i=0;i<5;i++) h+=`<option value="${y-i}">${y-i+543}</option>`; yEl.innerHTML=h; }
+  const all=payrollPaidRecords();
+  const body=document.getElementById('paytax-body'); if(!body) return;
+  if(payTaxMode==='pnd1'){ const ym=mEl.value; body.innerHTML=payTaxPND1View(ym, all.filter(r=>r.ym===ym&&r.tax>0)); }
+  else if(payTaxMode==='sps'){ const ym=mEl.value; body.innerHTML=payTaxSPSView(ym, all.filter(r=>r.ym===ym&&r.sso>0)); }
+  else { const yr=yEl.value||String(new Date().getFullYear()); body.innerHTML=payTaxTawiView(yr, all.filter(r=>r.year===yr)); }
+}
+function payTaxPND1View(ym,rows){
+  if(!rows.length) return emptyPayTax('ยังไม่มีการหักภาษีในเดือนนี้');
+  const ti=rows.reduce((s,r)=>s+r.income,0), tt=rows.reduce((s,r)=>s+r.tax,0);
+  return `<div class="card" style="padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><div><div style="font-weight:700">📋 ภ.ง.ด.1 — ${thMonth(ym)}</div><div style="font-size:11px;color:var(--mu)">ภาษีเงินได้หัก ณ ที่จ่าย (เงินเดือน ม.40(1))</div></div><button class="btn bp" onclick="printPND1('${ym}')">🖨️ พิมพ์แบบยื่น</button></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+      <div style="background:#EAF4FF;border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">จำนวนคน</div><div style="font-weight:700;font-size:16px">${rows.length}</div></div>
+      <div style="background:#f6fdf9;border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">เงินได้รวม</div><div style="font-weight:700;font-size:15px;color:#0F9D58">฿${fmt(ti)}</div></div>
+      <div style="background:#fdf6f6;border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">ภาษีนำส่ง</div><div style="font-weight:700;font-size:15px;color:#c0392b">฿${fmt(tt)}</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">ชื่อ</th><th style="text-align:left;padding:8px">เลขบัตร ปชช.</th><th style="text-align:right;padding:8px">เงินได้</th><th style="text-align:right;padding:8px">ภาษี</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr style="border-top:1px solid var(--bd)"><td style="padding:8px">${r.emp.name}</td><td style="padding:8px">${r.emp.idCard||'-'}</td><td style="padding:8px;text-align:right">${fmt(r.income)}</td><td style="padding:8px;text-align:right">${fmt(r.tax)}</td></tr>`).join('')}</tbody></table>
+  </div>`;
+}
+function payTaxSPSView(ym,rows){
+  if(!rows.length) return emptyPayTax('ยังไม่มีการหักประกันสังคมในเดือนนี้');
+  const te=rows.reduce((s,r)=>s+r.sso,0), tr=te, grand=te+tr;
+  return `<div class="card" style="padding:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px"><div><div style="font-weight:700">🛡️ สปส.1-10 — ${thMonth(ym)}</div><div style="font-size:11px;color:var(--mu)">เงินสมทบประกันสังคม (ลูกจ้าง 5% + นายจ้าง 5%)</div></div><button class="btn bp" onclick="printSPS('${ym}')">🖨️ พิมพ์แบบยื่น</button></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px">
+      <div style="background:#EAF4FF;border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">ลูกจ้าง 5%</div><div style="font-weight:700;font-size:15px">฿${fmt(te)}</div></div>
+      <div style="background:#EAF4FF;border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">นายจ้าง 5%</div><div style="font-weight:700;font-size:15px">฿${fmt(tr)}</div></div>
+      <div style="background:#f6fdf9;border-radius:8px;padding:10px"><div style="font-size:11px;color:var(--mu)">รวมนำส่ง</div><div style="font-weight:700;font-size:15px;color:#0F9D58">฿${fmt(grand)}</div></div>
+    </div>
+    <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="background:var(--bg)"><th style="text-align:left;padding:8px">ชื่อ</th><th style="text-align:left;padding:8px">เลขบัตร ปชช.</th><th style="text-align:right;padding:8px">ลูกจ้าง</th><th style="text-align:right;padding:8px">นายจ้าง</th></tr></thead><tbody>
+    ${rows.map(r=>`<tr style="border-top:1px solid var(--bd)"><td style="padding:8px">${r.emp.name}</td><td style="padding:8px">${r.emp.idCard||'-'}</td><td style="padding:8px;text-align:right">${fmt(r.sso)}</td><td style="padding:8px;text-align:right">${fmt(r.sso)}</td></tr>`).join('')}</tbody></table>
+  </div>`;
+}
+function payTaxTawiView(yr,rows){
+  // รวมยอดต่อพนักงานทั้งปี
+  const byEmp={};
+  rows.forEach(r=>{ const id=r.emp.id; if(!byEmp[id]) byEmp[id]={emp:r.emp,income:0,tax:0,sso:0}; byEmp[id].income+=r.income; byEmp[id].tax+=r.tax; byEmp[id].sso+=r.sso; });
+  const list=Object.values(byEmp);
+  if(!list.length) return emptyPayTax('ยังไม่มีข้อมูลเงินเดือนที่จ่ายในปีนี้');
+  return `<div style="font-size:12px;color:var(--mu);margin-bottom:10px">หนังสือรับรองการหักภาษี ณ ที่จ่าย (50 ทวิ) ปี ${+yr+543} · กดพิมพ์รายคน</div>
+    ${list.map(x=>`<div class="card" style="padding:13px 15px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">${x.emp.name}</div><div style="font-size:11.5px;color:var(--mu)">เงินได้ทั้งปี ฿${fmt(x.income)} · ภาษีถูกหัก ฿${fmt(x.tax)} · ปกส. ฿${fmt(x.sso)}</div></div>
+      <button class="btn bp" style="font-size:12px;padding:7px 12px" onclick="print50Tawi('${x.emp.id}','${yr}')">🖨️ 50 ทวิ</button>
+    </div>`).join('')}`;
+}
+function payTaxDocHead(title){
+  return `<style>@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact}
+  body{padding:28px;color:#1a1a1a;font-size:13px}.doc-hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:10px;margin-bottom:14px}.doc-hd h1{font-size:18px;color:#0A6EBD}.doc-hd .sub{font-size:12px;color:#555;margin-top:2px}
+  .box{border:1px solid #ccc;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:12px;line-height:1.7}.box b{color:#0A6EBD}
+  table{width:100%;border-collapse:collapse;margin-bottom:12px}td,th{padding:7px 10px;border:1px solid #ccc;font-size:12px}th{background:#F0F7FF;color:#0A6EBD}
+  .tot{font-weight:700;background:#f6fdf9}.sig{display:flex;justify-content:flex-end;margin-top:36px}.sig-col{text-align:center;width:260px}.sig-line{border-top:1px dotted #999;margin-top:46px;padding-top:6px;font-size:12px}
+  @media print{body{padding:0}}</style>`;
+}
+function printPND1(ym){
+  const CO=payTaxCompany(); const rows=payrollPaidRecords().filter(r=>r.ym===ym&&r.tax>0);
+  if(!rows.length){ toast('⚠️ ไม่มีข้อมูล'); return; }
+  const ti=rows.reduce((s,r)=>s+r.income,0), tt=rows.reduce((s,r)=>s+r.tax,0);
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ภ.ง.ด.1 ${ym}</title>${payTaxDocHead()}</head><body>
+  <div class="doc-hd"><h1>แบบยื่นรายการภาษีเงินได้หัก ณ ที่จ่าย (ภ.ง.ด.1)</h1><div class="sub">ตามมาตรา 59 แห่งประมวลรัษฎากร · ประจำเดือน ${thMonth(ym)}</div></div>
+  <div class="box"><b>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย:</b> ${CO.name}<br><b>เลขประจำตัวผู้เสียภาษี:</b> ${CO.tax||'________________'} &nbsp;&nbsp; <b>ที่อยู่:</b> ${CO.addr}</div>
+  <table><thead><tr><th style="width:36px">ลำดับ</th><th style="text-align:left">ชื่อผู้มีเงินได้</th><th>เลขบัตรประชาชน</th><th>ประเภทเงินได้</th><th style="text-align:right">เงินได้ (บาท)</th><th style="text-align:right">ภาษีที่หัก (บาท)</th></tr></thead><tbody>
+  ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${r.emp.name}</td><td style="text-align:center">${r.emp.idCard||'-'}</td><td style="text-align:center">40(1)</td><td style="text-align:right">${fmt(r.income)}</td><td style="text-align:right">${fmt(r.tax)}</td></tr>`).join('')}
+  <tr class="tot"><td colspan="4" style="text-align:right">รวมทั้งสิ้น ${rows.length} ราย</td><td style="text-align:right">${fmt(ti)}</td><td style="text-align:right">${fmt(tt)}</td></tr></tbody></table>
+  <div style="font-size:12px">ยอดภาษีนำส่งทั้งสิ้น <b>฿${fmt(tt)}</b> (${bahtText(tt)})</div>
+  <div class="sig"><div class="sig-col"><div class="sig-line">ผู้จ่ายเงิน / ผู้มีหน้าที่หักภาษี<br>(${CO.seller||'____________________'})</div></div></div>
+  </body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ภ.ง.ด.1 '+ym,{}); else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
+}
+function printSPS(ym){
+  const CO=payTaxCompany(); const rows=payrollPaidRecords().filter(r=>r.ym===ym&&r.sso>0);
+  if(!rows.length){ toast('⚠️ ไม่มีข้อมูล'); return; }
+  const te=rows.reduce((s,r)=>s+r.sso,0), grand=te*2;
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>สปส.1-10 ${ym}</title>${payTaxDocHead()}</head><body>
+  <div class="doc-hd"><h1>แบบรายการแสดงการส่งเงินสมทบ (สปส. 1-10)</h1><div class="sub">กองทุนประกันสังคม · ประจำเดือน ${thMonth(ym)}</div></div>
+  <div class="box"><b>ชื่อสถานประกอบการ:</b> ${CO.name}<br><b>เลขที่บัญชีนายจ้าง:</b> ${CO.tax||'________________'} &nbsp;&nbsp; <b>ที่อยู่:</b> ${CO.addr}</div>
+  <table><thead><tr><th style="width:36px">ลำดับ</th><th style="text-align:left">ชื่อ-สกุล ผู้ประกันตน</th><th>เลขบัตรประชาชน</th><th style="text-align:right">ค่าจ้าง (บาท)</th><th style="text-align:right">เงินสมทบ 5% (บาท)</th></tr></thead><tbody>
+  ${rows.map((r,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${r.emp.name}</td><td style="text-align:center">${r.emp.idCard||'-'}</td><td style="text-align:right">${fmt(r.income)}</td><td style="text-align:right">${fmt(r.sso)}</td></tr>`).join('')}
+  <tr class="tot"><td colspan="4" style="text-align:right">รวมเงินสมทบส่วนผู้ประกันตน</td><td style="text-align:right">${fmt(te)}</td></tr></tbody></table>
+  <div class="box" style="background:#F0F7FF"><div style="display:flex;justify-content:space-between"><span>เงินสมทบส่วนผู้ประกันตน (ลูกจ้าง 5%)</span><b>฿${fmt(te)}</b></div><div style="display:flex;justify-content:space-between"><span>เงินสมทบส่วนนายจ้าง (5%)</span><b>฿${fmt(te)}</b></div><div style="display:flex;justify-content:space-between;border-top:1px solid #ccc;margin-top:5px;padding-top:5px;font-size:14px"><span><b>รวมนำส่งทั้งสิ้น</b></span><b style="color:#0A6EBD">฿${fmt(grand)}</b></div></div>
+  <div style="font-size:12px">รวมนำส่งทั้งสิ้น (${bahtText(grand)})</div>
+  <div class="sig"><div class="sig-col"><div class="sig-line">ลายมือชื่อนายจ้าง<br>(${CO.seller||'____________________'})</div></div></div>
+  </body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'สปส.1-10 '+ym,{}); else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
+}
+function print50Tawi(empId,yr){
+  const e=empById(empId); if(!e) return; const CO=payTaxCompany();
+  const recs=payrollPaidRecords().filter(r=>r.emp.id===empId&&r.year===yr);
+  const income=recs.reduce((s,r)=>s+r.income,0), tax=recs.reduce((s,r)=>s+r.tax,0);
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>50 ทวิ ${e.name}</title>${payTaxDocHead()}</head><body>
+  <div class="doc-hd"><h1>หนังสือรับรองการหักภาษี ณ ที่จ่าย</h1><div class="sub">ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร · ปีภาษี ${+yr+543}</div></div>
+  <div class="box"><b>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย (ผู้จ่ายเงิน)</b><br>ชื่อ: ${CO.name}<br>เลขประจำตัวผู้เสียภาษี: ${CO.tax||'________________'}<br>ที่อยู่: ${CO.addr}</div>
+  <div class="box"><b>ผู้ถูกหักภาษี ณ ที่จ่าย (ผู้มีเงินได้)</b><br>ชื่อ: ${e.name}<br>เลขประจำตัวประชาชน: ${e.idCard||'________________'}<br>ที่อยู่: ${e.addr||'-'}</div>
+  <table><thead><tr><th style="text-align:left">ประเภทเงินได้พึงประเมินที่จ่าย</th><th style="text-align:right">จำนวนเงิน (บาท)</th><th style="text-align:right">ภาษีที่หัก (บาท)</th></tr></thead><tbody>
+  <tr><td>1. เงินเดือน ค่าจ้าง ตามมาตรา 40(1)</td><td style="text-align:right">${fmt(income)}</td><td style="text-align:right">${fmt(tax)}</td></tr>
+  <tr class="tot"><td style="text-align:right">รวม</td><td style="text-align:right">${fmt(income)}</td><td style="text-align:right">${fmt(tax)}</td></tr></tbody></table>
+  <div style="font-size:12px">รวมเงินภาษีที่หักและนำส่ง <b>฿${fmt(tax)}</b> (${bahtText(tax)})</div>
+  <div class="box" style="margin-top:12px;font-size:11px;color:#555">ผู้จ่ายเงิน (✓) หักภาษี ณ ที่จ่าย &nbsp; ( ) ออกภาษีให้ตลอดไป &nbsp; ( ) ออกภาษีให้ครั้งเดียว</div>
+  <div class="sig"><div class="sig-col"><div class="sig-line">ผู้จ่ายเงิน<br>(${CO.seller||'____________________'})<br>วันที่ ${fmtSlash(new Date().toISOString().slice(0,10))}</div></div></div>
+  </body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'50ทวิ '+e.name,{}); else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
 }
 
 const USERS={
@@ -5534,7 +5804,7 @@ function doLogin(){
     document.getElementById('lg-err').style.display='block';
   }
 }
-const NAV_MODULE={dashboard:'core',cashier:'sales',quotes:'sales',invoices:'sales',installments:'sales',delivery:'sales',cashsale:'sales',contacts:'sales',products:'sales',po:'purchase',receive:'purchase',expense:'acct',summary:'acct',journal:'acct',ledger:'acct',financials:'acct',cashflow:'acct',cogs:'acct',vat:'acct',wht:'acct',aging:'acct',coa:'acct',closing:'acct',reports:'acct',jobs:'jobs',employees:'hr',timeclock:'hr',payroll:'hr',tracking:'hr',leaves:'hr',settings:'settings'};
+const NAV_MODULE={dashboard:'core',cashier:'sales',quotes:'sales',invoices:'sales',installments:'sales',delivery:'sales',cashsale:'sales',contacts:'sales',products:'sales',po:'purchase',receive:'purchase',expense:'acct',summary:'acct',journal:'acct',ledger:'acct',financials:'acct',cashflow:'acct',cogs:'acct',vat:'acct',wht:'acct',aging:'acct',coa:'acct',closing:'acct',reports:'acct',jobs:'jobs',employees:'hr',timeclock:'hr',payroll:'hr',tracking:'hr',leaves:'hr',paytax:'hr',settings:'settings'};
 const ROLE_MODULES={full:null,manager:['core','sales','purchase','jobs','hr'],accountant:['core','sales','purchase','acct']};
 function navAllowed(page){ const lvl=curUser&&curUser.accessLevel; const allow=lvl&&ROLE_MODULES[lvl]; if(!allow) return true; const mod=NAV_MODULE[page]||'core'; return mod==='core'||allow.includes(mod); }
 function applyPermissions(){
@@ -6424,7 +6694,7 @@ function renderJournal(){
     const amt=e.lines.reduce((s,l)=>s+l.debit,0);
     const srcTag=e.source==='manual'?'<span class="badge b-grey">บันทึกเอง</span>':`<span class="badge b-done2">${SRC_LABEL[e.source]||e.source}</span>`;
     const linesHtml=e.lines.map(l=>`<div style="display:grid;grid-template-columns:1fr 110px 110px;gap:8px;font-size:12px;color:var(--mu);padding-left:${l.debit?0:'20px'}"><span>${l.code} ${acctName(l.code)}</span><span style="text-align:right">${l.debit?fmt(l.debit):''}</span><span style="text-align:right">${l.credit?fmt(l.credit):''}</span></div>`).join('');
-    tb.innerHTML+=`<tr onclick="toggleJvDetail('${e.id}')"><td>${fmtD(e.date)}</td><td><div class="dn">${e.id}</div></td><td><div class="cnm">${e.desc||'—'}</div><div id="jvd-${e.id}" style="display:none;margin-top:6px">${linesHtml}</div></td><td>${srcTag}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td>${e.source==='manual'?`<button class="btn bd2" style="font-size:11px;padding:4px 9px" onclick="event.stopPropagation();delJournal('${e.id}')">🗑️</button>`:'<span style="font-size:10px;color:var(--mu)">อัตโนมัติ</span>'}</td></tr>`;
+    tb.innerHTML+=`<tr onclick="toggleJvDetail('${e.id}')"><td>${fmtD(e.date)}</td><td><div class="dn">${e.id}</div></td><td><div class="cnm">${e.desc||'—'}</div><div id="jvd-${e.id}" style="display:none;margin-top:6px">${linesHtml}</div></td><td>${srcTag}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td onclick="event.stopPropagation()" style="white-space:nowrap"><button class="btn bo" style="font-size:11px;padding:4px 8px" onclick="openJournalForm('${e.id}')">✏️</button> <button class="btn bd2" style="font-size:11px;padding:4px 8px" onclick="delJournal('${e.id}')">🗑️</button></td></tr>`;
   });
   const auto=DB.journal.filter(e=>e.source!=='manual').length;
   const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -6435,19 +6705,30 @@ function renderJournal(){
   setT('jr-balance',Math.abs(td-tc)<0.01?'✓ สมดุล':'⚠ ไม่สมดุล');
 }
 function toggleJvDetail(id){ const el=document.getElementById('jvd-'+id); if(el) el.style.display=el.style.display==='none'?'block':'none'; }
-function delJournal(id){ if(!confirm('ลบรายการบันทึกบัญชีนี้?')) return; DB.journal=DB.journal.filter(e=>e.id!==id); saveData(); renderJournal(); toast('🗑️ ลบรายการบัญชีแล้ว'); }
+function delJournal(id){
+  const e=(DB.journal||[]).find(x=>x.id===id);
+  const isAuto=e&&e.source&&e.source!=='manual';
+  const msg=isAuto?'รายการนี้สร้างจากเอกสารอัตโนมัติ\nถ้าลบแล้วกด "ลงบัญชีจากเอกสาร" อีกครั้ง รายการจะกลับมา\n\nต้องการลบจริงหรือไม่?':'ลบรายการบันทึกบัญชีนี้?';
+  if(!confirm(msg)) return;
+  DB.journal=DB.journal.filter(x=>x.id!==id); saveData(); renderJournal(); toast('🗑️ ลบรายการบัญชีแล้ว');
+}
 
-// ── ฟอร์มบันทึกบัญชีเอง (manual) ──
-let jvLines=[];
-function openJournalForm(){
+// ── ฟอร์มบันทึกบัญชีเอง (manual) + แก้ไข ──
+let jvLines=[], jvEditId=null;
+function openJournalForm(editId){
   acctInit();
-  jvLines=[{code:DB.coa[0].code,debit:'',credit:''},{code:DB.coa[0].code,debit:'',credit:''}];
-  document.getElementById('ml-t').textContent='✍️ บันทึกบัญชี (Manual)';
-  document.getElementById('ml-s').textContent='เดบิตและเครดิตต้องเท่ากัน';
+  jvEditId=editId||null;
+  const ex=jvEditId?(DB.journal||[]).find(e=>e.id===jvEditId):null;
+  if(ex){ jvLines=ex.lines.map(l=>({code:l.code,debit:l.debit||'',credit:l.credit||''})); }
+  else { jvLines=[{code:DB.coa[0].code,debit:'',credit:''},{code:DB.coa[0].code,debit:'',credit:''}]; }
+  const isAuto=ex&&ex.source&&ex.source!=='manual';
+  document.getElementById('ml-t').textContent=ex?'✏️ แก้ไขบันทึกบัญชี':'✍️ บันทึกบัญชี (Manual)';
+  document.getElementById('ml-s').textContent=ex?(ex.id+(isAuto?' · จากเอกสาร':'')):'เดบิตและเครดิตต้องเท่ากัน';
   document.getElementById('ml-bd').innerHTML=`
+    ${isAuto?`<div style="background:#FEF3C7;border:1px solid #fde68a;border-radius:8px;padding:10px;font-size:11.5px;color:#92600a;margin-bottom:10px">⚠️ รายการนี้สร้างจากเอกสาร (${SRC_LABEL[ex.source]||ex.source}) — การแก้ที่นี่จะกลายเป็นการปรับแต่งเอง และอาจถูกเขียนทับถ้ากด "ลงบัญชีจากเอกสาร" ใหม่</div>`:''}
     <div class="fl2" style="margin-bottom:10px">
-      <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="jv-date" value="${new Date().toISOString().slice(0,10)}"></div>
-      <div class="fg"><label class="flb">คำอธิบาย</label><input class="fi" id="jv-desc" placeholder="รายการบันทึก"></div>
+      <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="jv-date" value="${ex?ex.date:new Date().toISOString().slice(0,10)}"></div>
+      <div class="fg"><label class="flb">คำอธิบาย</label><input class="fi" id="jv-desc" placeholder="รายการบันทึก" value="${ex?String(ex.desc||'').replace(/"/g,'&quot;'):''}"></div>
     </div>
     <div id="jv-lines"></div>
     <button class="add-r" onclick="jvAddLine()">+ เพิ่มบรรทัด</button>
@@ -6478,10 +6759,18 @@ function jvSum(){
 function saveJournalManual(){
   const date=document.getElementById('jv-date').value;
   const desc=document.getElementById('jv-desc').value;
-  const lines=jvLines.map(l=>({code:l.code,debit:+l.debit||0,credit:+l.credit||0}));
-  const e=postJournal({date,desc,lines,source:'manual'});
-  if(!e){ toast('⚠️ เดบิตและเครดิตต้องเท่ากันและมากกว่า 0'); return; }
-  saveData(); closeModal(); renderJournal(); toast('✅ บันทึกบัญชีแล้ว '+e.id);
+  const lines=jvLines.map(l=>({code:l.code,debit:r2(+l.debit||0),credit:r2(+l.credit||0)})).filter(l=>l.debit>0||l.credit>0);
+  const td=lines.reduce((s,l)=>s+l.debit,0), tc=lines.reduce((s,l)=>s+l.credit,0);
+  if(Math.abs(td-tc)>0.01||td===0){ toast('⚠️ เดบิตและเครดิตต้องเท่ากันและมากกว่า 0'); return; }
+  if(jvEditId){
+    const e=(DB.journal||[]).find(x=>x.id===jvEditId);
+    if(e){ e.date=date||e.date; e.desc=desc; e.lines=lines; if(e.source&&e.source!=='manual') e.edited=true; }
+    jvEditId=null; saveData(); closeModal(); renderJournal(); toast('✅ แก้ไขรายการบัญชีแล้ว');
+  } else {
+    const e=postJournal({date,desc,lines,source:'manual'});
+    if(!e){ toast('⚠️ เดบิตและเครดิตต้องเท่ากันและมากกว่า 0'); return; }
+    saveData(); closeModal(); renderJournal(); toast('✅ บันทึกบัญชีแล้ว '+e.id);
+  }
 }
 
 // ══════════════════════════════════════════════════════════
