@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.05b · 🏖️ ลา · ✍️ ลายเซ็น</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.05c · พอร์ทัลพนักงานครบ</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -1292,6 +1292,7 @@ let docNumbering={
 };
 const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน'};
 const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs'};
+const DATE_NUM_TYPES=['quotes','invoices','delivery','cashsale','po','receive','expense','installments','receipts','jobs'];
 
 // ตรวจว่าเลขนี้มีอยู่แล้วหรือไม่ (กันซ้ำ)
 function idExists(type,id){
@@ -1304,7 +1305,7 @@ function formatDocId(type,n){
 }
 function nextId(type){
   // เลขเอกสารแบบ ปีเดือนวัน + ลำดับ (เช่น 20260630001) สำหรับบิลทุกชนิด
-  const NUMERIC=['quotes','invoices','delivery','cashsale','po','receive','expense','installments','receipts','jobs'];
+  const NUMERIC=DATE_NUM_TYPES;
   if(NUMERIC.includes(type)){
     const d=new Date();
     const ymd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
@@ -1805,7 +1806,7 @@ function editQuote(id){
   let r;
   if(id){ r=DB.quotes.find(x=>x.id===id); if(!r) return; }
   qeState={
-    id: id || formatDocId('quotes', docNumbering.quotes.next),
+    id: id || nextId('quotes'),
     isNew: !id,
     items: r? (r.items?JSON.parse(JSON.stringify(r.items)):[{name:'',qty:1,price:0,unit:''}]) : [{name:'',qty:1,price:0,unit:''}],
     vat: r? !!r.vat : false,
@@ -4178,47 +4179,53 @@ async function cloudTest(){
   }
 }
 
-// ฟอร์มตั้งค่าเลขที่เอกสาร (คำนำหน้า + เลขเริ่มต้น แยกแต่ละชนิด)
+// ฟอร์มตั้งค่าเลขที่เอกสาร (บิล=ปีเดือนวันอัตโนมัติ · พนักงาน=คำนำหน้า)
 function openDocNumForm(){
   document.getElementById('ml-t').textContent='🔢 ตั้งค่าเลขที่เอกสาร';
-  document.getElementById('ml-s').textContent='กำหนดคำนำหน้าและเลขรันถัดไปของแต่ละเอกสาร';
-  const types=Object.keys(docNumbering);
+  document.getElementById('ml-s').textContent='รูปแบบเลขที่ของแต่ละเอกสาร';
+  const d=new Date(); const ymd=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+  const allTypes=Object.keys(docNumbering);
+  const dateTypes=allTypes.filter(t=>DATE_NUM_TYPES.includes(t));
+  const pfxTypes=allTypes.filter(t=>!DATE_NUM_TYPES.includes(t));
   document.getElementById('ml-bd').innerHTML=`
-    <div style="background:var(--bg);border-radius:10px;padding:12px;font-size:12px;color:var(--mu);margin-bottom:14px;line-height:1.7">
-      ระบบรันเลขใหม่อัตโนมัติทุกครั้งที่สร้างเอกสาร และข้ามเลขที่ถูกใช้ไปแล้วเพื่อไม่ให้ซ้ำ<br>
-      ตัวอย่างเลขถัดไป: <b id="dn-preview-sample">${formatDocId('quotes',docNumbering.quotes.next)}</b>
+    <div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:10px;padding:13px;font-size:12px;margin-bottom:14px;line-height:1.7">
+      📅 <b>บิล/เอกสารการเงิน</b> ใช้เลขแบบ <b>ปีเดือนวัน + ลำดับรายวัน</b> อัตโนมัติ<br>
+      ตัวอย่างวันนี้: <b style="color:var(--p);font-size:15px;font-family:monospace">${ymd}001</b> <span style="color:var(--mu)">(${ymd.slice(0,4)}=ปี · ${ymd.slice(4,6)}=เดือน · ${ymd.slice(6,8)}=วัน · 001=ลำดับ)</span><br>
+      <span style="color:var(--mu)">🔁 รีเซ็ตใหม่ทุกวัน · ไม่ซ้ำ · ✏️ แก้เลขเองได้ตอนสร้างเอกสาร</span>
     </div>
-    <div style="display:grid;grid-template-columns:1.3fr 1fr 0.8fr 1.2fr;gap:8px;align-items:center;font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px;padding:0 2px">
-      <div>เอกสาร</div><div>คำนำหน้า</div><div>ปี</div><div>เลขถัดไป</div>
-    </div>
-    ${types.map(t=>`<div style="display:grid;grid-template-columns:1.3fr 1fr 0.8fr 1.2fr;gap:8px;align-items:center;margin-bottom:7px">
-      <div style="font-size:12px">${DOC_TYPE_LABELS[t]}</div>
+    <div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:8px">เอกสารที่ใช้เลขปีเดือนวัน (อัตโนมัติ)</div>
+    ${dateTypes.map(t=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 2px;border-bottom:1px solid #f0f0f0;font-size:12.5px"><span>${DOC_TYPE_LABELS[t]||t}</span><span style="font-family:monospace;font-weight:700;color:var(--p)">${ymd}<span style="color:var(--mu)">xxx</span></span></div>`).join('')}
+    ${pfxTypes.length?`<div style="font-size:11px;font-weight:700;color:var(--mu);margin:18px 0 8px">เอกสารที่ใช้คำนำหน้า (แก้ไขได้)</div>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr 0.8fr 1fr;gap:8px;align-items:center;font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px"><div>ประเภท</div><div>คำนำหน้า</div><div>ปี</div><div>เลขถัดไป</div></div>
+    ${pfxTypes.map(t=>`<div style="display:grid;grid-template-columns:1.3fr 1fr 0.8fr 1fr;gap:8px;align-items:center;margin-bottom:5px">
+      <div style="font-size:12px">${DOC_TYPE_LABELS[t]||t}</div>
       <input class="in-inp" id="dn-pfx-${t}" value="${docNumbering[t].prefix}" oninput="dnPreview('${t}')" style="text-transform:uppercase">
       <input class="in-inp" id="dn-yr-${t}" type="number" value="${docNumbering[t].year}" oninput="dnPreview('${t}')">
       <input class="in-inp" id="dn-nx-${t}" type="number" value="${docNumbering[t].next}" min="1" oninput="dnPreview('${t}')">
     </div>
-    <div style="font-size:11px;color:var(--p);margin:-2px 0 8px;padding-left:2px" id="dn-prev-${t}">→ ${formatDocId(t,docNumbering[t].next)}</div>`).join('')}`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveDocNum()">💾 บันทึก</button>`;
+    <div style="font-size:11px;color:var(--p);margin:-2px 0 8px" id="dn-prev-${t}">→ ${formatDocId(t,docNumbering[t].next)}</div>`).join('')}`:''}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>${pfxTypes.length?'<button class="btn bp" onclick="saveDocNum()">💾 บันทึก</button>':''}`;
   document.getElementById('ml').classList.add('op');
 }
 function dnPreview(t){
-  const pfx=(document.getElementById('dn-pfx-'+t).value||'').toUpperCase();
+  const pe=document.getElementById('dn-pfx-'+t); if(!pe) return;
+  const pfx=(pe.value||'').toUpperCase();
   const yr=parseInt(document.getElementById('dn-yr-'+t).value)||2026;
   const nx=parseInt(document.getElementById('dn-nx-'+t).value)||1;
   const el=document.getElementById('dn-prev-'+t);
   if(el) el.textContent='→ '+pfx+'-'+yr+'-'+String(nx).padStart(4,'0');
 }
 function saveDocNum(){
-  // ตรวจคำนำหน้าซ้ำกัน (หัวบิลแต่ละชนิดไม่ควรตรงกัน)
-  const types=Object.keys(docNumbering);
+  const pfxTypes=Object.keys(docNumbering).filter(t=>!DATE_NUM_TYPES.includes(t));
   const pfxs={};
-  for(const t of types){
-    const pfx=(document.getElementById('dn-pfx-'+t).value||'').toUpperCase().trim();
+  for(const t of pfxTypes){
+    const el=document.getElementById('dn-pfx-'+t); if(!el) continue;
+    const pfx=(el.value||'').toUpperCase().trim();
     if(!pfx){ toast('⚠️ กรุณากรอกคำนำหน้าให้ครบ'); return; }
-    if(pfxs[pfx]){ toast('⚠️ คำนำหน้า "'+pfx+'" ซ้ำกัน ('+DOC_TYPE_LABELS[t]+' กับ '+DOC_TYPE_LABELS[pfxs[pfx]]+') — ต้องไม่ซ้ำ'); return; }
+    if(pfxs[pfx]){ toast('⚠️ คำนำหน้า "'+pfx+'" ซ้ำกัน'); return; }
     pfxs[pfx]=t;
   }
-  for(const t of types){
+  for(const t of pfxTypes){
     docNumbering[t].prefix=(document.getElementById('dn-pfx-'+t).value||'').toUpperCase().trim();
     docNumbering[t].year=parseInt(document.getElementById('dn-yr-'+t).value)||2026;
     docNumbering[t].next=parseInt(document.getElementById('dn-nx-'+t).value)||1;
@@ -5410,9 +5417,17 @@ function renderEmpPortal(){
   else clockCard=`<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;font-size:13px;margin-bottom:10px">✅ เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · ${attHours(att).toFixed(1)} ชม.</div>`;
   // ประวัติเข้า-ออก 14 วัน
   const histRows=recs.slice(0,14).map(a=>attnCard(a,false)).join('');
-  const myLeaves=(DB.leaves||[]).filter(l=>l.empId===empId).sort((a,b)=>(b.requestedAt||'').localeCompare(a.requestedAt||'')).slice(0,6);
+  const myLeaves=(DB.leaves||[]).filter(l=>l.empId===e.id).sort((a,b)=>(b.requestedAt||'').localeCompare(a.requestedAt||'')).slice(0,6);
   const myLeaveRows=myLeaves.map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12.5px"><div><div style="font-weight:600">${leaveTypeLabel(l.type)} · ${leaveDaysCount(l.from,l.to)} วัน</div><div style="color:var(--mu);font-size:11px">${fmtD(l.from)}${(l.to&&l.to!==l.from)?' - '+fmtD(l.to):''}${l.reason?' · '+l.reason:''}</div></div>${leaveBadge(l.status)}</div>`).join('');
-  const body=`
+  const dayNames=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const offTxt=(Array.isArray(e.offDays)&&e.offDays.length)?e.offDays.map(d=>dayNames[d]).join(', '):'ไม่มี';
+  const profileCard=`<div style="background:linear-gradient(135deg,#0D1B2A,#0A6EBD);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px">
+    <div style="font-size:13px;font-weight:600">${e.role||'พนักงาน'}${e.dept?' · '+e.dept:''}</div>
+    <div style="display:flex;gap:14px;margin-top:8px;font-size:11.5px;flex-wrap:wrap;opacity:.92">
+      <span>🆔 ${e.id}</span><span>⏰ ${e.workStart||'08:00'}–${e.workEnd||'17:00'}</span><span>🏖️ หยุด ${offTxt}</span>
+    </div>
+  </div>`;
+  const body=`${profileCard}
     ${newJobs.length?`<div style="background:linear-gradient(135deg,#E67E22,#F39C12);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 14px rgba(230,126,34,.3)">
       <div style="font-size:26px">🔔</div><div style="flex:1"><div style="font-weight:700;font-size:14px">มีงานใหม่ ${newJobs.length} งาน!</div><div style="font-size:12px;opacity:.95">${newJobs.map(j=>j.title).slice(0,2).join(', ')}${newJobs.length>2?' ...':''}</div></div>
       <button onclick="empMarkSeen()" style="background:rgba(255,255,255,.25);border:none;color:#fff;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">รับทราบ</button>
@@ -5463,7 +5478,7 @@ function renderEmpPortal(){
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
         <div style="font-weight:700;font-size:14px">🏖️ การลา</div>
-        <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="openLeaveForm('${empId}',true)">+ ขอลา</button>
+        <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="openLeaveForm('${e.id}',true)">+ ขอลา</button>
       </div>
       ${myLeaveRows||'<div style="text-align:center;color:var(--mu);font-size:12px;padding:10px">ยังไม่มีรายการลา</div>'}
     </div>
