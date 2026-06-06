@@ -334,7 +334,7 @@ tbody tr:hover td{background:#FAFBFD}
     </div>
     <div style="padding:16px" id="ep-body"></div>
   </div>
-  <input type="file" id="ep-photo-input" accept="image/*" capture="user" style="display:none">
+  <input type="file" id="ep-photo-input" accept="image/*" capture="user" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px">
 </div>
 
 <!-- SIDEBAR -->
@@ -345,7 +345,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.05f · 💰 บัญชีลิงก์ครบ+จ่ายเงิน</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.06a · 📷 แนบรูปทุกหน้า+จ่ายเงินเดือนลงบัญชี</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -789,7 +789,7 @@ tbody tr:hover td{background:#FAFBFD}
       <button class="btn bp" style="justify-content:center;padding:18px;font-size:15px;background:var(--ok)" onclick="tcClock('in')">🟢 ลงเวลาเข้า<br><span style="font-size:11px;font-weight:400;opacity:.9">ถ่ายรูป + GPS</span></button>
       <button class="btn bp" style="justify-content:center;padding:18px;font-size:15px;background:var(--dg)" onclick="tcClock('out')">🔴 ลงเวลาออก<br><span style="font-size:11px;font-weight:400;opacity:.9">ถ่ายรูป + GPS</span></button>
     </div>
-    <input type="file" id="tc-photo-input" accept="image/*" capture="user" style="display:none">
+    <input type="file" id="tc-photo-input" accept="image/*" capture="user" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px">
     <div id="tc-tracking" style="margin-top:20px"></div>
     <div style="margin-top:20px">
       <div class="tc-hd" style="margin-bottom:10px"><div class="card-t">📋 ประวัติการลงเวลา (ล่าสุด)</div></div>
@@ -2939,7 +2939,7 @@ function openExpenseForm(id){
         <div style="font-size:11px;font-weight:700;color:var(--p);letter-spacing:.5px">📷 รูปบิล/ใบเสร็จ (<span id="ex-img-count">${expSlips.length}</span>/10)</div>
         <div style="display:flex;gap:6px">
           <button class="btn bp" style="font-size:11px;padding:5px 11px" onclick="document.getElementById('ex-slip-input').click()">📷 เพิ่มรูป</button>
-          <input type="file" id="ex-slip-input" accept="image/*" multiple style="display:none" onchange="handleSlipsUpload(event)">
+          <input type="file" id="ex-slip-input" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px" onchange="handleSlipsUpload(event)">
         </div>
       </div>
       <div id="ex-slips-gallery" style="display:flex;gap:8px;flex-wrap:wrap;min-height:44px"></div>
@@ -2982,8 +2982,8 @@ function handleSlipsUpload(e){
   files.forEach(file=>{
     if(file.size>15*1024*1024){ toast('⚠️ '+file.name+' ใหญ่เกิน 15MB'); done++; return; }
     compressReceiptImage(file,1400,0.75).then(data=>{
-      expSlips.push(data); done++;
-      if(done===files.length){ expRenderSlips(); toast('📎 เพิ่ม '+files.length+' รูปแล้ว'); }
+      if(data) expSlips.push(data); done++;
+      if(done===files.length){ expRenderSlips(); toast('📎 เพิ่มรูปแล้ว'); }
     });
   });
   e.target.value='';
@@ -3006,25 +3006,29 @@ function expRenderSlips(){
 }
 function expDelSlip(i){ expSlips.splice(i,1); if(expAiIdx>=expSlips.length) expAiIdx=0; expRenderSlips(); }
 function expPreviewSlip(i){ expAiIdx=i; expRenderSlips(); }
-// บีบอัดรูปก่อนเก็บ/ส่ง AI (ลดขนาด+คุณภาพ ให้ส่งเร็วและไม่เกิน limit)
+// บีบอัดรูปก่อนเก็บ/ส่ง AI — ใช้ createObjectURL (ทนทานบน iOS กับรูปกล้องขนาดใหญ่)
+function _fileReadFallback(file,resolve){ try{ const r=new FileReader(); r.onload=e=>resolve(e.target.result); r.onerror=()=>resolve(null); r.readAsDataURL(file); }catch(e){ resolve(null); } }
 function compressReceiptImage(file,maxDim,quality){
   maxDim=maxDim||1400; quality=quality||0.7;
   return new Promise((resolve)=>{
-    const reader=new FileReader();
-    reader.onload=ev=>{
-      const img=new Image();
-      img.onload=()=>{
+    if(!file){ resolve(null); return; }
+    let url=null;
+    try{ url=URL.createObjectURL(file); }catch(e){ _fileReadFallback(file,resolve); return; }
+    const img=new Image();
+    const done=(out)=>{ try{ if(url) URL.revokeObjectURL(url); }catch(e){} resolve(out); };
+    img.onload=()=>{
+      try{
         let w=img.width,h=img.height;
+        if(!w||!h){ done(url?img.src:null); return; }
         if(w>maxDim||h>maxDim){ const r=Math.min(maxDim/w,maxDim/h); w=Math.round(w*r); h=Math.round(h*r); }
         const canvas=document.createElement('canvas'); canvas.width=w; canvas.height=h;
         const ctx=canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h); ctx.drawImage(img,0,0,w,h);
-        try{ resolve(canvas.toDataURL('image/jpeg',quality)); }catch(e){ resolve(ev.target.result); }
-      };
-      img.onerror=()=>resolve(ev.target.result);
-      img.src=ev.target.result;
+        let out=null; try{ out=canvas.toDataURL('image/jpeg',quality); }catch(e){ out=null; }
+        if(out) done(out); else { try{ if(url) URL.revokeObjectURL(url); }catch(e){} _fileReadFallback(file,resolve); }
+      }catch(e){ try{ if(url) URL.revokeObjectURL(url); }catch(_){} _fileReadFallback(file,resolve); }
     };
-    reader.onerror=()=>resolve(null);
-    reader.readAsDataURL(file);
+    img.onerror=()=>{ try{ if(url) URL.revokeObjectURL(url); }catch(e){} _fileReadFallback(file,resolve); };
+    img.src=url;
   });
 }
 function renderSlipPreview(){
@@ -3277,7 +3281,7 @@ function jobPhotoSection(kind,title,sub){
       <button class="btn bp" style="font-size:11px;padding:5px 11px" onclick="document.getElementById('jobph-input-${kind}').click()">📷 เพิ่มรูป</button>
     </div>
     <div style="font-size:10.5px;color:var(--mu);margin-bottom:8px">${sub}</div>
-    <input type="file" id="jobph-input-${kind}" accept="image/*" multiple style="display:none" onchange="handleJobPhotos('${kind}',event)">
+    <input type="file" id="jobph-input-${kind}" accept="image/*" multiple style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px" onchange="handleJobPhotos('${kind}',event)">
     <div id="jobph-gallery-${kind}" style="display:flex;gap:8px;flex-wrap:wrap;min-height:40px"></div>
   </div>`;
 }
@@ -3286,7 +3290,7 @@ function handleJobPhotos(kind,e){
   if(jobPhotos[kind].length+files.length>12){ toast('⚠️ แนบได้สูงสุด 12 รูปต่อชุด'); return; }
   let done=0;
   files.forEach(file=>{
-    compressReceiptImage(file,1400,0.72).then(data=>{ jobPhotos[kind].push(data); done++; if(done===files.length) renderJobPhotos(kind); });
+    compressReceiptImage(file,1400,0.72).then(data=>{ if(data) jobPhotos[kind].push(data); done++; if(done===files.length) renderJobPhotos(kind); });
   });
   e.target.value='';
 }
@@ -3523,8 +3527,8 @@ async function cloudRestoreBackup(name,dateKey){
 function pickPhotos(multiple, cb){
   const inp=document.createElement('input');
   inp.type='file'; inp.accept='image/*'; inp.setAttribute('capture','environment'); if(multiple) inp.multiple=true;
-  inp.style.display='none'; document.body.appendChild(inp);
-  inp.onchange=async ()=>{ const files=[...(inp.files||[])]; const imgs=[]; for(const f of files){ try{ imgs.push(await compressReceiptImage(f,1200,0.72)); }catch(e){} } inp.remove(); cb(imgs); };
+  inp.style.cssText='position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px'; document.body.appendChild(inp);
+  inp.onchange=async ()=>{ const files=[...(inp.files||[])]; const imgs=[]; for(const f of files){ try{ const d=await compressReceiptImage(f,1200,0.72); if(d) imgs.push(d); }catch(e){} } inp.remove(); cb(imgs); };
   inp.click();
 }
 // ── Lightbox ดูรูปเต็มจอ (แตะรูปไหนก็ได้) ──
@@ -3824,7 +3828,7 @@ function openProductForm(id){
       <div id="pr-img-box" style="width:96px;height:96px;border-radius:12px;border:2px dashed var(--bd);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:var(--bg)" onclick="document.getElementById('pr-img-input').click()">
         ${prImg?`<img src="${prImg}" style="width:100%;height:100%;object-fit:cover">`:'<div style="text-align:center;color:var(--mu)"><div style="font-size:26px">📷</div><div style="font-size:10px;margin-top:2px">เพิ่มรูป</div></div>'}
       </div>
-      <input type="file" id="pr-img-input" accept="image/*" style="display:none" onchange="handleProductImg(event)">
+      <input type="file" id="pr-img-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px" onchange="handleProductImg(event)">
       <div style="flex:1">
         <div class="fg" style="margin-bottom:8px"><label class="flb">ชื่อสินค้า *</label><input class="fi" id="m-pnm" value="${p?(p.name||'').replace(/"/g,'&quot;'):''}" placeholder="ชื่อสินค้า"></div>
         <div class="fl2">
@@ -4205,7 +4209,7 @@ function openCompanyForm(){
         <div id="co-sig-box" style="width:140px;height:70px;border:2px dashed var(--bd);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:var(--bg);flex-shrink:0" onclick="document.getElementById('co-sig-input').click()">
           ${v.sigImg?`<img src="${v.sigImg}" style="max-width:100%;max-height:100%;object-fit:contain">`:'<div style="text-align:center;color:var(--mu)"><div style="font-size:22px">✍️</div><div style="font-size:10px">เพิ่มรูป</div></div>'}
         </div>
-        <input type="file" id="co-sig-input" accept="image/*" style="display:none" onchange="handleSigImg(event)">
+        <input type="file" id="co-sig-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px" onchange="handleSigImg(event)">
         <div style="flex:1;font-size:11px;color:var(--mu);line-height:1.6">อัปโหลดรูปลายเซ็น/ตรายาง (PNG พื้นใสได้)<br>${v.sigImg?'<button class="btn bd2" style="font-size:11px;padding:4px 10px;margin-top:6px" onclick="coSigData=null;openCompanyForm()">✕ ลบลายเซ็น</button>':''}</div>
       </div>
     </div>`;
@@ -5401,11 +5405,27 @@ function openPayDetail(empId){
       <div><div style="font-size:11px;opacity:.85">ยอดจ่ายสุทธิ</div><div id="pd-net" style="font-size:24px;font-weight:800">฿${fmt(r.net)}</div></div>
       <div style="text-align:right;font-size:11px;opacity:.9"><div>รายได้ <span id="pd-sum-e">฿${fmt(r.earnings)}</span></div><div>หัก <span id="pd-sum-d">฿${fmt(r.deduct)}</span></div></div>
     </div>
-    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;cursor:pointer"><input type="checkbox" id="pd-paid" ${r.paid?'checked':''} style="width:18px;height:18px"> ✅ ทำเครื่องหมายว่าจ่ายแล้ว</label>`;
+    <label style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:13px;cursor:pointer;font-weight:600"><input type="checkbox" id="pd-paid" ${r.paid?'checked':''} style="width:18px;height:18px" onchange="document.getElementById('pd-pay-box').style.display=this.checked?'block':'none'"> ✅ ทำเครื่องหมายว่าจ่ายแล้ว (ลงบัญชี/ตัดยอด)</label>
+    <div id="pd-pay-box" style="display:${r.paid?'block':'none'};background:var(--bg);border-radius:12px;padding:13px;margin-top:10px">
+      <div class="fl2">
+        <div class="fg"><label class="flb">วันที่จ่าย</label><input class="fi" type="date" id="pd-paydate" value="${r.payDate||new Date().toISOString().slice(0,10)}"></div>
+        <div class="fg"><label class="flb">วิธีจ่าย</label><select class="fi" id="pd-paymethod"><option value="โอนเงิน"${r.payMethod!=='เงินสด'?' selected':''}>🏦 โอนเงิน</option><option value="เงินสด"${r.payMethod==='เงินสด'?' selected':''}>💵 เงินสด</option></select></div>
+      </div>
+      <div class="fg" style="margin-top:4px"><label class="flb">แนบสลิป/หลักฐานการจ่าย</label><div id="pd-slip-box"></div></div>
+    </div>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" style="margin-right:auto" onclick="printPayslip('${empId}')">🧾 พิมพ์สลิป</button><button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="savePayDetail('${empId}')">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
+  _payrollSlip=r.slip||null; payrollSlipRender();
   payDetailRecalc();
 }
+let _payrollSlip=null;
+function payrollSlipRender(){
+  const b=document.getElementById('pd-slip-box'); if(!b) return;
+  b.innerHTML=_payrollSlip
+    ? `<div style="display:flex;align-items:center;gap:8px"><img src="${_payrollSlip}" onclick="photoView('${_payrollSlip}')" style="height:72px;border-radius:8px;border:1px solid var(--bd);cursor:pointer"><button type="button" class="btn bo" style="font-size:12px" onclick="payrollSlipPick()">เปลี่ยน</button><button type="button" class="btn bo" style="font-size:12px" onclick="_payrollSlip=null;payrollSlipRender()">ลบ</button></div>`
+    : `<button type="button" class="btn bo" style="width:100%;justify-content:center;padding:10px" onclick="payrollSlipPick()">📎 แนบรูปสลิป / ถ่ายรูป</button>`;
+}
+function payrollSlipPick(){ pickPhotos(false, imgs=>{ if(imgs&&imgs[0]){ _payrollSlip=imgs[0]; payrollSlipRender(); } }); }
 function payDetailRecalc(){
   const g=id=>+(document.getElementById(id)?.value)||0;
   const earn=g('pd-base')+g('pd-ot')+g('pd-holidayPay')+g('pd-travel')+g('pd-diligence')+g('pd-allowance')+g('pd-otherEarn');
@@ -5418,8 +5438,26 @@ function savePayDetail(empId){
   const g=id=>+(document.getElementById(id)?.value)||0;
   const key=payKeyPrefix+'_'+empId;
   if(!DB.payroll) DB.payroll={};
-  DB.payroll[key]={base:g('pd-base'),ot:g('pd-ot'),holidayPay:g('pd-holidayPay'),travel:g('pd-travel'),diligence:g('pd-diligence'),allowance:g('pd-allowance'),otherEarn:g('pd-otherEarn'),sso:g('pd-sso'),tax:g('pd-tax'),lateFine:g('pd-lateFine'),earlyFine:g('pd-earlyFine'),advance:g('pd-advance'),otherDeduct:g('pd-otherDeduct'),note:document.getElementById('pd-note').value.trim(),paid:document.getElementById('pd-paid').checked};
-  saveData(); closeModal(); renderPayroll(); toast('💾 บันทึกเงินเดือนแล้ว');
+  const paid=document.getElementById('pd-paid').checked;
+  DB.payroll[key]={base:g('pd-base'),ot:g('pd-ot'),holidayPay:g('pd-holidayPay'),travel:g('pd-travel'),diligence:g('pd-diligence'),allowance:g('pd-allowance'),otherEarn:g('pd-otherEarn'),sso:g('pd-sso'),tax:g('pd-tax'),lateFine:g('pd-lateFine'),earlyFine:g('pd-earlyFine'),advance:g('pd-advance'),otherDeduct:g('pd-otherDeduct'),note:document.getElementById('pd-note').value.trim(),paid,
+    payDate:document.getElementById('pd-paydate')?.value||new Date().toISOString().slice(0,10), payMethod:document.getElementById('pd-paymethod')?.value||'โอนเงิน', slip:_payrollSlip||null};
+  try{ autoPostPayroll(key,DB.payroll[key]); }catch(e){}
+  saveData(); closeModal(); renderPayroll();
+  toast(paid?'✅ บันทึก+ลงบัญชีจ่ายเงินเดือนแล้ว':'💾 บันทึกเงินเดือนแล้ว');
+}
+// ลงบัญชีจ่ายเงินเดือน: Dr เงินเดือน/ค่าจ้าง / Cr เงินสด-ธนาคาร (สุทธิ) + ภาษี/ปกส.ค้างจ่าย
+function autoPostPayroll(key,d){
+  removeJournalBySource('payroll',key);
+  if(!d||!d.paid) return;
+  const earn=(d.base||0)+(d.ot||0)+(d.holidayPay||0)+(d.travel||0)+(d.diligence||0)+(d.allowance||0)+(d.otherEarn||0);
+  const ded=(d.sso||0)+(d.tax||0)+(d.lateFine||0)+(d.earlyFine||0)+(d.advance||0)+(d.otherDeduct||0);
+  const net=earn-ded;
+  if(earn<=0) return;
+  const cashAcct=(d.payMethod==='เงินสด')?'1010':'1020';
+  const empName=(empById(key.split('_').pop())||{}).name||'';
+  const lines=[{code:'5020',debit:earn,credit:0},{code:cashAcct,debit:0,credit:net}];
+  if(ded>0.005) lines.push({code:'2030',debit:0,credit:ded});
+  postJournal({date:d.payDate||new Date().toISOString().slice(0,10),desc:'จ่ายเงินเดือน '+empName,lines,source:'payroll',sourceId:key});
 }
 function exportPayrollCSV(){
   if(!payData.length){ toast('⚠️ กดคำนวณก่อน'); return; }
@@ -6350,6 +6388,7 @@ function rebuildAccounting(){
   (DB.expense||[]).forEach(ex=>{ try{autoPostExpense(ex);}catch(e){} });
   (DB.receive||[]).forEach(rc=>{ try{autoPostReceive(rc);}catch(e){} });
   (DB.installments||[]).forEach(it=>{ try{autoPostInstallment(it);}catch(e){} (it.rows||[]).forEach((row,idx)=>{ if(row.paid){ try{autoPostInstPayment(it,row,idx);}catch(e){} } }); });
+  Object.keys(DB.payroll||{}).forEach(key=>{ const d=DB.payroll[key]; if(d&&d.paid){ try{autoPostPayroll(key,d);}catch(e){} } });
   saveData();
 }
 
