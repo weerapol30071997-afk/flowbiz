@@ -345,7 +345,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.06a · 📷 แนบรูปทุกหน้า+จ่ายเงินเดือนลงบัญชี</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.06b · 📷 เลือกรูปจากคลังได้</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -3524,9 +3524,9 @@ async function cloudRestoreBackup(name,dateKey){
   }catch(e){ toast('⚠️ กู้คืนไม่สำเร็จ'); }
 }
 // เลือก/ถ่ายรูป (หลายรูปได้) แล้ว callback คืน array รูปบีบอัด
-function pickPhotos(multiple, cb){
+function pickPhotos(multiple, cb, useCamera){
   const inp=document.createElement('input');
-  inp.type='file'; inp.accept='image/*'; inp.setAttribute('capture','environment'); if(multiple) inp.multiple=true;
+  inp.type='file'; inp.accept='image/*'; if(useCamera) inp.setAttribute('capture','environment'); if(multiple) inp.multiple=true;
   inp.style.cssText='position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px'; document.body.appendChild(inp);
   inp.onchange=async ()=>{ const files=[...(inp.files||[])]; const imgs=[]; for(const f of files){ try{ const d=await compressReceiptImage(f,1200,0.72); if(d) imgs.push(d); }catch(e){} } inp.remove(); cb(imgs); };
   inp.click();
