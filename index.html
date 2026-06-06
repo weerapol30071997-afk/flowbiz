@@ -223,6 +223,7 @@ tbody tr:hover td{background:#FAFBFD}
 /* ANIM */
 @keyframes fiu{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes pulse{0%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(1.5)}100%{opacity:1;transform:scale(1)}}
 .kpi{animation:fiu .4s ease both}
 .kpi:nth-child(1){animation-delay:.05s}.kpi:nth-child(2){animation-delay:.1s}
 .kpi:nth-child(3){animation-delay:.15s}.kpi:nth-child(4){animation-delay:.2s}
@@ -344,7 +345,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.05c · พอร์ทัลพนักงานครบ</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.05e · 🔔 แจ้งเตือนเรียลไทม์+Push</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -834,8 +835,11 @@ tbody tr:hover td{background:#FAFBFD}
   <div id="pg-tracking" class="pg">
     <div style="background:linear-gradient(135deg,#0D1B2A,#0A6EBD);border-radius:16px;padding:16px 18px;color:#fff;margin-bottom:16px">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-        <div><div style="font-size:15px;font-weight:700">📡 ติดตามพนักงานแบบเรียลไทม์</div><div style="font-size:12px;opacity:.9">พิกัดสด + แจ้งเตือนเข้า/ออกพื้นที่ทำงาน (รัศมี 100 ม.)</div></div>
-        <button class="btn" style="background:rgba(255,255,255,.2);color:#fff" onclick="renderTracking()">🔄 รีเฟรช</button>
+        <div><div style="font-size:15px;font-weight:700">📡 ติดตามพนักงานแบบเรียลไทม์</div><div style="font-size:12px;opacity:.9">พิกัดสด + แจ้งเตือนเข้า/ออกพื้นที่ทำงาน</div></div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;background:rgba(255,255,255,.15);padding:5px 10px;border-radius:20px"><span style="width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 1.4s infinite"></span>LIVE <span id="trk-time" style="opacity:.8"></span></span>
+          <button class="btn" style="background:rgba(255,255,255,.2);color:#fff" onclick="renderTracking()">🔄</button>
+        </div>
       </div>
     </div>
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr);margin-bottom:14px">
@@ -843,6 +847,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="kpi rd"><div class="kpi-ic rd">🔴</div><div class="kpi-lb">ออกนอกพื้นที่</div><div class="kpi-vl"><span id="trk-out">0</span></div></div>
       <div class="kpi bl"><div class="kpi-ic bl">👷</div><div class="kpi-lb">กำลังเข้างาน</div><div class="kpi-vl"><span id="trk-active">0</span></div></div>
     </div>
+    <div id="trk-map" style="height:360px;border-radius:14px;overflow:hidden;margin-bottom:14px;background:#e8eef3;display:flex;align-items:center;justify-content:center;color:var(--mu);font-size:13px">🗺️ กำลังโหลดแผนที่...</div>
     <div id="trk-list"></div>
   </div>
 
@@ -1558,6 +1563,84 @@ function collectNotifications(){
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
+// ── แจ้งเตือนระบบ (OS Notification) เมื่อมีรายการใหม่ ──
+let _notifSeen=null;
+function notifSig(n){ return (n.t||'')+'|'+(n.s||''); }
+function showOSNotification(title,body){
+  try{
+    if(!('Notification' in window)||Notification.permission!=='granted') return;
+    if(navigator.serviceWorker&&navigator.serviceWorker.ready){
+      navigator.serviceWorker.ready.then(reg=>{ try{ reg.showNotification(title,{body,tag:'flowbiz-'+Date.now(),renotify:true,badge:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22/>'}); }catch(e){ try{ new Notification(title,{body}); }catch(_){} } }).catch(()=>{ try{ new Notification(title,{body}); }catch(_){} });
+    } else { new Notification(title,{body}); }
+  }catch(e){}
+}
+function checkNewNotifications(announce){
+  let list=[]; try{ list=collectNotifications(); }catch(e){ return; }
+  const sigs=list.map(notifSig);
+  if(_notifSeen===null){ _notifSeen=new Set(sigs); updateNotifDot(); return; } // ตั้งฐานครั้งแรก ไม่เด้งย้อนหลัง
+  const fresh=list.filter(n=>!_notifSeen.has(notifSig(n)));
+  sigs.forEach(s=>_notifSeen.add(s));
+  updateNotifDot();
+  if(announce&&fresh.length){
+    fresh.slice(0,3).forEach(n=>showOSNotification((n.ic||'🔔')+' '+n.t, n.s||''));
+    if(fresh.length>3) showOSNotification('🔔 มีแจ้งเตือนใหม่ '+fresh.length+' รายการ','เปิดแอปเพื่อดูรายละเอียด');
+    try{ if(navigator.vibrate) navigator.vibrate([100,50,100]); }catch(e){}
+  }
+}
+function requestPushPerm(){
+  if(!('Notification' in window)){ toast('⚠️ เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน'); return; }
+  if(Notification.permission==='granted'){ toast('✅ เปิดแจ้งเตือนอยู่แล้ว'); showOSNotification('🔔 FlowBiz','การแจ้งเตือนพร้อมใช้งานแล้ว'); return; }
+  Notification.requestPermission().then(p=>{
+    if(p==='granted'){ toast('✅ เปิดการแจ้งเตือนสำเร็จ'); _notifSeen=null; showOSNotification('🔔 FlowBiz','เปิดการแจ้งเตือนเรียบร้อย'); try{ registerPushToken(); }catch(e){} }
+    else toast('🔕 ไม่ได้อนุญาต — เปิดได้ที่ตั้งค่าเบราว์เซอร์');
+  }).catch(()=>{});
+}
+// ── Web Push (FCM) ฝั่งแอป — ทำงานเฉพาะเมื่อตั้งค่า Push ครบ ──
+let _fcmLoading=null;
+function loadFirebaseMessaging(){
+  if(window.firebase&&window.firebase.messaging) return Promise.resolve();
+  if(_fcmLoading) return _fcmLoading;
+  _fcmLoading=new Promise((res,rej)=>{
+    const a=document.createElement('script'); a.src='https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js';
+    a.onload=()=>{ const m=document.createElement('script'); m.src='https://www.gstatic.com/firebasejs/10.12.2/firebase-messaging-compat.js'; m.onload=()=>res(); m.onerror=()=>rej(new Error('fcm-msg')); document.head.appendChild(m); };
+    a.onerror=()=>rej(new Error('fcm-app')); document.head.appendChild(a);
+  });
+  return _fcmLoading;
+}
+function _hashStr(s){ let h=0; for(let i=0;i<s.length;i++){ h=(h<<5)-h+s.charCodeAt(i); h|=0; } return Math.abs(h); }
+async function registerPushToken(){
+  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return;
+  if(!cloudCfg.msgSenderId||!cloudCfg.appId||!cloudCfg.vapidKey){ toast('💡 ใส่ค่า Push ในตั้งค่าคลาวด์ก่อน (ขั้นสูง)'); return; }
+  if(!('Notification' in window)||Notification.permission!=='granted') return;
+  try{
+    await loadFirebaseMessaging();
+    if(!window.firebase) return;
+    if(!firebase.apps||!firebase.apps.length){ firebase.initializeApp({apiKey:cloudCfg.apiKey,projectId:cloudCfg.projectId,messagingSenderId:cloudCfg.msgSenderId,appId:cloudCfg.appId}); }
+    const messaging=firebase.messaging();
+    let swReg; try{ swReg=await navigator.serviceWorker.register('firebase-messaging-sw.js'); }catch(e){ swReg=undefined; }
+    const token=await messaging.getToken({vapidKey:cloudCfg.vapidKey,serviceWorkerRegistration:swReg});
+    if(token){ await savePushToken(token);
+      try{ messaging.onMessage(p=>{ const n=p.notification||{}; showOSNotification(n.title||'🔔 FlowBiz', n.body||''); checkNewNotifications(false); }); }catch(e){}
+      toast('✅ ลงทะเบียนรับแจ้งเตือน Push สำเร็จ');
+    }
+  }catch(e){ toast('⚠️ ตั้งค่า Push ไม่สำเร็จ — ตรวจค่า/อินเทอร์เน็ต'); }
+}
+async function savePushToken(token){
+  try{
+    const base=`https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents`;
+    const tk='t'+_hashStr(token);
+    const body={fields:{}}; body.fields[tk]={stringValue:token};
+    await fetch(`${base}/flowbiz_push/tokens?key=${cloudCfg.apiKey}&updateMask.fieldPaths=${tk}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }catch(e){}
+}
+// ส่งคำขอแจ้งเตือน Push (ผ่านคิวใน Firestore → Cloud Function ส่งต่อไปทุกเครื่อง)
+async function cloudQueuePush(title,body){
+  try{
+    if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey||!cloudCfg.msgSenderId) return;
+    const base=`https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents`;
+    await fetch(`${base}/flowbiz_push_queue?key=${cloudCfg.apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({fields:{title:{stringValue:title||'🔔 FlowBiz'},body:{stringValue:body||''},ts:{integerValue:String(Date.now())}}})});
+  }catch(e){}
+}
 // อัปเดตตัวเลขแจ้งเตือนที่เมนู ให้คำนวณจากข้อมูลจริง (ซ่อนเมื่อ 0)
 function updateNavBadges(){
   try{
@@ -3190,6 +3273,7 @@ function saveJob(){
   else DB.jobs.unshift(rec);
   saveData(); closeModal(); renderJobs(); updateNavBadges&&updateNavBadges();
   toast(jobEditId?'✅ แก้ไขงานแล้ว':'✅ สร้างงานใหม่แล้ว');
+  if(!jobEditId&&rec.assignee){ try{ cloudQueuePush('🛠️ มีงานใหม่มอบหมาย', rec.title+(rec.assignee?' · '+rec.assignee:'')); }catch(e){} }
 }
 function delJob(id){ if(confirm('ลบงานนี้?')){ const i=DB.jobs.findIndex(x=>x.id===id); if(i>=0) DB.jobs.splice(i,1); saveData(); closeModal(); renderJobs(); toast('🗑️ ลบงานแล้ว'); } }
 
@@ -4103,6 +4187,7 @@ function openCloudForm(){
     </div>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔌</div><div style="flex:1"><div class="set-t">เปิดใช้งานคลาวด์</div><div class="set-s">เปิดแอป=ดึงอัตโนมัติ · แก้ไข=ส่งขึ้นอัตโนมัติ</div></div><button class="sw ${cloudCfg.enabled?'on':''}" id="cl-en" onclick="this.classList.toggle('on')"></button></div>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔄</div><div style="flex:1"><div class="set-t">รีเฟรชอัตโนมัติ</div><div class="set-s">อัปเดตทันทีเมื่ออีกเครื่องแก้ไข/เพิ่มรายการ</div></div><button class="sw ${cloudCfg.autoRefresh!==false?'on':''}" id="cl-auto" onclick="this.classList.toggle('on')"></button></div>
+    <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔔</div><div style="flex:1"><div class="set-t">แจ้งเตือนบนเครื่องนี้</div><div class="set-s">เด้งเตือนเมื่อมีบิล/งาน/ลาใหม่ (ขณะเปิดแอป)</div></div><button class="btn bp" style="padding:8px 14px;font-size:12px" onclick="requestPushPerm()">${('Notification' in window && Notification.permission==='granted')?'✅ เปิดอยู่':'เปิด'}</button></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Project ID</label><input class="fi" id="cl-pid" value="${cloudCfg.projectId||''}" placeholder="my-project-12345"></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">Web API Key</label><input class="fi" id="cl-key" value="${cloudCfg.apiKey||''}" placeholder="AIzaSy..."></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">รหัสชุดข้อมูล (Document ID) — ต้องเหมือนกันทุกเครื่อง</label><input class="fi" id="cl-doc" value="${cloudCfg.docId||'flowbiz'}" placeholder="flowbiz"></div>
@@ -4113,7 +4198,14 @@ function openCloudForm(){
     <div style="display:flex;flex-direction:column;gap:8px;margin-top:6px">
       <button class="btn bp" style="justify-content:center;padding:12px" onclick="cloudPush()">⬆️ ส่งข้อมูลเครื่องนี้ขึ้นคลาวด์</button>
       <button class="btn bo" style="justify-content:center;padding:12px" onclick="cloudPull()">⬇️ ดึงข้อมูลจากคลาวด์มาเครื่องนี้</button>
-    </div>`;
+    </div>
+    <details style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">
+      <summary style="font-size:13px;font-weight:700;cursor:pointer;color:var(--p)">🔔 ตั้งค่า Push (แจ้งเตือนตอนล็อกจอ) — ขั้นสูง</summary>
+      <div style="font-size:11.5px;color:var(--mu);margin:8px 0;line-height:1.6">ใส่ค่าจาก Firebase Console → Project Settings → Cloud Messaging (ดูคู่มือที่แนบมา) แล้วกด "เปิด" ด้านบน</div>
+      <div class="fg" style="margin-bottom:8px"><label class="flb">Messaging Sender ID</label><input class="fi" id="cl-sid" value="${cloudCfg.msgSenderId||''}" placeholder="123456789012"></div>
+      <div class="fg" style="margin-bottom:8px"><label class="flb">App ID</label><input class="fi" id="cl-aid" value="${cloudCfg.appId||''}" placeholder="1:123...:web:abc..."></div>
+      <div class="fg" style="margin-bottom:8px"><label class="flb">VAPID Key (Web Push certificate)</label><input class="fi" id="cl-vap" value="${cloudCfg.vapidKey||''}" placeholder="B...."></div>
+    </details>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveCloudForm()">💾 บันทึกการตั้งค่า</button>`;
   document.getElementById('ml').classList.add('op');
 }
@@ -4123,6 +4215,9 @@ function saveCloudForm(){
   cloudCfg.projectId=document.getElementById('cl-pid').value.trim();
   cloudCfg.apiKey=document.getElementById('cl-key').value.trim();
   cloudCfg.docId=document.getElementById('cl-doc').value.trim()||'flowbiz';
+  const _sid=document.getElementById('cl-sid'); if(_sid) cloudCfg.msgSenderId=_sid.value.trim();
+  const _aid=document.getElementById('cl-aid'); if(_aid) cloudCfg.appId=_aid.value.trim();
+  const _vap=document.getElementById('cl-vap'); if(_vap) cloudCfg.vapidKey=_vap.value.trim();
   saveCloudCfg();
   if(cloudCfg.enabled&&cloudCfg.projectId&&cloudCfg.apiKey){
     cloudInitDone=true; // ผู้ใช้ตั้งค่าเอง = พร้อมซิงค์
@@ -4273,7 +4368,7 @@ function loadData(){
 // ══════════════════════════════════
 // ระบบจัดเก็บข้อมูลบนคลาวด์ (Firebase Firestore REST — ไม่ต้องมีเซิร์ฟเวอร์)
 // ══════════════════════════════════
-let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true};
+let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:''};
 try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assign(cloudCfg,JSON.parse(cc)); }catch(e){}
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
@@ -4482,6 +4577,7 @@ async function cloudCheckRemote(){
       const ok=await cloudPull('watch');
       if(ok){ cloudLastSeen=upd;
         if(curUser&&curUser.isEmployee&&typeof renderEmpPortal==='function') renderEmpPortal();
+        checkNewNotifications(true);
         toast('🔄 อัปเดตข้อมูลจากอีกเครื่องแล้ว');
       }
     }
@@ -4489,7 +4585,8 @@ async function cloudCheckRemote(){
 }
 function cloudWatchStart(){
   if(_cloudWatch) clearInterval(_cloudWatch);
-  _cloudWatch=setInterval(cloudCheckRemote, 20000); // เช็คทุก 20 วิ
+  try{ checkNewNotifications(false); }catch(e){} // ตั้งฐานแจ้งเตือน ไม่เด้งย้อนหลัง
+  _cloudWatch=setInterval(cloudCheckRemote, 6000); // เช็คทุก 6 วิ (เรียลไทม์)
 }
 function cloudWatchStop(){ if(_cloudWatch){ clearInterval(_cloudWatch); _cloudWatch=null; } }
 // ดึงข้อมูลอัตโนมัติตอนเปิดแอป (คลาวด์ = แหล่งข้อมูลหลัก)
@@ -4845,8 +4942,47 @@ function empMonthView(id,ym){
   document.getElementById('ml').classList.add('op');
 }
 
-// ── หน้าติดตามพนักงานเรียลไทม์ (แอดมิน) ──
-let _trkTimer=null;
+// ── หน้าติดตามพนักงานเรียลไทม์ (แอดมิน) + แผนที่สด ──
+let _trkTimer=null,_trkMap=null,_trkLayer=null,_trkFitted=false,_trkMarkers={},_leafletLoading=null;
+function loadLeaflet(){
+  if(window.L) return Promise.resolve();
+  if(_leafletLoading) return _leafletLoading;
+  _leafletLoading=new Promise((res,rej)=>{
+    const css=document.createElement('link'); css.rel='stylesheet'; css.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css'; document.head.appendChild(css);
+    const s=document.createElement('script'); s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js'; s.onload=()=>res(); s.onerror=()=>rej(new Error('leaflet')); document.head.appendChild(s);
+  });
+  return _leafletLoading;
+}
+async function trkRenderMap(rows){
+  const el=document.getElementById('trk-map'); if(!el) return;
+  const pts=rows.filter(r=>r.g&&r.g.lat);
+  try{ await loadLeaflet(); }catch(e){ el.innerHTML='<div style="padding:24px;text-align:center;color:var(--mu);font-size:12px">⚠️ โหลดแผนที่ไม่ได้ (ต้องต่ออินเทอร์เน็ต)<br>ใช้ลิงก์ Google Maps ในรายการด้านล่างแทนได้</div>'; return; }
+  if(!window.L) return;
+  if(!_trkMap){
+    el.innerHTML=''; el.style.display='block';
+    _trkMap=L.map(el,{zoomControl:true,attributionControl:false}).setView([7.01,100.50],13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(_trkMap);
+    _trkLayer=L.layerGroup().addTo(_trkMap); _trkFitted=false;
+  }
+  setTimeout(()=>{ try{ _trkMap.invalidateSize(); }catch(e){} },120);
+  _trkLayer.clearLayers(); _trkMarkers={};
+  if(!pts.length) return;
+  const bounds=[];
+  pts.forEach(({e,a,g})=>{
+    const inside=g.inside!==false; const col=inside?'#16a34a':'#dc2626';
+    const center=(a&&a.inGps)?[a.inGps.lat,a.inGps.lng]:[g.lat,g.lng];
+    const radius=(e&&e.geoRadius)||100;
+    L.circle(center,{radius,color:col,weight:1.5,fillColor:col,fillOpacity:.08}).addTo(_trkLayer); bounds.push(center);
+    const html=`<div style="background:${col};color:#fff;width:34px;height:34px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.4);border:2px solid #fff"><span style="transform:rotate(45deg);font-size:12px;font-weight:700">${initials(e.name)}</span></div>`;
+    const icon=L.divIcon({html,className:'',iconSize:[34,34],iconAnchor:[17,34],popupAnchor:[0,-32]});
+    const ago=g.t?Math.round((Date.now()-g.t)/60000):null;
+    const popup=`<div style="font-family:inherit"><b>${e.name}</b><br>${inside?'🟢 อยู่ในพื้นที่':'🔴 ออกนอกพื้นที่'}${g.dist!=null?' · '+g.dist+' ม.':''}<br><span style="color:#888;font-size:11px">${ago!=null?(ago<1?'อัปเดตเมื่อสักครู่':'อัปเดต '+ago+' นาทีก่อน'):''}</span></div>`;
+    const m=L.marker([g.lat,g.lng],{icon}).addTo(_trkLayer).bindPopup(popup);
+    _trkMarkers[e.id]=m; bounds.push([g.lat,g.lng]);
+  });
+  if(!_trkFitted&&bounds.length){ try{ _trkMap.fitBounds(bounds,{padding:[40,40],maxZoom:16}); _trkFitted=true; }catch(e){} }
+}
+function trkFocus(empId){ const m=_trkMarkers&&_trkMarkers[empId]; if(_trkMap&&m){ _trkMap.setView(m.getLatLng(),17,{animate:true}); m.openPopup(); const el=document.getElementById('trk-map'); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); } }
 async function renderTracking(){
   let live=[]; try{ live=await cloudFetchLive(); }catch(e){}
   const liveById={}; live.forEach(l=>{ if(l.empId) liveById[l.empId]=l; });
@@ -4858,8 +4994,10 @@ async function renderTracking(){
   document.getElementById('trk-in').textContent=cIn;
   document.getElementById('trk-out').textContent=cOut;
   document.getElementById('trk-active').textContent=active.length;
+  const tt=document.getElementById('trk-time'); if(tt){ const n=new Date(); tt.textContent='· '+String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0'); }
+  trkRenderMap(rows);
   const box=document.getElementById('trk-list');
-  if(!rows.length){ box.innerHTML='<div style="text-align:center;color:var(--mu);padding:36px;font-size:13px">ยังไม่มีพนักงานเข้างาน<br><span style="font-size:11px">เมื่อพนักงานลงเวลาเข้า + เปิดแอปค้างไว้ จะเห็นตำแหน่งที่นี่</span></div>'; }
+  if(!rows.length){ box.innerHTML='<div style="text-align:center;color:var(--mu);padding:36px;font-size:13px">ยังไม่มีพนักงานเข้างาน<br><span style="font-size:11px">เมื่อพนักงานลงเวลาเข้า + เปิดแอปค้างไว้ จะเห็นตำแหน่งบนแผนที่</span></div>'; }
   else box.innerHTML=rows.map(({e,a,g})=>{
     const inside=g?(g.inside!==false):null;
     const ago=g&&g.t?Math.round((Date.now()-g.t)/60000):null;
@@ -4867,15 +5005,15 @@ async function renderTracking(){
     const statusTxt=inside===null?'<span style="color:var(--mu)">⚪ ไม่มีพิกัด</span>':inside?`<span style="color:var(--ok);font-weight:700">🟢 อยู่ในพื้นที่</span>`:`<span style="color:var(--dg);font-weight:700">🔴 ออกนอกพื้นที่</span>`;
     const dist=g&&g.dist!=null?` · ${g.dist} ม.`:'';
     const evs=(a&&a.geoEvents)?a.geoEvents.slice(-3).reverse():[];
-    return `<div class="card" style="padding:13px 15px;margin-bottom:10px">
+    return `<div class="card" style="padding:13px 15px;margin-bottom:10px;${g&&g.lat?'cursor:pointer':''}" ${g&&g.lat?`onclick="trkFocus('${e.id}')"`:''}>
       <div style="display:flex;align-items:center;gap:12px">
         <div style="width:42px;height:42px;border-radius:50%;background:${inside===false?'#FFE9E6':'#E8F8F0'};display:flex;align-items:center;justify-content:center;font-weight:700;color:${inside===false?'var(--dg)':'var(--ok)'}">${initials(e.name)}</div>
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:14px">${e.name}</div><div style="font-size:11.5px;color:var(--mu)">${e.role||''} ${a&&a.inTime?'· เข้างาน '+fmtTime(a.inTime):''}</div></div>
         <div style="text-align:right;font-size:12px">${statusTxt}${dist}<div style="font-size:10.5px;color:${stale?'var(--dg)':'var(--mu)'}">${ago!=null?(ago<1?'เมื่อสักครู่':'อัปเดต '+ago+' นาทีก่อน'+(stale?' ⚠️':'')):''}</div></div>
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-        ${g&&g.lat?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank">🗺️ ดูตำแหน่งบนแผนที่</a>`:''}
-        ${a&&a.inGps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${a.inGps.lat},${a.inGps.lng}" target="_blank">📍 จุดเข้างาน</a>`:''}
+        ${g&&g.lat?`<button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="event.stopPropagation();trkFocus('${e.id}')">🎯 ดูบนแผนที่</button>`:''}
+        ${a&&a.inGps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${a.inGps.lat},${a.inGps.lng}" target="_blank" onclick="event.stopPropagation()">📍 Google Maps</a>`:''}
       </div>
       ${evs.length?`<div style="margin-top:8px;font-size:11px;color:var(--mu)">เหตุการณ์ล่าสุด: ${evs.map(ev=>`${ev.type==='leave'?'🔴 ออก':'🟢 เข้า'} ${fmtTime(ev.time)}`).join(' · ')}</div>`:''}
     </div>`;
@@ -4951,7 +5089,7 @@ function saveLeave(isPortal){
   if(!isPortal){ rec.decidedAt=new Date().toISOString(); rec.decidedBy=(curUser&&curUser.name)||'แอดมิน'; }
   if(!DB.leaves) DB.leaves=[];
   DB.leaves.unshift(rec); saveData(); closeModal();
-  if(isPortal){ toast('📨 ส่งคำขอลาแล้ว รออนุมัติ'); try{ renderEmpPortal(); }catch(e){} }
+  if(isPortal){ toast('📨 ส่งคำขอลาแล้ว รออนุมัติ'); try{ renderEmpPortal(); }catch(e){} try{ cloudQueuePush('🏖️ คำขอลาใหม่', (e?e.name:'พนักงาน')+' · '+leaveTypeLabel(rec.type)+' '+leaveDaysCount(from,to)+' วัน'); }catch(_){} }
   else { toast('✅ บันทึกการลาแล้ว'); renderLeaves(); }
 }
 function leaveDecide(id,status){
