@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07c · 📘 งบดุลยอดสะสม (แสดงครบ)</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07d · 📎 ดูหลักฐานการจ่ายได้ทุกที่</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2275,7 +2275,7 @@ function openInvDrawer(id){
   openDrawer(r.id,r.cust,[['ลูกค้า',c.name],['วันที่ออก',fmtD(r.date)],['ครบกำหนด',r.due?fmtD(r.due):'—'],['สถานะ',r.status],['ยอดก่อน VAT','฿'+fmt(r.amt/1.07)],['VAT 7%','฿'+fmt(r.amt-r.amt/1.07)],['ยอดรวม','฿'+fmt(r.amt)]],
     itemsBlock(r.items)+(
     r.status==='รอชำระ'?`<button class="btn bp" style="width:100%;justify-content:center" onclick="openPayModal('invoice','${r.id}')">💳 บันทึกการชำระเงิน</button>`:
-    `<div class="rm-ind rm-ok">✓ ชำระเงินแล้ว</div>${r.payment?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:12px"><div style="font-weight:700;margin-bottom:6px">ข้อมูลการชำระ</div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">ช่องทาง</span><span>${r.payment.methodName}</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">จำนวน</span><span>฿${fmt(r.payment.amt)}</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">วันที่</span><span>${fmtD(r.payment.date)}</span></div>${r.payment.ref?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">อ้างอิง</span><span>${r.payment.ref}</span></div>`:''}</div>`:''}`)
+    `<div class="rm-ind rm-ok">✓ ชำระเงินแล้ว</div>${r.payment?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:12px"><div style="font-weight:700;margin-bottom:6px">ข้อมูลการชำระ</div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">ช่องทาง</span><span>${r.payment.methodName}</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">จำนวน</span><span>฿${fmt(r.payment.amt)}</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">วันที่</span><span>${fmtD(r.payment.date)}</span></div>${r.payment.ref?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">อ้างอิง</span><span>${r.payment.ref}</span></div>`:''}${r.payment.slip?`<div style="margin-top:8px;border-top:1px dashed var(--bd);padding-top:8px"><div style="color:var(--mu);margin-bottom:5px">📎 หลักฐานการจ่าย</div><img src="${r.payment.slip}" onclick="photoView('${r.payment.slip}')" style="height:90px;border-radius:8px;border:1px solid var(--bd);cursor:pointer"></div>`:''}</div>`:''}`)
     +`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${r.status==='ชำระแล้ว'?`<button class="btn bp" style="flex:1;justify-content:center" onclick="printReceipt('invoices','${r.id}')">🧾 ใบเสร็จรับเงิน</button>`:''}<button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('invoices','${r.id}','delivery')">→ ใบส่งของ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('invoices','${r.id}')">🖨️ พิมพ์</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('invoices','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('invoices','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('invoices',r.id),'invoices');
 }
 // ══════════════════════════════════
@@ -2316,6 +2316,12 @@ function openPayModal(kind,id,idx){
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="confirmPayment()">✅ ยืนยันการชำระเงิน</button>`;
   document.getElementById('ml').classList.add('op');
   pickPayMethod('cash');
+  // โหลดสลิปเดิม (ถ้าเคยแนบไว้)
+  let _ex=null;
+  if(kind==='inst') _ex=(DB.installments.find(x=>x.id===id)?.rows?.[idx]?.payment?.slip)||null;
+  else if(kind==='cashsale') _ex=(DB.cashsale.find(x=>x.id===id)?.payment?.slip)||null;
+  else if(kind==='invoice') _ex=(DB.invoices.find(x=>x.id===id)?.payment?.slip)||null;
+  if(_ex){ _paySlip=_ex; const b=document.getElementById('pay-slip-box'); if(b) b.innerHTML=`<div style="display:flex;align-items:center;gap:8px"><img src="${_ex}" onclick="photoView('${_ex}')" style="height:72px;border-radius:8px;border:1px solid var(--bd);cursor:pointer"><button type="button" class="btn bo" style="font-size:12px" onclick="paySlipPick()">เปลี่ยน</button><button type="button" class="btn bo" style="font-size:12px" onclick="paySlipClear()">ลบ</button></div>`; }
 }
 let _paySlip=null;
 function paySlipPick(){
@@ -2819,7 +2825,8 @@ function renderCashSale(){
   const q=(document.getElementById('cs-search')?.value||'').toLowerCase();
   const tb=document.getElementById('cashSaleTbl'); tb.innerHTML='';
   DB.cashsale.filter(r=>!q||(r.cust+r.id).toLowerCase().includes(q)).forEach(r=>{
-    tb.innerHTML+=`<tr><td><div class="dn">${r.id}</div></td><td>${r.cust}</td><td>${fmtD(r.date)}</td><td>${r.method}</td><td style="text-align:right;font-weight:700;color:var(--ok)">฿${fmt(r.amt)}</td><td><div style="display:flex;gap:5px;justify-content:flex-end"><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openPayModal('cashsale','${r.id}')">💳</button><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="printDoc('cashsale','${r.id}')">🖨️</button><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="duplicateDoc('cashsale','${r.id}')">📑</button><button class="btn bd2" style="font-size:11px;padding:4px 10px" onclick="deleteDoc('cashsale','${r.id}')">🗑️</button></div></td></tr>`;
+    const slipBtn=(r.payment&&r.payment.slip)?`<button class="btn bo" style="font-size:11px;padding:4px 10px;border-color:var(--ok)" onclick="photoView('${r.payment.slip}')" title="ดูหลักฐานการจ่าย">📎</button>`:'';
+    tb.innerHTML+=`<tr><td><div class="dn">${r.id}</div>${(r.payment&&r.payment.slip)?'<span style="font-size:9px;color:var(--ok)">📎 มีหลักฐาน</span>':''}</td><td>${r.cust}</td><td>${fmtD(r.date)}</td><td>${r.method}</td><td style="text-align:right;font-weight:700;color:var(--ok)">฿${fmt(r.amt)}</td><td><div style="display:flex;gap:5px;justify-content:flex-end">${slipBtn}<button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="openPayModal('cashsale','${r.id}')">💳</button><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="printDoc('cashsale','${r.id}')">🖨️</button><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="duplicateDoc('cashsale','${r.id}')">📑</button><button class="btn bd2" style="font-size:11px;padding:4px 10px" onclick="deleteDoc('cashsale','${r.id}')">🗑️</button></div></td></tr>`;
   });
 }
 
