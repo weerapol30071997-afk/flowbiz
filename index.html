@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07d · 📎 ดูหลักฐานการจ่ายได้ทุกที่</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07f · 🏷️ โลโก้+ที่อยู่จัดส่ง+เงื่อนไขชำระ</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -1499,7 +1499,8 @@ function openDocForm(type){
   curDocType=type;
 
   document.getElementById('ml-t').textContent = '+ สร้าง'+labels[type];
-  document.getElementById('ml-s').textContent = `เลขที่: ${nextId(type)} · วันที่: ${fmtD('2026-05-29')}`;
+  document.getElementById('ml-s').textContent = `เลขที่: ${nextId(type)} · วันที่: ${fmtD(iso(new Date()))}`;
+  const _today=iso(new Date()), _due=iso(new Date(Date.now()+30*864e5));
 
   if(type==='expense'){
     document.getElementById('ml-bd').innerHTML = `
@@ -1509,7 +1510,7 @@ function openDocForm(type){
         <div class="fg full"><label class="flb">รายละเอียด *</label><input class="fi" id="m-edesc" placeholder="รายละเอียดค่าใช้จ่าย..."></div>
         <div class="fg"><label class="flb">หมวดหมู่</label><select class="fi" id="m-ecat"><option>วัสดุ/อุปกรณ์</option><option>ค่าจ้าง</option><option>ค่าขนส่ง</option><option>อื่นๆ</option></select></div>
         <div class="fg"><label class="flb">ยอดเงิน (฿) *</label><input class="fi" type="number" id="m-amt" placeholder="0.00"></div>
-        <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="m-date" value="2026-05-29"></div>
+        <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="m-date" value="${_today}"></div>
         <div class="fg full"><label class="flb">หมายเหตุ</label><input class="fi" id="m-note" placeholder="หมายเหตุ (ถ้ามี)"></div>
       </div>`;
   } else {
@@ -1517,16 +1518,28 @@ function openDocForm(type){
       <div class="fl2" style="margin-bottom:14px">
         <div class="fg full"><label class="flb">${isSupp?'ผู้จัดจำหน่าย':'ลูกค้า'} *</label><select class="fi" id="m-cust"><option value="">— เลือก —</option>${opts}</select></div>
         <div class="fg full"><label class="flb">เลขที่เอกสาร (แก้ไขได้)</label><input class="fi" id="m-docno" value="${nextId(type)}" placeholder="เช่น 20260630001"></div>
-        <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="m-date" value="2026-05-29"></div>
-        ${['quotes','invoices','delivery'].includes(type)?'<div class="fg"><label class="flb">ครบกำหนด</label><input class="fi" type="date" id="m-due" value="2026-06-28"></div>':'<div class="fg"></div>'}
+        <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="m-date" value="${_today}"></div>
+        ${['quotes','invoices','delivery'].includes(type)?`<div class="fg"><label class="flb">${type==='quotes'?'ยืนราคาถึง':'ครบกำหนด'}</label><input class="fi" type="date" id="m-due" value="${_due}"></div>`:'<div class="fg"></div>'}
       </div>
-      <div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">รายการสินค้า/บริการ</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px">
+      ${['quotes','invoices','delivery','cashsale'].includes(type)?`
+      <div class="fg full" style="margin-bottom:10px"><label class="flb">เงื่อนไขการชำระเงิน</label>
+        <input class="fi" id="m-terms" list="terms-list" placeholder="เช่น ชำระทันที / เครดิต 30 วัน">
+        <datalist id="terms-list"><option value="ชำระทันที"></option><option value="เครดิต 7 วัน"></option><option value="เครดิต 15 วัน"></option><option value="เครดิต 30 วัน"></option><option value="มัดจำ 50% ส่วนที่เหลือเมื่อส่งมอบงาน"></option><option value="โอนก่อนเริ่มงาน"></option></datalist>
+      </div>
+      <div class="fg full" style="margin-bottom:12px"><label class="flb">ที่อยู่จัดส่ง / สถานที่ติดตั้ง <span style="font-weight:400;color:var(--mu);font-size:10px">(เว้นว่าง = ใช้ที่อยู่ลูกค้า)</span></label><textarea class="fta" id="m-ship" placeholder="ที่อยู่สำหรับจัดส่ง/หน้างาน"></textarea></div>`:''}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><span style="font-size:11px;font-weight:700;color:var(--mu)">รายการสินค้า/บริการ</span>
+        <select class="fi" id="m-vatmode" style="width:auto;font-size:12px;padding:5px 8px" onchange="renderDocItems()">
+          <option value="ex">VAT 7% แยกนอก</option><option value="in">VAT 7% รวมใน</option><option value="none">ไม่มี VAT</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
         <select class="fi" id="m-prod" style="flex:1"><option value="">— เลือกสินค้า —</option>${DB.products.map(p=>`<option value="${p.id}">${p.name} · ฿${fmt(p.price)}/${p.unit}</option>`).join('')}</select>
-        <input class="fi" type="number" id="m-qty" value="1" min="1" style="width:70px" placeholder="จำนวน">
+        <input class="fi" type="number" id="m-qty" value="1" min="0" step="any" style="width:64px" placeholder="จำนวน">
         <button class="btn bp" style="white-space:nowrap" onclick="addDocItem()">+ เพิ่ม</button>
       </div>
+      <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;padding:7px;margin-bottom:8px" onclick="addCustomDocItem()">✏️ เพิ่มรายการเอง (ระบุชื่อ/ราคาเอง)</button>
       <div id="m-itemlist" style="margin-bottom:10px"></div>
+      <div class="fg full" style="margin-bottom:8px"><label class="flb">ส่วนลดท้ายบิล (฿)</label><input class="fi" type="number" id="m-disc" value="0" step="any" oninput="renderDocItems()"></div>
       <div id="m-totals" style="background:var(--bg);border-radius:10px;padding:12px 14px;font-size:13px"></div>
       <input type="hidden" id="m-amt" value="0">
       <div class="fg full" style="margin-top:12px"><label class="flb">หมายเหตุ</label><input class="fi" id="m-note" placeholder="หมายเหตุ (ถ้ามี)"></div>`;
@@ -1539,34 +1552,49 @@ function openDocForm(type){
 let curDocType='';
 function addDocItem(){
   const pid=document.getElementById('m-prod')?.value;
-  const qty=parseInt(document.getElementById('m-qty')?.value)||1;
-  if(!pid){ toast('⚠️ กรุณาเลือกสินค้า'); return; }
+  const qty=parseFloat(document.getElementById('m-qty')?.value)||1;
+  if(!pid){ toast('⚠️ กรุณาเลือกสินค้า หรือกด "เพิ่มรายการเอง"'); return; }
   const p=DB.products.find(x=>x.id===pid); if(!p) return;
   const existing=docItems.find(i=>i.pid===pid);
   if(existing) existing.qty+=qty;
-  else docItems.push({pid,name:p.name,price:p.price,unit:p.unit,qty});
+  else docItems.push({pid,name:p.name,price:p.price,unit:p.unit,qty,disc:0});
   document.getElementById('m-qty').value=1;
   renderDocItems();
 }
+function addCustomDocItem(){ docItems.push({name:'',price:0,unit:'รายการ',qty:1,disc:0,custom:true}); renderDocItems(); setTimeout(()=>{ const l=document.querySelectorAll('#m-itemlist .di-name'); if(l.length) l[l.length-1].focus(); },50); }
 function delDocItem(i){ docItems.splice(i,1); renderDocItems(); }
-function setDocQty(i,v){ docItems[i].qty=Math.max(1,parseInt(v)||1); renderDocItems(); }
-function renderDocItems(){
-  const list=document.getElementById('m-itemlist'); if(!list) return;
-  if(!docItems.length){ list.innerHTML='<div style="text-align:center;color:var(--mu);font-size:12px;padding:14px;border:2px dashed var(--bd);border-radius:8px">ยังไม่มีรายการ — เลือกสินค้าแล้วกด "เพิ่ม"</div>'; }
-  else{
-    list.innerHTML=docItems.map((it,i)=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#fff;border:1px solid var(--bd);border-radius:8px;margin-bottom:5px">
-      <div style="flex:1"><div style="font-size:13px;font-weight:600">${it.name}</div><div style="font-size:11px;color:var(--mu)">฿${fmt(it.price)}/${it.unit}</div></div>
-      <input class="fi" type="number" value="${it.qty}" min="1" style="width:60px;padding:5px 8px" onchange="setDocQty(${i},this.value)">
-      <div style="width:90px;text-align:right;font-weight:700;font-size:13px">฿${fmt(it.price*it.qty)}</div>
-      <button class="in-del" onclick="delDocItem(${i})">✕</button>
-    </div>`).join('');
-  }
-  const sub=docItems.reduce((a,b)=>a+b.price*b.qty,0);
-  const vat=sub*0.07;
-  const tot=sub+vat;
+function setItemField(i,f,v){ if(f==='qty'||f==='price'||f==='disc') docItems[i][f]=Math.max(0,parseFloat(v)||0); else docItems[i][f]=v; const t=document.getElementById('m-totals'); if(t) docCalcTotals(); }
+function docLineTotal(it){ const gross=(it.price||0)*(it.qty||0); return gross-(gross*(it.disc||0)/100); }
+function docCalcTotals(){
+  const mode=document.getElementById('m-vatmode')?.value||'ex';
+  const disc=parseFloat(document.getElementById('m-disc')?.value)||0;
+  let sub=docItems.reduce((a,b)=>a+docLineTotal(b),0)-disc; if(sub<0) sub=0;
+  let base,vat,tot;
+  if(mode==='ex'){ base=sub; vat=sub*0.07; tot=sub+vat; }
+  else if(mode==='in'){ tot=sub; base=sub/1.07; vat=tot-base; }
+  else { base=sub; vat=0; tot=sub; }
   const amtEl=document.getElementById('m-amt'); if(amtEl) amtEl.value=tot;
   const tEl=document.getElementById('m-totals');
-  if(tEl) tEl.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ยอดก่อนภาษี</span><span>฿${fmt(sub)}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--mu)">VAT 7%</span><span>฿${fmt(vat)}</span></div><div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:6px;font-weight:700;font-size:15px;color:var(--p)"><span>ยอดรวมสุทธิ</span><span>฿${fmt(tot)}</span></div>`;
+  if(tEl) tEl.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">รวมรายการ</span><span>฿${fmt(docItems.reduce((a,b)=>a+docLineTotal(b),0))}</span></div>${disc>0?`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ส่วนลดท้ายบิล</span><span style="color:var(--dg)">-฿${fmt(disc)}</span></div>`:''}<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ยอดก่อนภาษี</span><span>฿${fmt(base)}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--mu)">VAT 7%${mode==='in'?' (รวมใน)':mode==='none'?' (ไม่มี)':''}</span><span>฿${fmt(vat)}</span></div><div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:6px;font-weight:700;font-size:15px;color:var(--p)"><span>ยอดรวมสุทธิ</span><span>฿${fmt(tot)}</span></div>`;
+}
+function renderDocItems(){
+  const list=document.getElementById('m-itemlist'); if(!list) return;
+  if(!docItems.length){ list.innerHTML='<div style="text-align:center;color:var(--mu);font-size:12px;padding:14px;border:2px dashed var(--bd);border-radius:8px">ยังไม่มีรายการ — เลือกสินค้าแล้วกด "เพิ่ม" หรือ "เพิ่มรายการเอง"</div>'; }
+  else{
+    list.innerHTML=docItems.map((it,i)=>`<div style="padding:8px 10px;background:#fff;border:1px solid var(--bd);border-radius:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        ${it.custom?`<input class="fi di-name" value="${(it.name||'').replace(/"/g,'&quot;')}" placeholder="ชื่อรายการ/บริการ" style="flex:1;padding:5px 8px;font-size:13px" oninput="setItemField(${i},'name',this.value)">`:`<div style="flex:1;font-size:13px;font-weight:600">${it.name}</div>`}
+        <button class="in-del" onclick="delDocItem(${i})">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center">
+        <div><div style="font-size:9px;color:var(--mu)">ราคา/หน่วย</div><input class="fi" type="number" value="${it.price}" step="any" style="padding:5px 7px;font-size:12px" oninput="setItemField(${i},'price',this.value)"></div>
+        <div><div style="font-size:9px;color:var(--mu)">จำนวน (${it.unit||''})</div><input class="fi" type="number" value="${it.qty}" step="any" style="padding:5px 7px;font-size:12px" oninput="setItemField(${i},'qty',this.value)"></div>
+        <div><div style="font-size:9px;color:var(--mu)">ส่วนลด %</div><input class="fi" type="number" value="${it.disc||0}" step="any" style="padding:5px 7px;font-size:12px" oninput="setItemField(${i},'disc',this.value)"></div>
+        <div style="text-align:right;min-width:80px"><div style="font-size:9px;color:var(--mu)">รวม</div><div style="font-weight:700;font-size:13px">฿${fmt(docLineTotal(it))}</div></div>
+      </div>
+    </div>`).join('');
+  }
+  docCalcTotals();
 }
 
 // ปรับสต็อก (dir=-1 ตัดออก/ขาย, +1 รับเข้า) เฉพาะสินค้าที่นับสต็อก
@@ -1765,27 +1793,33 @@ function saveDoc(type){
   if(amt<=0){ toast('⚠️ ยอดเงินต้องมากกว่า 0'); return; }
   const dueEl=document.getElementById('m-due');
   const note=document.getElementById('m-note')?.value||'';
-  const items=docItems.map(i=>({name:i.name,qty:i.qty,price:i.price,unit:i.unit}));
+  const vatMode=document.getElementById('m-vatmode')?.value||'ex';
+  const docDisc=parseFloat(document.getElementById('m-disc')?.value)||0;
+  const ship=document.getElementById('m-ship')?.value?.trim()||'';
+  const terms=document.getElementById('m-terms')?.value?.trim()||'';
+  if(type!=='expense'&&docItems.some(i=>i.custom&&!(i.name||'').trim())){ toast('⚠️ กรุณาตั้งชื่อรายการที่เพิ่มเอง'); return; }
+  const items=docItems.map(i=>({name:i.name,qty:i.qty,price:i.price,unit:i.unit,disc:i.disc||0}));
   let newId=(document.getElementById('m-docno')?.value||'').trim()||nextId(type);
   // กันเลขซ้ำในชนิดเดียวกัน
   const arrK=DB_KEY_BY_TYPE[type]; if(arrK&&(DB[arrK]||[]).some(x=>String(x.id)===newId)){ toast('⚠️ เลขที่เอกสาร '+newId+' ซ้ำ — ใช้เลขอื่น'); return; }
+  const hasVat=(vatMode!=='none');
 
   if(type==='quotes'){
-    DB.quotes.unshift({id:newId,cust:custEl.value,date:dateEl.value,exp:dueEl?.value||'',status:'รออนุมัติ',amt,paid:0,items,note});
+    DB.quotes.unshift({id:newId,cust:custEl.value,date:dateEl.value,exp:dueEl?.value||'',status:'รออนุมัติ',amt,paid:0,items,note,vat:hasVat,vatMode,disc:docDisc,ship,terms});
   } else if(type==='invoices'){
-    const rec={id:newId,cust:custEl.value,date:dateEl.value,due:dueEl?.value||'',status:'รอชำระ',amt,vat:true,items,note};
+    const rec={id:newId,cust:custEl.value,date:dateEl.value,due:dueEl?.value||'',status:'รอชำระ',amt,vat:hasVat,vatMode,disc:docDisc,items,note,ship,terms};
     DB.invoices.unshift(rec); try{autoPostInvoice(rec);}catch(e){}
   } else if(type==='delivery'){
-    DB.delivery.unshift({id:newId,cust:custEl.value,date:dateEl.value,status:'รอจัดส่ง',amt,items,note});
+    DB.delivery.unshift({id:newId,cust:custEl.value,date:dateEl.value,status:'รอจัดส่ง',amt,items,note,vatMode,disc:docDisc,ship,terms});
     adjustStock(items,-1);
   } else if(type==='cashsale'){
-    const rec={id:newId,cust:getCust(custEl.value).name||'ลูกค้าทั่วไป',custId:custEl.value,date:dateEl.value,method:'โอนเงิน',amt,vat:true,items,note};
+    const rec={id:newId,cust:getCust(custEl.value).name||'ลูกค้าทั่วไป',custId:custEl.value,date:dateEl.value,method:'โอนเงิน',amt,vat:hasVat,vatMode,disc:docDisc,items,note,ship,terms};
     DB.cashsale.unshift(rec); try{autoPostCashSale(rec);}catch(e){}
     adjustStock(items,-1);
   } else if(type==='po'){
-    DB.po.unshift({id:newId,supp:custEl.value,date:dateEl.value,status:'รอรับของ',amt,items,note});
+    DB.po.unshift({id:newId,supp:custEl.value,date:dateEl.value,status:'รอรับของ',amt,items,note,vatMode,disc:docDisc});
   } else if(type==='receive'){
-    const rec={id:newId,supp:custEl.value,date:dateEl.value,ref:'',status:'บันทึกแล้ว',amt,items,note};
+    const rec={id:newId,supp:custEl.value,date:dateEl.value,ref:'',status:'บันทึกแล้ว',amt,items,note,vatMode,disc:docDisc};
     DB.receive.unshift(rec); try{autoPostReceive(rec);}catch(e){}
     adjustStock(items,+1);
   } else if(type==='expense'){
@@ -4369,11 +4403,12 @@ function renderSettings(){
   });
 }
 // แก้ไขข้อมูลบริษัท (หัวบิล) ที่ใช้ในเอกสารพิมพ์
-let coSigData;
+let coSigData; let coLogoData;
 function openCompanyForm(){
   const def={name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',shortName:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'เลขประจำตัวผู้เสียภาษี 0905568006387',tel:'โทร. 074896293',mobile:'เบอร์มือถือ 0813062293',seller:'กุสุมา ชุมนวล'};
   if(coSigData===undefined) coSigData=companyInfo.sigImg||null;
-  const v=Object.assign({},def,companyInfo,{sigImg:coSigData});
+  if(coLogoData===undefined) coLogoData=companyInfo.logo||null;
+  const v=Object.assign({},def,companyInfo,{sigImg:coSigData,logo:coLogoData});
   document.getElementById('ml-t').textContent='🏢 ข้อมูลบริษัท (หัวบิล)';
   document.getElementById('ml-s').textContent='ใช้แสดงบนเอกสารพิมพ์ทุกชนิด';
   document.getElementById('ml-bd').innerHTML=`
@@ -4385,6 +4420,18 @@ function openCompanyForm(){
       <div class="fg"><label class="flb">โทรศัพท์</label><input class="fi" id="co-tel" value="${v.tel.replace(/"/g,'&quot;')}"></div>
       <div class="fg"><label class="flb">มือถือ</label><input class="fi" id="co-mobile" value="${v.mobile.replace(/"/g,'&quot;')}"></div>
       <div class="fg"><label class="flb">ผู้ขาย / ผู้มีอำนาจลงนาม</label><input class="fi" id="co-seller" value="${v.seller.replace(/"/g,'&quot;')}"></div>
+    </div>
+    <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><label class="flb" style="margin:0">โลโก้บริษัท (หัวเอกสาร)</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:600"><input type="checkbox" id="co-showlogo" ${v.showLogo!==false?'checked':''} style="width:16px;height:16px">แสดงโลโก้บนเอกสาร</label>
+      </div>
+      <div style="display:flex;gap:12px;align-items:center">
+        <div id="co-logo-box" style="width:88px;height:88px;border:2px dashed var(--bd);border-radius:10px;display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:var(--bg);flex-shrink:0" onclick="document.getElementById('co-logo-input').click()">
+          ${v.logo?`<img src="${v.logo}" style="max-width:100%;max-height:100%;object-fit:contain">`:'<div style="text-align:center;color:var(--mu)"><div style="font-size:22px">🏢</div><div style="font-size:10px">เพิ่มโลโก้</div></div>'}
+        </div>
+        <input type="file" id="co-logo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;left:-5px" onchange="handleLogoImg(event)">
+        <div style="flex:1;font-size:11px;color:var(--mu);line-height:1.6">โลโก้ PNG/JPG (พื้นใสได้) แสดงมุมบนของเอกสาร<br>${v.logo?'<button class="btn bd2" style="font-size:11px;padding:4px 10px;margin-top:6px" onclick="coLogoData=null;openCompanyForm()">✕ ลบโลโก้</button>':''}</div>
+      </div>
     </div>
     <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:14px">
       <label class="flb">ลายเซ็น / ตรายาง (แสดงเหนือชื่อผู้ลงนาม)</label>
@@ -4404,11 +4451,16 @@ function handleSigImg(e){
   if(file.size>10*1024*1024){ toast('⚠️ ไฟล์ใหญ่เกิน 10MB'); return; }
   compressReceiptImage(file,600,0.85).then(data=>{ coSigData=data; const box=document.getElementById('co-sig-box'); if(box) box.innerHTML=`<img src="${data}" style="max-width:100%;max-height:100%;object-fit:contain">`; toast('✍️ เพิ่มลายเซ็นแล้ว'); });
 }
+function handleLogoImg(e){
+  const file=e.target.files[0]; if(!file) return;
+  if(file.size>10*1024*1024){ toast('⚠️ ไฟล์ใหญ่เกิน 10MB'); return; }
+  compressReceiptImage(file,400,0.85).then(data=>{ coLogoData=data; const box=document.getElementById('co-logo-box'); if(box) box.innerHTML=`<img src="${data}" style="max-width:100%;max-height:100%;object-fit:contain">`; toast('🏢 เพิ่มโลโก้แล้ว'); });
+}
 function saveCompany(){
-  companyInfo={name:document.getElementById('co-name').value,shortName:document.getElementById('co-short').value,addr:document.getElementById('co-addr').value,tax:document.getElementById('co-tax').value,tel:document.getElementById('co-tel').value,mobile:document.getElementById('co-mobile').value,seller:document.getElementById('co-seller').value,sigImg:coSigData||null};
+  companyInfo={name:document.getElementById('co-name').value,shortName:document.getElementById('co-short').value,addr:document.getElementById('co-addr').value,tax:document.getElementById('co-tax').value,tel:document.getElementById('co-tel').value,mobile:document.getElementById('co-mobile').value,seller:document.getElementById('co-seller').value,sigImg:coSigData||null,logo:coLogoData||null,showLogo:document.getElementById('co-showlogo')?document.getElementById('co-showlogo').checked:true};
   saveData(); closeModal(); toast('✅ บันทึกข้อมูลบริษัทแล้ว');
 }
-function resetCompany(){ companyInfo={}; coSigData=undefined; saveData(); closeModal(); toast('↩️ คืนค่าข้อมูลบริษัทเริ่มต้น'); }
+function resetCompany(){ companyInfo={}; coSigData=undefined; coLogoData=undefined; saveData(); closeModal(); toast('↩️ คืนค่าข้อมูลบริษัทเริ่มต้น'); }
 
 // ฟอร์มตั้งค่าคลาวด์ (Firebase)
 function openCloudForm(){
@@ -6277,12 +6329,16 @@ function printDoc(type,id,opts){
   const custName = type==='expense'
     ? (r.desc||'ผู้รับเงิน')
     : (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
-  const disc=r.disc||0;
-  const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+(b.price||0)*(b.qty||0),0):((r.amt||0)/(r.vat?1.07:1));
-  const discAmt=itemsSub*disc/100;
-  const afterDisc=itemsSub-discAmt;
-  const vat=r.vat?afterDisc*0.07:0;
-  const total=(typeof r.amt==='number'&&!isNaN(r.amt))?r.amt:(typeof r.total==='number'&&!isNaN(r.total))?r.total:(afterDisc+vat);
+  const disc=r.disc||0; // ส่วนลดท้ายบิล (บาท)
+  const _lt=it=>{ const g=(it.price||0)*(it.qty||0); return g-(g*(it.disc||0)/100); };
+  const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+_lt(b),0):(((r.amt||0)/(r.vat?1.07:1))+disc);
+  const afterDisc=Math.max(0,itemsSub-disc);
+  const vmode=r.vatMode||(r.vat?'ex':'none');
+  let base,vat;
+  if(vmode==='in'){ const tt=(typeof r.amt==='number'&&!isNaN(r.amt))?r.amt:afterDisc; base=tt/1.07; vat=tt-base; }
+  else if(vmode==='none'||!r.vat){ base=afterDisc; vat=0; }
+  else { base=afterDisc; vat=afterDisc*0.07; }
+  const total=(typeof r.amt==='number'&&!isNaN(r.amt))?r.amt:(base+vat);
   const docDate=fmtSlash(r.date);
 
   // เลือกชนิดสำเนา: original / copy / both
@@ -6309,7 +6365,7 @@ function printDoc(type,id,opts){
     }
     if(type==='installments'){
       const itemsTable=(r.items&&r.items.length)
-        ? `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการสินค้า</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคา/หน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${r.items.map((it,i)=>{const parts=String(it.name||'').split('\n');const nm=parts[0]||'';const sub=it.sub||parts.slice(1).join(' ');return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}</td><td style="text-align:right">${fmt(it.price*it.qty)}</td></tr>`;}).join('')}</tbody></table>`
+        ? `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการสินค้า</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคา/หน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${r.items.map((it,i)=>{const parts=String(it.name||'').split('\n');const nm=parts[0]||'';const sub=it.sub||parts.slice(1).join(' ');return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}${it.disc?`<div style="font-size:10px;color:#c0392b">-${it.disc}%</div>`:''}</td><td style="text-align:right">${fmt(_lt(it))}</td></tr>`;}).join('')}</tbody></table>`
         : '';
       const methodLabel = r.method==='qty' ? 'แบ่งจ่ายตามจำนวนสินค้า' : 'แบ่งจ่ายตามยอด/เปอร์เซ็นต์';
       const rows=r.rows.map(x=>`<tr><td style="text-align:center">${x.n}</td><td>${x.desc}</td><td style="text-align:center">${fmtD(x.due)}</td><td style="text-align:right">${x.pct?fmt(x.pct)+'%':'—'}</td><td style="text-align:right">${fmt(x.amt)}</td><td style="text-align:center">${x.paid?'✓ ชำระแล้ว':'รอชำระ'}</td></tr>`).join('');
@@ -6320,11 +6376,12 @@ function printDoc(type,id,opts){
       <div class="baht">(${bahtText(total)})</div>`;
     }
     const itemRows=(r.items&&r.items.length)
-      ? r.items.map((it,i)=>{ const parts=String(it.name||'').split('\n'); const nm=parts[0]||''; const sub=it.sub||parts.slice(1).join(' '); return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}</td><td style="text-align:right">${fmt(it.price*it.qty)}</td></tr>`; }).join('')
+      ? r.items.map((it,i)=>{ const parts=String(it.name||'').split('\n'); const nm=parts[0]||''; const sub=it.sub||parts.slice(1).join(' '); return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}${it.disc?`<div style="font-size:10px;color:#c0392b">-${it.disc}%</div>`:''}</td><td style="text-align:right">${fmt(_lt(it))}</td></tr>`; }).join('')
       : `<tr><td style="text-align:center">1</td><td>ค่าสินค้า/บริการตามเอกสาร ${r.id}</td><td style="text-align:center">1</td><td></td><td style="text-align:right">${fmt(itemsSub)}</td><td style="text-align:right">${fmt(itemsSub)}</td></tr>`;
     let sumRows=`<tr><td>รวมเป็นเงิน</td><td>${fmt(disc>0?afterDisc:itemsSub)} บาท</td></tr>`;
-    if(disc>0) sumRows=`<tr><td>รวมเป็นเงิน</td><td>${fmt(itemsSub)} บาท</td></tr><tr><td>ส่วนลด ${disc}%</td><td>-${fmt(discAmt)} บาท</td></tr><tr><td>จำนวนเงินหลังหักส่วนลด</td><td>${fmt(afterDisc)} บาท</td></tr>`;
-    sumRows+=`<tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vat)} บาท</td></tr>`;
+    if(disc>0) sumRows=`<tr><td>รวมเป็นเงิน</td><td>${fmt(itemsSub)} บาท</td></tr><tr><td>ส่วนลดท้ายบิล</td><td>-${fmt(disc)} บาท</td></tr><tr><td>จำนวนเงินหลังหักส่วนลด</td><td>${fmt(afterDisc)} บาท</td></tr>`;
+    if(vmode==='in') sumRows+=`<tr><td>มูลค่าก่อนภาษี</td><td>${fmt(base)} บาท</td></tr><tr><td>ภาษีมูลค่าเพิ่ม 7% (รวมใน)</td><td>${fmt(vat)} บาท</td></tr>`;
+    else if(vmode!=='none'&&r.vat) sumRows+=`<tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vat)} บาท</td></tr>`;
     return `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายละเอียด</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคาต่อหน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${itemRows}</tbody></table>
     <table class="sumt">${sumRows}<tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(total)} บาท</td></tr></table>
     <div class="baht">(${bahtText(total)})</div>`;
@@ -6347,15 +6404,18 @@ function printDoc(type,id,opts){
       <div class="title-rule"></div>
       <div class="top">
         <div>
+          ${(CO.logo&&CO.showLogo!==false)?`<img src="${CO.logo}" style="max-height:64px;max-width:200px;object-fit:contain;margin-bottom:8px;display:block">`:''}
           <div class="co-name">${CO.name}</div>
           <div class="co-addr">${CO.addr}<br>${CO.tax}<br>${CO.tel}<br>${CO.mobile}</div>
           <div class="cust-sec"><div class="cust-lb">${type==='expense'?'รายการ':'ลูกค้า'}</div><div class="cust-nm">${custName}</div></div>
+          ${r.ship?`<div class="cust-sec" style="margin-top:6px"><div class="cust-lb">📍 ที่อยู่จัดส่ง / สถานที่ติดตั้ง</div><div style="font-size:12px;white-space:pre-line">${r.ship}</div></div>`:''}
         </div>
         <div class="docmeta">
           <table>
             <tr><td class="k">เลขที่</td><td class="v">${r.id}</td></tr>
             <tr><td class="k">วันที่</td><td class="v">${docDate}</td></tr>
             ${type==='expense'?`<tr><td class="k">หมวดหมู่</td><td class="v">${r.cat||'-'}</td></tr><tr><td class="k">ช่องทางจ่าย</td><td class="v">${r.payMethod||'เงินสด'}</td></tr>`:`${r.due?`<tr><td class="k">ครบกำหนด</td><td class="v">${fmtSlash(r.due)}</td></tr>`:''}${r.exp?`<tr><td class="k">ยืนราคาถึง</td><td class="v">${fmtSlash(r.exp)}</td></tr>`:''}`}
+            ${r.terms?`<tr><td class="k">เงื่อนไขชำระ</td><td class="v">${r.terms}</td></tr>`:''}
             <tr><td class="k">ผู้จัดทำ</td><td class="v">${CO.seller}</td></tr>
           </table>
         </div>
