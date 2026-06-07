@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.06j · 🔗 จับคู่/เชื่อมเอกสาร</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07a · 📊 สรุปบัญชีแม่นยำ+งบดุลสมดุล</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -7442,9 +7442,9 @@ function renderSummary(){
   const totalAsset=DB.coa.filter(a=>a.type==='asset').reduce((s,a)=>s+getbal(a.code),0);
   const totalLiab=DB.coa.filter(a=>a.type==='liability').reduce((s,a)=>s+getbal(a.code),0);
   const totalEquity=DB.coa.filter(a=>a.type==='equity').reduce((s,a)=>s+getbal(a.code),0);
-  // ── VAT ──
-  const vat2301=getbal('2301'); const vat1750=getbal('1750');
-  const vatNet=vat2301-vat1750;
+  // ── VAT (ใช้รหัสที่ลงบัญชีจริง: 2040 ภาษีขาย, 1060 ภาษีซื้อ) ──
+  const vatOut=getbal('2040'); const vatIn=getbal('1060');
+  const vatNet=vatOut-vatIn;
   // ── Cash flow ──
   const cashIn=jvFilt.reduce((s,e)=>s+(e.lines.filter(l=>['1010','1020'].includes(l.code)&&l.debit>0).reduce((a,l)=>a+l.debit,0)),0);
   const cashOut=jvFilt.reduce((s,e)=>s+(e.lines.filter(l=>['1010','1020'].includes(l.code)&&l.credit>0).reduce((a,l)=>a+l.credit,0)),0);
@@ -7462,7 +7462,7 @@ function renderSummary(){
   document.getElementById('sum-k1').textContent=fmt(totalRev);
   document.getElementById('sum-k2').textContent=fmt(totalExp);
   document.getElementById('sum-k3').textContent=fmt(netProfit);
-  document.getElementById('sum-k4').textContent=fmt(vatNet);
+  document.getElementById('sum-k4').textContent=fmt(vatOut);
   sumData={rev:totalRev,exp:totalExp,net:netProfit,vat:vatNet,cashIn,cashOut,from,to};
   // ── helper row ──
   const row=(label,val,bold,color)=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px">
@@ -7477,7 +7477,7 @@ function renderSummary(){
   expAccts.filter(a=>getbal(a.code)!==0).forEach(a=>{ plHtml+=row(a.name,`฿${fmt(getbal(a.code))}`,false,'var(--dg)'); });
   plHtml+=row('รวมค่าใช้จ่าย',`฿${fmt(totalExp)}`,true,'var(--dg)');
   plHtml+=`<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:14px;font-weight:700;border-top:2px solid var(--bd);margin-top:4px">
-    <span>${netProfit>=0?'กำไรสุทธิ':'ขาดทุนสุทธิ'}</span>
+    <span>${netProfit>=0?'กำไรสุทธิ':'ขาดทุนสุทธิ'}${totalRev>0?` <span style="font-size:11px;font-weight:400;color:var(--mu)">(${(netProfit/totalRev*100).toFixed(1)}% ของรายได้)</span>`:''}</span>
     <span style="color:${netProfit>=0?'var(--ok)':'var(--dg)'}">฿${fmt(Math.abs(netProfit))}</span></div>`;
   document.getElementById('sum-pl').innerHTML=plHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
   // ── Balance Sheet ──
@@ -7489,18 +7489,19 @@ function renderSummary(){
   bsHtml+=row('รวมหนี้สิน',`฿${fmt(totalLiab)}`,true,'var(--dg)');
   bsHtml+=divider('ส่วนของผู้ถือหุ้น');
   DB.coa.filter(a=>a.type==='equity'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
-  bsHtml+=row('รวมส่วนทุน',`฿${fmt(totalEquity)}`,true,'var(--ok)');
-  bsHtml+=row('หนี้สิน + ทุน',`฿${fmt(totalLiab+totalEquity)}`,true);
+  bsHtml+=row(netProfit>=0?'กำไรสะสม (งวดนี้)':'ขาดทุนสะสม (งวดนี้)',`฿${fmt(netProfit)}`,false,netProfit>=0?'var(--ok)':'var(--dg)');
+  const totalEquityFull=totalEquity+netProfit;
+  bsHtml+=row('รวมส่วนทุน',`฿${fmt(totalEquityFull)}`,true,'var(--ok)');
+  const lae=totalLiab+totalEquityFull;
+  bsHtml+=row('หนี้สิน + ทุน',`฿${fmt(lae)}`,true);
+  const bdiff=totalAsset-lae;
+  bsHtml+=Math.abs(bdiff)<0.5
+    ? `<div style="text-align:center;font-size:11px;color:#0F9D58;background:#E8F8F0;border-radius:8px;padding:8px;margin-top:10px;font-weight:600">✓ งบดุลสมดุล (สินทรัพย์ = หนี้สิน + ทุน)</div>`
+    : `<div style="text-align:center;font-size:11px;color:#b45309;background:#FEF3C7;border-radius:8px;padding:8px;margin-top:10px;font-weight:600">⚠️ ผลต่าง ฿${fmt(bdiff)} — ตรวจรายการบัญชี</div>`;
   document.getElementById('sum-bs').innerHTML=bsHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
-  // ── รายได้แยกหมวด (จากเอกสาร) ──
+  // ── รายได้แยกหมวด (จากบัญชีรายได้ — ตรงกับ P&L) ──
   const revByCat={};
-  docFilter(DB.invoices).forEach(r=>(r.items||[]).forEach(it=>{ const k=it.cat||'ใบวางบิล'; if(!revByCat[k])revByCat[k]=0; revByCat[k]+=(it.price||0)*(it.qty||0); }));
-  docFilter(DB.cashsale).forEach(r=>(r.items||[]).forEach(it=>{ const k=it.cat||'ขายเงินสด'; if(!revByCat[k])revByCat[k]=0; revByCat[k]+=(it.price||0)*(it.qty||0); }));
-  // ถ้าไม่มี items ให้ใช้ยอดรวม
-  if(!Object.keys(revByCat).length){
-    docFilter(DB.invoices).forEach(r=>{ if(!revByCat['ใบวางบิล'])revByCat['ใบวางบิล']=0; revByCat['ใบวางบิล']+=r.amt; });
-    docFilter(DB.cashsale).forEach(r=>{ if(!revByCat['ขายเงินสด'])revByCat['ขายเงินสด']=0; revByCat['ขายเงินสด']+=r.amt; });
-  }
+  revAccts.filter(a=>getbal(a.code)>0).forEach(a=>{ revByCat[a.name]=getbal(a.code); });
   const totalRevDoc=Object.values(revByCat).reduce((a,b)=>a+b,0)||1;
   document.getElementById('sum-rev-detail').innerHTML=Object.entries(revByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
     <div style="margin-bottom:8px">
@@ -7509,9 +7510,9 @@ function renderSummary(){
       </div>
       <div style="background:var(--bd);border-radius:4px;height:6px"><div style="background:var(--ok);height:100%;border-radius:4px;width:${Math.max(4,v/totalRevDoc*100).toFixed(1)}%"></div></div>
     </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีรายได้ในช่วงนี้</div>';
-  // ── ค่าใช้จ่ายแยกหมวด ──
+  // ── ค่าใช้จ่ายแยกหมวด (จากบัญชีค่าใช้จ่าย — ตรงกับ P&L) ──
   const expByCat={};
-  docFilter(DB.expense).forEach(r=>{ const k=r.cat||'อื่นๆ'; if(!expByCat[k])expByCat[k]=0; expByCat[k]+=r.amt; });
+  expAccts.filter(a=>getbal(a.code)>0).forEach(a=>{ expByCat[a.name]=getbal(a.code); });
   const totalExpDoc=Object.values(expByCat).reduce((a,b)=>a+b,0)||1;
   document.getElementById('sum-exp-detail').innerHTML=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
     <div style="margin-bottom:8px">
