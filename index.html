@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07f · 🏷️ โลโก้+ที่อยู่จัดส่ง+เงื่อนไขชำระ</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07g · 👥 พนักงาน: รูปโปรไฟล์+โควต้าลา+โปรไฟล์ละเอียด</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -5034,7 +5034,7 @@ function renderEmployees(){
     const statusDot=att&&att.inTime&&!att.outTime?'<span style="color:var(--ok);font-weight:600">🟢 อยู่ในงาน</span>':att&&att.outTime?'<span style="color:var(--mu)">⚪ ออกงานแล้ว</span>':'<span style="color:var(--mu)">⚪ ยังไม่เข้างาน</span>';
     return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openEmpDrawer('${e.id}')">
       <div style="background:linear-gradient(135deg,#0A6EBD,#00C9A7);padding:14px;color:#fff;display:flex;align-items:center;gap:12px">
-        <div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initials(e.name)}</div>
+        ${e.photo?`<img src="${e.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.5)">`:`<div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initials(e.name)}</div>`}
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div><div style="font-size:12px;opacity:.9">${e.role||'-'}</div></div>
         ${!e.active?'<span class="badge" style="background:#fff;color:var(--dg)">พักงาน</span>':''}
       </div>
@@ -5048,6 +5048,7 @@ function renderEmployees(){
 }
 function openEmployeeForm(id){
   const e=id?empById(id):null;
+  efPhotoData=(e&&e.photo)||null;
   const v=(k)=>{ const val=e?e[k]:undefined; return (val===undefined||val===null)?'':String(val).replace(/"/g,'&quot;'); };
   const off=(e&&Array.isArray(e.offDays))?e.offDays:[0];
   const days=[['อา',0],['จ',1],['อ',2],['พ',3],['พฤ',4],['ศ',5],['ส',6]];
@@ -5059,6 +5060,13 @@ function openEmployeeForm(id){
      ${[['info','ข้อมูล'],['bank','ธนาคาร'],['wage','ค่าจ้าง'],['time','เวลา/หัก'],['welfare','สวัสดิการ'],['holiday','วันหยุด']].map((t,i)=>`<button type="button" id="eftab-${t[0]}" onclick="efTab('${t[0]}')" style="flex:0 0 auto;padding:7px 13px;border:none;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;background:${i===0?'#fff':'transparent'};color:${i===0?'var(--p)':'var(--mu)'}">${t[1]}</button>`).join('')}
    </div>
    <div class="ef-pane" id="efpane-info">
+     <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+       <div id="ef-photo-box" onclick="document.getElementById('ef-photo-input').click()" style="width:72px;height:72px;border-radius:50%;border:2px dashed var(--bd);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:var(--bg);flex-shrink:0">
+         ${(e&&e.photo)?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`:'<div style="text-align:center;color:var(--mu)"><div style="font-size:22px">📷</div><div style="font-size:9px">รูป</div></div>'}
+       </div>
+       <input type="file" id="ef-photo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;left:-5px" onchange="handleEmpPhoto(event)">
+       <div style="flex:1;font-size:11px;color:var(--mu)">รูปโปรไฟล์พนักงาน (แตะวงกลมเพื่อเลือกรูป)${(e&&e.photo)?'<br><button type="button" class="btn bd2" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="efPhotoClear()">✕ ลบรูป</button>':''}</div>
+     </div>
      <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อ-นามสกุล *</label><input class="fi" id="ef-name" value="${v('name')}" placeholder="เช่น สมชาย ใจดี"></div>
      <div class="fl2">
        <div class="fg"><label class="flb">ตำแหน่ง</label><input class="fi" id="ef-role" value="${v('role')}" placeholder="ช่างไฟฟ้า"></div>
@@ -5126,6 +5134,7 @@ function openEmployeeForm(id){
    <div class="ef-pane" id="efpane-welfare" style="display:none">
      <div class="fg" style="margin-bottom:10px"><label class="flb">ค่าเดินทาง/อาหาร (฿/วันทำงาน)</label><input class="fi" type="number" id="ef-travel" value="${e&&e.travel?e.travel:0}"></div>
      <div class="fg" style="margin-bottom:10px"><label class="flb">เบี้ยขยัน (฿/เดือน — ได้เมื่อไม่สาย/ไม่ลา)</label><input class="fi" type="number" id="ef-diligence" value="${e&&e.diligence?e.diligence:0}"></div>
+     <div class="fg" style="margin-bottom:10px"><label class="flb">🏖️ โควต้าวันลาพักร้อน (วัน/ปี)</label><input class="fi" type="number" id="ef-leavequota" value="${e&&e.leaveQuota!=null?e.leaveQuota:6}" placeholder="6"></div>
      <div class="set-row" style="background:var(--bg);border-radius:10px;padding:11px 12px;margin-bottom:10px"><div style="flex:1"><div class="set-t">หักประกันสังคม 5%</div><div class="set-s">นายจ้างสมทบเท่ากัน · สูงสุด 750 บาท/เดือน</div></div><button class="sw ${e&&e.sso?'on':''}" id="ef-sso" onclick="this.classList.toggle('on')"></button></div>
      <div class="fg" style="margin-bottom:10px"><label class="flb">วิธีคิดภาษีหัก ณ ที่จ่าย</label><select class="fi" id="ef-taxmode" onchange="efTaxModeChange()">
        <option value="none"${(!e||!e.taxMode||e.taxMode==='none')&&!(e&&e.taxPct)?' selected':''}>ไม่หักภาษี</option>
@@ -5157,7 +5166,13 @@ function efTab(name){
 function efSetOff(arr){ document.querySelectorAll('.ef-offday').forEach(c=>{ c.checked=arr.includes(+c.dataset.d); const lb=c.parentElement; lb.style.background=c.checked?'#FFE9E6':'#fff'; lb.style.borderColor=c.checked?'var(--dg)':'var(--bd)'; lb.style.color=c.checked?'var(--dg)':'var(--tx)'; }); }
 function efPayTypeChange(){ const t=document.getElementById('ef-paytype').value; document.getElementById('ef-rate-lb').textContent=t==='monthly'?'เงินเดือน (บาท)':'ค่าแรงรายวัน (บาท)'; document.getElementById('ef-payday-box').style.display=t==='monthly'?'':'none'; }
 function efTaxModeChange(){ const m=document.getElementById('ef-taxmode').value; const box=document.getElementById('ef-taxpct-box'); if(box) box.style.display=m==='flat'?'block':'none'; }
-let empEditId=null;
+let empEditId=null; let efPhotoData=null;
+function handleEmpPhoto(e){
+  const file=e.target.files[0]; if(!file) return;
+  if(file.size>10*1024*1024){ toast('⚠️ ไฟล์ใหญ่เกิน 10MB'); return; }
+  compressReceiptImage(file,400,0.82).then(data=>{ efPhotoData=data; const box=document.getElementById('ef-photo-box'); if(box) box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover">`; toast('📷 เพิ่มรูปแล้ว'); });
+}
+function efPhotoClear(){ efPhotoData=null; const box=document.getElementById('ef-photo-box'); if(box) box.innerHTML='<div style="text-align:center;color:var(--mu)"><div style="font-size:22px">📷</div><div style="font-size:9px">รูป</div></div>'; }
 function saveEmployee(){
   const g=id=>document.getElementById(id);
   const num=id=>+(g(id)?.value)||0;
@@ -5178,6 +5193,8 @@ function saveEmployee(){
     sso:g('ef-sso').classList.contains('on'), accessLevel:g('ef-access').value, isAdmin:g('ef-access').value!=='staff', offDays,
     pin:g('ef-pin').value.trim(), lineId:g('ef-line').value.trim(),
     active:g('ef-active').classList.contains('on'),
+    photo: efPhotoData||null,
+    leaveQuota: (g('ef-leavequota')&&g('ef-leavequota').value!=='')?(+g('ef-leavequota').value||0):6,
   };
   if(empEditId){ const old=DB.employees.find(x=>x.id===empEditId); if(old&&old.av) rec.av=old.av; const i=DB.employees.findIndex(x=>x.id===empEditId); DB.employees[i]=rec; }
   else DB.employees.unshift(rec);
@@ -5189,32 +5206,53 @@ function delEmployee(id){ if(confirm('ลบพนักงานคนนี้
 function openEmpDrawer(id){
   const e=empById(id); if(!e) return;
   const month=new Date().toISOString().slice(0,7);
+  const yr=new Date().getFullYear();
   const recs=(DB.attendance||[]).filter(a=>a.empId===id&&a.date.startsWith(month));
   const days=recs.filter(a=>a.inTime).length;
   const hrs=recs.reduce((s,a)=>s+attHours(a),0);
+  const toMin=t=>{ const m=String(t||'').match(/(\d+):(\d+)/); return m?(+m[1]*60+ +m[2]):null; };
+  const wsMin=(toMin(e.workStart||'08:00')||480)+(e.lateGrace!=null?+e.lateGrace:0);
+  const lateCount=recs.filter(a=>{ const im=toMin(a.inTime); return im!=null&&im>wsMin; }).length;
+  const otHrs=recs.reduce((s,a)=>s+Math.max(0,attHours(a)-(e.normalHours||8)),0);
+  const leaveMonth=(typeof leaveDaysInRange==='function')?leaveDaysInRange(id,month+'-01',month+'-31'):0;
+  const leaveYear=(typeof leaveDaysInRange==='function')?leaveDaysInRange(id,yr+'-01-01',yr+'-12-31'):0;
+  const vacUsed=(DB.leaves||[]).filter(l=>l.empId===id&&l.status==='approved'&&l.type==='vacation'&&String(l.from||'').slice(0,4)==String(yr)).reduce((s,l)=>s+((typeof leaveDaysCount==='function')?leaveDaysCount(l.from,l.to||l.from):1),0);
+  const quota=e.leaveQuota!=null?e.leaveQuota:6;
+  const ytd=(typeof payrollYTD==='function')?payrollYTD(id,yr):{income:0,tax:0,sso:0,months:0};
+  const myJobs=(DB.jobs||[]).filter(j=>j.assignee&&e.name&&String(j.assignee).includes(e.name));
   const dayNames=['อา','จ','อ','พ','พฤ','ศ','ส'];
   const off=Array.isArray(e.offDays)?e.offDays:[];
   const offTxt=off.length?off.map(d=>dayNames[d]).join(', '):'ไม่มี';
   const row=(l,val)=>val?`<span style="color:var(--mu)">${l}</span><span style="font-weight:500">${val}</span>`:'';
-  const info=`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:12px">
-    ${row('ตำแหน่ง',e.role)}${row('แผนก',e.dept)}${row('เบอร์โทร',e.phone)}${row('เริ่มงาน',e.startDate?fmtD(e.startDate):'')}
-    ${row('บัตร ปชช.',e.idCard)}${e.addr?`<span style="color:var(--mu)">ที่อยู่</span><span>${e.addr}</span>`:''}
+  const photoHdr=e.photo?`<img src="${e.photo}" onclick="photoView('${e.photo}')" style="width:54px;height:54px;border-radius:50%;object-fit:cover;border:2px solid #fff;cursor:pointer">`:`<div style="width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#0A6EBD,#00C9A7);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:20px">${initials(e.name)}</div>`;
+  const quick=`<div style="display:flex;gap:8px;margin-bottom:12px">${e.phone?`<a href="tel:${e.phone}" class="btn bo" style="flex:1;justify-content:center;text-decoration:none">📞 โทร</a>`:''}${e.lineId?`<a href="https://line.me/ti/p/~${e.lineId}" target="_blank" class="btn bo" style="flex:1;justify-content:center;text-decoration:none">💬 LINE</a>`:''}</div>`;
+  const info=`<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">${photoHdr}<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:16px">${e.name}</div><div style="font-size:12px;color:var(--mu)">${e.role||'-'}${e.dept?' · '+e.dept:''}</div>${e.active?'<span class="badge b-paid" style="font-size:10px">ใช้งาน</span>':'<span class="badge b-over" style="font-size:10px">พักงาน</span>'}${e.isAdmin?' <span class="badge b-paid" style="font-size:10px">แอดมิน</span>':''}</div></div>
+  ${(e.phone||e.lineId)?quick:''}
+  <div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:12px">
+    <div style="font-weight:700;color:var(--p);margin-bottom:8px;font-size:12px">📊 สถิติเดือนนี้</div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);text-align:center;gap:4px">
+      <div><div style="font-size:18px;font-weight:800;color:var(--p)">${days}</div><div style="color:var(--mu);font-size:10px">วันทำงาน</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:var(--ok)">${hrs.toFixed(0)}</div><div style="color:var(--mu);font-size:10px">ชั่วโมง</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#f59e0b">${otHrs.toFixed(0)}</div><div style="color:var(--mu);font-size:10px">OT</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:var(--dg)">${lateCount}</div><div style="color:var(--mu);font-size:10px">มาสาย</div></div>
+      <div><div style="font-size:18px;font-weight:800;color:#8b5cf6">${leaveMonth}</div><div style="color:var(--mu);font-size:10px">ลา(วัน)</div></div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+    <div style="background:#f6fdf9;border-radius:12px;padding:11px"><div style="font-weight:700;font-size:11px;color:#0F9D58;margin-bottom:6px">💰 เงินเดือนสะสมปี ${yr+543}</div><div style="font-size:11.5px;display:grid;grid-template-columns:auto 1fr;gap:3px 8px"><span style="color:var(--mu)">รายได้</span><span style="text-align:right;font-weight:600">฿${fmt(ytd.income)}</span><span style="color:var(--mu)">ภาษีหัก</span><span style="text-align:right">฿${fmt(ytd.tax)}</span><span style="color:var(--mu)">ปกส.</span><span style="text-align:right">฿${fmt(ytd.sso)}</span><span style="color:var(--mu)">จ่ายแล้ว</span><span style="text-align:right">${ytd.months} งวด</span></div></div>
+    <div style="background:#faf5ff;border-radius:12px;padding:11px"><div style="font-weight:700;font-size:11px;color:#8b5cf6;margin-bottom:6px">🏖️ วันลาปี ${yr+543}</div><div style="font-size:11.5px;display:grid;grid-template-columns:auto 1fr;gap:3px 8px"><span style="color:var(--mu)">ลาทั้งหมด</span><span style="text-align:right;font-weight:600">${leaveYear} วัน</span><span style="color:var(--mu)">พักร้อนใช้</span><span style="text-align:right">${vacUsed}/${quota}</span><span style="color:var(--mu)">คงเหลือ</span><span style="text-align:right;font-weight:700;color:${(quota-vacUsed)>0?'#0F9D58':'var(--dg)'}">${Math.max(0,quota-vacUsed)} วัน</span></div></div>
+  </div>
+  ${myJobs.length?`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">🛠️ งานที่รับผิดชอบ (${myJobs.length})</div>${myJobs.slice(0,5).map(j=>`<div onclick="closeDrawer();setTimeout(()=>openJobDrawer('${j.id}'),100)" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px"><span>${j.title}</span><span>${jobStatusBadge?jobStatusBadge(j.status):j.status}</span></div>`).join('')}</div>`:''}
+  <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:12px">
+    ${row('เบอร์โทร',e.phone)}${row('เริ่มงาน',e.startDate?fmtD(e.startDate):'')}${row('บัตร ปชช.',e.idCard)}
+    ${e.addr?`<span style="color:var(--mu)">ที่อยู่</span><span>${e.addr}</span>`:''}
     ${(e.emgName||e.emgPhone)?`<span style="color:var(--mu)">ฉุกเฉิน</span><span>${e.emgName||''} ${e.emgPhone||''}</span>`:''}
-    <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+' /เดือน':'฿'+fmt(e.rate)+' /วัน'} · ${e.normalHours||8} ชม./วัน</span>
-    <span style="color:var(--mu)">OT</span><span>×${e.otMult||1.5} · วันหยุด ×${e.holidayOtMult||2}</span>
+    <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+' /เดือน':'฿'+fmt(e.rate)+' /วัน'} · ${e.normalHours||8} ชม./วัน${e.payCycle?' · จ่าย'+e.payCycle:''}</span>
     <span style="color:var(--mu)">เวลางาน</span><span>${e.workStart||'08:00'} - ${e.workEnd||'17:00'} (ผ่อนผัน ${e.lateGrace!=null?e.lateGrace:0} นาที)</span>
     <span style="color:var(--mu)">วันหยุดประจำ</span><span style="font-weight:600;color:var(--dg)">${offTxt}</span>
-    ${row('สวัสดิการ',[e.travel?`เดินทาง ฿${fmt(e.travel)}/วัน`:'',e.diligence?`เบี้ยขยัน ฿${fmt(e.diligence)}`:'',e.sso?'ปกส.':'',e.taxPct?`ภาษี ${e.taxPct}%`:''].filter(Boolean).join(' · '))}
+    ${row('สวัสดิการ',[e.travel?`เดินทาง ฿${fmt(e.travel)}/วัน`:'',e.diligence?`เบี้ยขยัน ฿${fmt(e.diligence)}`:'',e.sso?'ปกส.':'',e.taxMode==='progressive'?'ภาษีขั้นบันได':e.taxPct?`ภาษี ${e.taxPct}%`:''].filter(Boolean).join(' · '))}
     ${(e.bankName||e.bankAcc)?`<span style="color:var(--mu)">ธนาคาร</span><span>${e.bankName||''} ${e.bankAcc||''}</span>`:''}
-    ${row('PIN',e.pin)}${e.isAdmin?'<span style="color:var(--mu)">สิทธิ์</span><span><span class="badge b-paid">แอดมิน</span></span>':''}
-    <span style="color:var(--mu)">สถานะ</span><span>${e.active?'<span class="badge b-paid">ใช้งาน</span>':'<span class="badge b-over">พักงาน</span>'}</span>
-  </div>
-  <div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:12px;font-size:12px">
-    <div style="font-weight:700;color:var(--p);margin-bottom:6px">📊 สรุปเดือนนี้</div>
-    <div style="display:flex;justify-content:space-around;text-align:center">
-      <div><div style="font-size:20px;font-weight:800;color:var(--p)">${days}</div><div style="color:var(--mu)">วันทำงาน</div></div>
-      <div><div style="font-size:20px;font-weight:800;color:var(--ok)">${hrs.toFixed(1)}</div><div style="color:var(--mu)">ชั่วโมง</div></div>
-    </div>
+    ${row('PIN เข้าระบบ',e.pin)}
   </div>
   <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:10px" onclick="empMonthView('${e.id}')">📅 ดูประวัติเข้า-ออกรายเดือน</button>
   <div style="display:flex;gap:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEmpForm('${e.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="closeDrawer();nav('payroll')">💵 เงินเดือน</button></div>`;
