@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07a · 📊 สรุปบัญชีแม่นยำ+งบดุลสมดุล</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07c · 📘 งบดุลยอดสะสม (แสดงครบ)</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2230,7 +2230,7 @@ function relatedDocsBlock(type,id){
 }
 function openDocById(type,id){
   if(closeDrawer)closeDrawer();
-  const op={quotes:'openQuoteDrawer',invoices:'openInvDrawer',installments:'openInstDrawer',po:'openPODrawer',receive:'openReceiveDrawer',delivery:'openDeliveryDrawer',cashsale:'openCashsaleDrawer'};
+  const op={quotes:'openQuoteDrawer',invoices:'openInvDrawer',installments:'openInstDrawer',po:'openPODrawer',receive:'openReceiveDrawer',delivery:'openDeliveryDrawer',cashsale:'openCashsaleDrawer',expense:'openExpDrawer'};
   const fn=op[type]&&window[op[type]];
   setTimeout(()=>{ if(typeof fn==='function') fn(id); else { toast(DOC_LABEL[type]+' '+id); } },80);
 }
@@ -6848,7 +6848,7 @@ function acctBalance(code){
 // ══════════════════════════════════════════════════════════
 // RENDER: สมุดรายวัน
 // ══════════════════════════════════════════════════════════
-const SRC_LABEL={invoice:'ใบวางบิล',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',payment:'รับชำระ',manual:'บันทึกเอง'};
+const SRC_LABEL={invoice:'ใบวางบิล',payment:'รับชำระ',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',inst:'ใบแบ่งจ่าย',instpay:'รับชำระงวด',payroll:'จ่ายเงินเดือน',closing:'ปิดงวด',manual:'บันทึกเอง'};
 function renderJournal(){
   acctInit();
   const q=(document.getElementById('jr-search')?.value||'').toLowerCase();
@@ -6863,7 +6863,9 @@ function renderJournal(){
     const amt=e.lines.reduce((s,l)=>s+l.debit,0);
     const srcTag=e.source==='manual'?'<span class="badge b-grey">บันทึกเอง</span>':`<span class="badge b-done2">${SRC_LABEL[e.source]||e.source}</span>`;
     const linesHtml=e.lines.map(l=>`<div style="display:grid;grid-template-columns:1fr 110px 110px;gap:8px;font-size:12px;color:var(--mu);padding-left:${l.debit?0:'20px'}"><span>${l.code} ${acctName(l.code)}</span><span style="text-align:right">${l.debit?fmt(l.debit):''}</span><span style="text-align:right">${l.credit?fmt(l.credit):''}</span></div>`).join('');
-    tb.innerHTML+=`<tr onclick="toggleJvDetail('${e.id}')"><td>${fmtD(e.date)}</td><td><div class="dn">${e.id}</div></td><td><div class="cnm">${e.desc||'—'}</div><div id="jvd-${e.id}" style="display:none;margin-top:6px">${linesHtml}</div></td><td>${srcTag}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td onclick="event.stopPropagation()" style="white-space:nowrap"><button class="btn bo" style="font-size:11px;padding:4px 8px" onclick="openJournalForm('${e.id}')">✏️</button> <button class="btn bd2" style="font-size:11px;padding:4px 8px" onclick="delJournal('${e.id}')">🗑️</button></td></tr>`;
+    const _docSrc={invoice:'invoices',payment:'invoices',cashsale:'cashsale',expense:'expense',receive:'receive',inst:'installments',instpay:'installments'};
+    const srcLink=(e.sourceId&&(_docSrc[e.source]||e.source==='payroll'))?`<div style="margin-top:8px"><button class="btn bo" style="font-size:11px;padding:5px 10px" onclick="event.stopPropagation();openJvSource('${e.source}','${String(e.sourceId).replace(/'/g,'')}')">🔗 ดูเอกสารต้นทาง: ${e.sourceId}</button></div>`:'';
+    tb.innerHTML+=`<tr onclick="toggleJvDetail('${e.id}')"><td>${fmtD(e.date)}</td><td><div class="dn">${e.id}</div></td><td><div class="cnm">${e.desc||'—'}</div><div id="jvd-${e.id}" style="display:none;margin-top:6px">${linesHtml}${srcLink}</div></td><td>${srcTag}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td style="text-align:right;font-weight:700">฿${fmt(amt)}</td><td onclick="event.stopPropagation()" style="white-space:nowrap"><button class="btn bo" style="font-size:11px;padding:4px 8px" onclick="openJournalForm('${e.id}')">✏️</button> <button class="btn bd2" style="font-size:11px;padding:4px 8px" onclick="delJournal('${e.id}')">🗑️</button></td></tr>`;
   });
   const auto=DB.journal.filter(e=>e.source!=='manual').length;
   const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
@@ -6874,6 +6876,15 @@ function renderJournal(){
   setT('jr-balance',Math.abs(td-tc)<0.01?'✓ สมดุล':'⚠ ไม่สมดุล');
 }
 function toggleJvDetail(id){ const el=document.getElementById('jvd-'+id); if(el) el.style.display=el.style.display==='none'?'block':'none'; }
+// เปิดเอกสารต้นทางจากรายการสมุดรายวัน
+function openJvSource(source,sourceId){
+  if(!sourceId) return;
+  if(source==='payroll'){ if(closeDrawer)closeDrawer(); nav('payroll'); toast('เปิดหน้าจ่ายเงินเดือน — ค้นหา '+sourceId); return; }
+  const map={invoice:'invoices',payment:'invoices',cashsale:'cashsale',expense:'expense',receive:'receive',inst:'installments',instpay:'installments'};
+  const t=map[source]; if(!t){ toast('รายการนี้ไม่มีเอกสารต้นทาง'); return; }
+  let id=sourceId; if(id.includes('#')) id=id.split('#')[0];
+  openDocById(t,id);
+}
 function delJournal(id){
   const e=(DB.journal||[]).find(x=>x.id===id);
   const isAuto=e&&e.source&&e.source!=='manual';
@@ -7432,16 +7443,23 @@ function renderSummary(){
     const b=bal[code]||{debit:0,credit:0};
     return ACCT_TYPES[a.type].normal==='debit'?b.debit-b.credit:b.credit-b.debit;
   };
-  // ── P&L ──
+  // ── ยอดสะสมถึงวันที่ "ถึง" (สำหรับงบดุล — ไม่ขึ้นกับวันเริ่ม) ──
+  const balCum={};
+  (DB.coa||[]).forEach(a=>balCum[a.code]={debit:0,credit:0});
+  jvAll.filter(e=>!to||e.date<=to).forEach(e=>e.lines.forEach(l=>{ if(!balCum[l.code])balCum[l.code]={debit:0,credit:0}; balCum[l.code].debit+=l.debit; balCum[l.code].credit+=l.credit; }));
+  const getbalCum=(code)=>{ const a=acctOf(code); if(!a) return 0; const b=balCum[code]||{debit:0,credit:0}; return ACCT_TYPES[a.type].normal==='debit'?b.debit-b.credit:b.credit-b.debit; };
+  // ── P&L (ตามช่วงวันที่) ──
   const revAccts=DB.coa.filter(a=>a.type==='revenue');
   const expAccts=DB.coa.filter(a=>a.type==='expense');
   const totalRev=revAccts.reduce((s,a)=>s+getbal(a.code),0);
   const totalExp=expAccts.reduce((s,a)=>s+getbal(a.code),0);
   const netProfit=totalRev-totalExp;
-  // ── Balance Sheet ──
-  const totalAsset=DB.coa.filter(a=>a.type==='asset').reduce((s,a)=>s+getbal(a.code),0);
-  const totalLiab=DB.coa.filter(a=>a.type==='liability').reduce((s,a)=>s+getbal(a.code),0);
-  const totalEquity=DB.coa.filter(a=>a.type==='equity').reduce((s,a)=>s+getbal(a.code),0);
+  // ── Balance Sheet (ยอดสะสม) ──
+  const totalAsset=DB.coa.filter(a=>a.type==='asset').reduce((s,a)=>s+getbalCum(a.code),0);
+  const totalLiab=DB.coa.filter(a=>a.type==='liability').reduce((s,a)=>s+getbalCum(a.code),0);
+  const totalEquity=DB.coa.filter(a=>a.type==='equity').reduce((s,a)=>s+getbalCum(a.code),0);
+  // กำไรสะสมทั้งหมด (รายได้-ค่าใช้จ่าย สะสมถึงวันที่ "ถึง") → ทำให้งบดุลสมดุล
+  const retainedCum=revAccts.reduce((s,a)=>s+getbalCum(a.code),0)-expAccts.reduce((s,a)=>s+getbalCum(a.code),0);
   // ── VAT (ใช้รหัสที่ลงบัญชีจริง: 2040 ภาษีขาย, 1060 ภาษีซื้อ) ──
   const vatOut=getbal('2040'); const vatIn=getbal('1060');
   const vatNet=vatOut-vatIn;
@@ -7480,17 +7498,17 @@ function renderSummary(){
     <span>${netProfit>=0?'กำไรสุทธิ':'ขาดทุนสุทธิ'}${totalRev>0?` <span style="font-size:11px;font-weight:400;color:var(--mu)">(${(netProfit/totalRev*100).toFixed(1)}% ของรายได้)</span>`:''}</span>
     <span style="color:${netProfit>=0?'var(--ok)':'var(--dg)'}">฿${fmt(Math.abs(netProfit))}</span></div>`;
   document.getElementById('sum-pl').innerHTML=plHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
-  // ── Balance Sheet ──
+  // ── Balance Sheet (ยอดสะสมถึงวันที่ "ถึง") ──
   let bsHtml=divider('สินทรัพย์');
-  DB.coa.filter(a=>a.type==='asset'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
+  DB.coa.filter(a=>a.type==='asset'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
   bsHtml+=row('รวมสินทรัพย์',`฿${fmt(totalAsset)}`,true,'var(--bl)');
   bsHtml+=divider('หนี้สิน');
-  DB.coa.filter(a=>a.type==='liability'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
+  DB.coa.filter(a=>a.type==='liability'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
   bsHtml+=row('รวมหนี้สิน',`฿${fmt(totalLiab)}`,true,'var(--dg)');
   bsHtml+=divider('ส่วนของผู้ถือหุ้น');
-  DB.coa.filter(a=>a.type==='equity'&&getbal(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbal(a.code))}`));
-  bsHtml+=row(netProfit>=0?'กำไรสะสม (งวดนี้)':'ขาดทุนสะสม (งวดนี้)',`฿${fmt(netProfit)}`,false,netProfit>=0?'var(--ok)':'var(--dg)');
-  const totalEquityFull=totalEquity+netProfit;
+  DB.coa.filter(a=>a.type==='equity'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
+  bsHtml+=row(retainedCum>=0?'กำไรสะสม':'ขาดทุนสะสม',`฿${fmt(retainedCum)}`,false,retainedCum>=0?'var(--ok)':'var(--dg)');
+  const totalEquityFull=totalEquity+retainedCum;
   bsHtml+=row('รวมส่วนทุน',`฿${fmt(totalEquityFull)}`,true,'var(--ok)');
   const lae=totalLiab+totalEquityFull;
   bsHtml+=row('หนี้สิน + ทุน',`฿${fmt(lae)}`,true);
