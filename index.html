@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07g · 👥 พนักงาน: รูปโปรไฟล์+โควต้าลา+โปรไฟล์ละเอียด</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07h · 📄 เอกสารพนักงาน+ประเมินผล+ใบสมัคร</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -771,7 +771,8 @@ tbody tr:hover td{background:#FAFBFD}
     </div>
     <div class="fb" style="gap:8px;flex-wrap:wrap">
       <input class="fi" placeholder="🔍 ค้นหาพนักงาน..." id="emp-search" oninput="renderEmployees()" style="min-width:160px">
-      <button class="btn bp" style="margin-left:auto" onclick="openEmployeeForm()">+ เพิ่มพนักงาน</button>
+      <button class="btn bo" style="margin-left:auto" onclick="openApplicationsList()">📨 ใบสมัคร</button>
+      <button class="btn bp" onclick="openEmployeeForm()">+ เพิ่มพนักงาน</button>
     </div>
     <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px"></div>
   </div>
@@ -5203,6 +5204,201 @@ function saveEmployee(){
 }
 function openEmpForm(id){ empEditId=id||null; openEmployeeForm(id); }
 function delEmployee(id){ if(confirm('ลบพนักงานคนนี้?')){ const i=DB.employees.findIndex(x=>x.id===id); if(i>=0) DB.employees.splice(i,1); empEditId=null; saveData(); closeModal(); renderEmployees(); toast('🗑️ ลบพนักงานแล้ว'); } }
+
+// ════════════ เอกสารพนักงาน + ประเมินผล + ใบสมัครงาน ════════════
+function hrLogoTag(CO){ return (CO.logo&&CO.showLogo!==false)?`<img src="${CO.logo}" style="max-height:54px;max-width:170px;object-fit:contain;display:block;margin:0 auto 6px">`:''; }
+function hrPrint(html,title){ if(typeof showPrintPreview==='function') showPrintPreview(html,title,{}); else { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400);} } }
+function empAvgEval(e){ const ev=(e&&e.evals)||[]; if(!ev.length) return null; return ev.reduce((s,x)=>s+(x.avg||0),0)/ev.length; }
+
+// เมนูเอกสารของพนักงาน (พิมพ์ + แนบไฟล์)
+function empDocsMenu(id){
+  const e=empById(id); if(!e) return;
+  document.getElementById('ml-t').textContent='📄 เอกสารพนักงาน';
+  document.getElementById('ml-s').textContent=e.name;
+  const di=e.docImgs||{};
+  const att=[['idcard','สำเนาบัตรประชาชน'],['housereg','สำเนาทะเบียนบ้าน'],['edu','วุฒิการศึกษา'],['other','เอกสารอื่นๆ']];
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="font-size:12px;font-weight:700;color:var(--mu);margin-bottom:8px">🖨️ พิมพ์เอกสาร</div>
+    <div style="display:grid;gap:8px">
+      <button class="btn bo" style="justify-content:flex-start" onclick="printContract('${id}')">📑 สัญญาจ้างงาน</button>
+      <button class="btn bo" style="justify-content:flex-start" onclick="printSalaryCert('${id}')">💵 หนังสือรับรองเงินเดือน</button>
+      <button class="btn bo" style="justify-content:flex-start" onclick="printJobAppForm('${id}')">📋 ใบสมัครงาน (กรอกจากข้อมูลแล้ว)</button>
+    </div>
+    <div style="font-size:12px;font-weight:700;color:var(--mu);margin:16px 0 8px">📎 เอกสารแนบ (แตะรูปเพื่อดู)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${att.map(a=>`<div style="border:1px solid var(--bd);border-radius:10px;padding:10px;text-align:center">
+        <div style="font-size:11px;font-weight:600;margin-bottom:6px">${a[1]}</div>
+        <div onclick="${di[a[0]]?`photoView('${di[a[0]]}')`:`document.getElementById('docatt-${a[0]}').click()`}" style="height:84px;border-radius:8px;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer">${di[a[0]]?`<img src="${di[a[0]]}" style="max-width:100%;max-height:100%;object-fit:cover">`:'<span style="color:var(--mu);font-size:24px">＋</span>'}</div>
+        <input type="file" id="docatt-${a[0]}" accept="image/*" style="display:none" onchange="saveEmpDocImg('${id}','${a[0]}',event)">
+        ${di[a[0]]?`<button class="btn bd2" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="delEmpDocImg('${id}','${a[0]}')">✕ ลบ</button>`:`<button class="btn bo" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="document.getElementById('docatt-${a[0]}').click()">อัปโหลด</button>`}
+      </div>`).join('')}
+    </div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bp" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function saveEmpDocImg(id,slot,ev){ const f=ev.target.files[0]; if(!f) return; if(f.size>10*1024*1024){toast('⚠️ ไฟล์ใหญ่เกิน 10MB');return;} compressReceiptImage(f,1000,0.78).then(d=>{ const e=empById(id); if(!e||!d) return; e.docImgs=e.docImgs||{}; e.docImgs[slot]=d; saveData(); empDocsMenu(id); toast('📎 บันทึกเอกสารแล้ว'); }); }
+function delEmpDocImg(id,slot){ if(!confirm('ลบเอกสารนี้?'))return; const e=empById(id); if(!e||!e.docImgs) return; delete e.docImgs[slot]; saveData(); empDocsMenu(id); }
+
+// พิมพ์สัญญาจ้างงาน
+function printContract(id){
+  const e=empById(id); if(!e){toast('ไม่พบพนักงาน');return;} const CO=payTaxCompany();
+  const today=fmtD(iso(new Date()));
+  const wage=e.payType==='monthly'?`เงินเดือน ${fmt(e.rate)} บาท/เดือน (${bahtText(e.rate)})`:`ค่าจ้าง ${fmt(e.rate)} บาท/วัน`;
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>สัญญาจ้าง ${e.name}</title>${payTaxDocHead()}</head><body>
+  ${hrLogoTag(CO)}
+  <div class="doc-hd"><h1>สัญญาจ้างแรงงาน</h1><div class="sub">${CO.name}</div></div>
+  <div class="box">ทำที่ ${CO.name}<br>วันที่ ${today}</div>
+  <div style="line-height:1.9;font-size:13px;margin-bottom:12px;text-indent:30px">สัญญาฉบับนี้ทำขึ้นระหว่าง <b>${CO.name}</b> ซึ่งต่อไปนี้เรียกว่า "นายจ้าง" ฝ่ายหนึ่ง กับ <b>${e.name}</b>${e.idCard?` เลขบัตรประชาชน ${e.idCard}`:''}${e.addr?` อยู่บ้านเลขที่ ${e.addr}`:''} ซึ่งต่อไปนี้เรียกว่า "ลูกจ้าง" อีกฝ่ายหนึ่ง ทั้งสองฝ่ายตกลงทำสัญญากันดังมีข้อความต่อไปนี้</div>
+  <table>
+    <tr><th style="width:38%;text-align:left">รายการ</th><th style="text-align:left">รายละเอียด</th></tr>
+    <tr><td>ตำแหน่ง</td><td>${e.role||'-'}${e.dept?` (แผนก${e.dept})`:''}</td></tr>
+    <tr><td>วันเริ่มงาน</td><td>${e.startDate?fmtD(e.startDate):today}</td></tr>
+    <tr><td>ค่าจ้าง</td><td>${wage}</td></tr>
+    <tr><td>เวลาทำงาน</td><td>${e.workStart||'08:00'} - ${e.workEnd||'17:00'} น.</td></tr>
+    <tr><td>สวัสดิการ</td><td>${[e.travel?`ค่าเดินทาง ${fmt(e.travel)} บาท/วัน`:'',e.diligence?`เบี้ยขยัน ${fmt(e.diligence)} บาท/เดือน`:'',e.sso?'ประกันสังคม':''].filter(Boolean).join(', ')||'ตามระเบียบบริษัท'}</td></tr>
+  </table>
+  <div style="line-height:1.9;font-size:12.5px;margin-bottom:8px">
+   ข้อ 1. ลูกจ้างตกลงปฏิบัติงานตามที่นายจ้างมอบหมายด้วยความซื่อสัตย์สุจริต ขยันหมั่นเพียร และรักษาผลประโยชน์ของนายจ้าง<br>
+   ข้อ 2. ลูกจ้างจะรักษาความลับทางการค้าและข้อมูลของนายจ้างทั้งในระหว่างและภายหลังการจ้าง<br>
+   ข้อ 3. การเลิกจ้างหรือการลาออก ให้บอกกล่าวล่วงหน้าไม่น้อยกว่า 30 วัน เว้นแต่กรณีตามที่กฎหมายกำหนด<br>
+   ข้อ 4. เงื่อนไขอื่นใดที่มิได้ระบุไว้ ให้เป็นไปตามพระราชบัญญัติคุ้มครองแรงงาน
+  </div>
+  <div style="line-height:1.9;font-size:12.5px;margin-bottom:8px">สัญญานี้ทำขึ้นสองฉบับ มีข้อความตรงกัน ทั้งสองฝ่ายได้อ่านและเข้าใจโดยตลอดแล้ว จึงลงลายมือชื่อไว้เป็นสำคัญ</div>
+  <div style="display:flex;justify-content:space-around;margin-top:48px">
+    <div style="text-align:center;width:240px"><div style="border-top:1px dotted #999;padding-top:6px">ลงชื่อ ............................. นายจ้าง<br>(${CO.seller||'____________________'})</div></div>
+    <div style="text-align:center;width:240px"><div style="border-top:1px dotted #999;padding-top:6px">ลงชื่อ ............................. ลูกจ้าง<br>(${e.name})</div></div>
+  </div></body></html>`;
+  hrPrint(html,'สัญญาจ้าง '+e.name);
+}
+
+// พิมพ์หนังสือรับรองเงินเดือน
+function printSalaryCert(id){
+  const e=empById(id); if(!e){toast('ไม่พบพนักงาน');return;} const CO=payTaxCompany();
+  const today=fmtD(iso(new Date())); const yr=new Date().getFullYear();
+  const certNo=`WK-CERT-${yr+543}${String((DB.employees||[]).indexOf(e)+1).padStart(3,'0')}`;
+  const wageTxt=e.payType==='monthly'?`เดือนละ ${fmt(e.rate)} บาท (${bahtText(e.rate)})`:`วันละ ${fmt(e.rate)} บาท`;
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>หนังสือรับรองเงินเดือน ${e.name}</title>${payTaxDocHead()}</head><body>
+  ${hrLogoTag(CO)}
+  <div class="doc-hd"><h1>หนังสือรับรองเงินเดือน</h1><div class="sub">เลขที่ ${certNo}</div></div>
+  <div class="box"><b>${CO.name}</b><br>${CO.addr}${CO.tax?`<br>${CO.tax}`:''}</div>
+  <div style="line-height:2.1;font-size:13px;margin-bottom:14px;text-indent:40px">หนังสือฉบับนี้ให้ไว้เพื่อรับรองว่า <b>${e.name}</b>${e.idCard?` เลขประจำตัวประชาชน ${e.idCard}`:''} เป็นพนักงานของ ${CO.name} จริง ปัจจุบันดำรงตำแหน่ง <b>${e.role||'-'}</b>${e.dept?` แผนก${e.dept}`:''}${e.startDate?` เริ่มปฏิบัติงานตั้งแต่วันที่ ${fmtD(e.startDate)}`:''} ได้รับค่าจ้าง <b>${wageTxt}</b></div>
+  <div style="line-height:2.1;font-size:13px;margin-bottom:30px;text-indent:40px">จึงออกหนังสือรับรองฉบับนี้ไว้เพื่อเป็นหลักฐาน</div>
+  <div style="display:flex;justify-content:flex-end;margin-top:30px"><div style="text-align:center;width:290px">
+    ${(CO.sigImg&&CO.showSig!==false)?`<img src="${CO.sigImg}" style="max-height:60px;margin-bottom:2px">`:''}
+    <div style="border-top:1px dotted #999;padding-top:6px">ลงชื่อ .................................................<br>(${CO.seller||'____________________'})<br>ผู้มีอำนาจลงนาม<br>ให้ไว้ ณ วันที่ ${today}</div>
+  </div></div></body></html>`;
+  hrPrint(html,'หนังสือรับรองเงินเดือน '+e.name);
+}
+
+// พิมพ์ใบสมัครงาน (เว้นว่าง หรือกรอกจากข้อมูลพนักงาน/ผู้สมัคร)
+function printJobAppForm(id,appObj){
+  const e=id?empById(id):(appObj||null); const CO=payTaxCompany();
+  const ln=(v)=>v?`<u>&nbsp;${v}&nbsp;</u>`:'<span style="display:inline-block;border-bottom:1px dotted #999;min-width:150px">&nbsp;</span>';
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>ใบสมัครงาน</title>${payTaxDocHead()}</head><body>
+  ${hrLogoTag(CO)}
+  <div class="doc-hd"><h1>ใบสมัครงาน</h1><div class="sub">${CO.name}</div></div>
+  <div style="float:right;width:88px;height:108px;border:1px solid #999;text-align:center;font-size:10px;color:#999;display:flex;align-items:center;justify-content:center;margin-left:10px">${e&&e.photo?`<img src="${e.photo}" style="max-width:100%;max-height:100%;object-fit:cover">`:'ติดรูปถ่าย<br>1 นิ้ว'}</div>
+  <div style="line-height:2.5;font-size:13px">
+   ตำแหน่งที่สมัคร ${ln(e&&(e.position||e.role))} &nbsp; เงินเดือนที่คาดหวัง ${ln(e&&e.expectedSalary?fmt(e.expectedSalary):'')}<br>
+   ชื่อ-นามสกุล ${ln(e&&e.name)}<br>
+   เลขบัตรประชาชน ${ln(e&&e.idCard)} &nbsp; วันเกิด ${ln(e&&e.birthDate?fmtD(e.birthDate):'')}<br>
+   ที่อยู่ ${ln(e&&e.addr)}<br>
+   เบอร์โทร ${ln(e&&e.phone)} &nbsp; อีเมล ${ln(e&&e.email)}<br>
+   วุฒิการศึกษา ${ln(e&&e.education)}<br>
+   ประสบการณ์ทำงาน ${ln(e&&e.experience)}<br>
+   ${ln('')}<br>${e&&e.experience?'':ln('')+'<br>'}
+   ผู้ติดต่อกรณีฉุกเฉิน ${ln(e&&e.emgName)} &nbsp; เบอร์ ${ln(e&&e.emgPhone)}
+  </div>
+  <div style="display:flex;justify-content:flex-end;margin-top:36px"><div style="text-align:center;width:260px"><div style="border-top:1px dotted #999;padding-top:6px">ลงชื่อผู้สมัคร<br>(${(e&&e.name)||'____________________'})</div></div></div>
+  </body></html>`;
+  hrPrint(html,'ใบสมัครงาน');
+}
+
+// ประเมินผลงาน
+const EVAL_CRIT=[['quality','คุณภาพของงาน'],['responsibility','ความรับผิดชอบ'],['punctual','ตรงต่อเวลา/วินัย'],['teamwork','การทำงานเป็นทีม'],['initiative','ความคิดริเริ่ม']];
+function openEvalForm(id){
+  const e=empById(id); if(!e) return;
+  document.getElementById('ml-t').textContent='⭐ ประเมินผลงาน';
+  document.getElementById('ml-s').textContent=e.name;
+  const sel=(c)=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--bd)"><span style="font-size:13px">${c[1]}</span><select class="fi" id="ev-${c[0]}" style="width:130px"><option value="5">5 — ดีมาก</option><option value="4">4 — ดี</option><option value="3" selected>3 — ปานกลาง</option><option value="2">2 — พอใช้</option><option value="1">1 — ต้องปรับปรุง</option></select></div>`;
+  const hist=(e.evals||[]);
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fg" style="margin-bottom:10px"><label class="flb">รอบการประเมิน</label><input class="fi" id="ev-period" value="${new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long'})}"></div>
+    <div style="background:var(--bg);border-radius:10px;padding:4px 12px;margin-bottom:10px">${EVAL_CRIT.map(sel).join('')}</div>
+    <div class="fg"><label class="flb">ความเห็น / ข้อเสนอแนะ</label><textarea class="fta" id="ev-comment" placeholder="จุดเด่น จุดที่ควรพัฒนา เป้าหมายรอบหน้า..."></textarea></div>
+    ${hist.length?`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">📚 ประวัติการประเมิน (${hist.length})</div>${hist.slice(0,8).map(h=>`<div style="padding:7px 0;border-bottom:1px solid var(--bd)"><div style="display:flex;justify-content:space-between;font-size:12px"><span>${h.period||fmtD(h.date)}</span><span style="font-weight:700;color:${h.avg>=4?'#0F9D58':h.avg>=2.5?'#f59e0b':'var(--dg)'}">⭐ ${h.avg.toFixed(1)}/5</span></div>${h.comment?`<div style="font-size:11px;color:var(--mu);margin-top:2px">${h.comment}</div>`:''}</div>`).join('')}</div>`:''}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveEval('${id}')">💾 บันทึกผลประเมิน</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function saveEval(id){
+  const e=empById(id); if(!e) return;
+  const q={}; let sum=0; EVAL_CRIT.forEach(c=>{ const v=+document.getElementById('ev-'+c[0]).value; q[c[0]]=v; sum+=v; });
+  const avg=sum/EVAL_CRIT.length;
+  e.evals=e.evals||[]; e.evals.unshift({date:iso(new Date()),period:document.getElementById('ev-period').value,q,avg,comment:document.getElementById('ev-comment').value.trim(),by:(typeof curUser!=='undefined'&&curUser&&curUser.name)||'แอดมิน'});
+  saveData(); closeModal(); toast('⭐ บันทึกผลประเมินแล้ว (เฉลี่ย '+avg.toFixed(1)+'/5)'); if(typeof renderEmployees==='function') renderEmployees();
+}
+
+// ใบสมัครงาน (ผู้สมัครกรอกเอง)
+function openApplyForm(){
+  document.getElementById('ml-t').textContent='📋 ใบสมัครงาน';
+  document.getElementById('ml-s').textContent='กรอกข้อมูลผู้สมัคร';
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fg" style="margin-bottom:8px"><label class="flb">ตำแหน่งที่สมัคร *</label><input class="fi" id="ap-position" placeholder="เช่น ช่างไฟฟ้า"></div>
+    <div class="fg" style="margin-bottom:8px"><label class="flb">ชื่อ-นามสกุล *</label><input class="fi" id="ap-name"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">เบอร์โทร *</label><input class="fi" id="ap-phone"></div>
+      <div class="fg"><label class="flb">อีเมล</label><input class="fi" id="ap-email"></div>
+      <div class="fg"><label class="flb">วันเกิด</label><input class="fi" type="date" id="ap-birth"></div>
+      <div class="fg"><label class="flb">เงินเดือนที่คาดหวัง</label><input class="fi" type="number" id="ap-salary"></div>
+    </div>
+    <div class="fg" style="margin-top:8px"><label class="flb">เลขบัตรประชาชน</label><input class="fi" id="ap-idcard"></div>
+    <div class="fg" style="margin-top:8px"><label class="flb">ที่อยู่</label><input class="fi" id="ap-addr"></div>
+    <div class="fg" style="margin-top:8px"><label class="flb">วุฒิการศึกษา</label><input class="fi" id="ap-edu" placeholder="เช่น ปวส.ไฟฟ้า / ปริญญาตรี..."></div>
+    <div class="fg" style="margin-top:8px"><label class="flb">ประสบการณ์ทำงาน</label><textarea class="fta" id="ap-exp" placeholder="งานที่เคยทำ ระยะเวลา..."></textarea></div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">ผู้ติดต่อฉุกเฉิน</label><input class="fi" id="ap-emg"></div>
+      <div class="fg"><label class="flb">เบอร์ฉุกเฉิน</label><input class="fi" id="ap-emgphone"></div>
+    </div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveApplication()">📨 ส่งใบสมัคร</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function saveApplication(){
+  const g=id=>document.getElementById(id);
+  const name=g('ap-name').value.trim(), pos=g('ap-position').value.trim(), phone=g('ap-phone').value.trim();
+  if(!name||!pos||!phone){ toast('⚠️ กรอกตำแหน่ง ชื่อ และเบอร์โทร'); return; }
+  DB.applications=DB.applications||[];
+  DB.applications.unshift({id:'APP-'+Date.now(),date:iso(new Date()),name,position:pos,phone,email:g('ap-email').value.trim(),birthDate:g('ap-birth').value,expectedSalary:+g('ap-salary').value||0,idCard:g('ap-idcard').value.trim(),addr:g('ap-addr').value.trim(),education:g('ap-edu').value.trim(),experience:g('ap-exp').value.trim(),emgName:g('ap-emg').value.trim(),emgPhone:g('ap-emgphone').value.trim(),status:'ใหม่'});
+  saveData(); closeModal(); toast('📨 ส่งใบสมัครเรียบร้อย! รอการพิจารณา'); if(typeof renderEmployees==='function') renderEmployees();
+}
+function openApplicationsList(){
+  const apps=DB.applications||[];
+  document.getElementById('ml-t').textContent='📨 ใบสมัครงาน ('+apps.length+')';
+  document.getElementById('ml-s').textContent='ผู้สมัครที่ส่งเข้ามา';
+  document.getElementById('ml-bd').innerHTML=apps.length?apps.map(a=>`<div style="border:1px solid var(--bd);border-radius:10px;padding:11px;margin-bottom:8px">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:700">${a.name}</div><span class="badge" style="font-size:10px;background:${a.status==='รับเข้าทำงาน'?'#E8F8F0':'#FFF3CD'};color:${a.status==='รับเข้าทำงาน'?'#0F9D58':'#9a7d0a'}">${a.status}</span></div>
+    <div style="font-size:12px;color:var(--mu);margin:4px 0">สมัคร: ${a.position} · 📞 ${a.phone}${a.email?' · '+a.email:''}</div>
+    <div style="font-size:11px;color:var(--mu)">${a.education||''}${a.expectedSalary?` · คาดหวัง ฿${fmt(a.expectedSalary)}`:''}${a.birthDate?` · เกิด ${fmtD(a.birthDate)}`:''}</div>
+    ${a.experience?`<div style="font-size:11px;margin-top:4px;background:var(--bg);border-radius:6px;padding:6px">${a.experience}</div>`:''}
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <button class="btn bp" style="flex:1;justify-content:center;font-size:11px" onclick="convertAppToEmp('${a.id}')">✅ รับเข้าทำงาน</button>
+      <button class="btn bo" style="font-size:11px" onclick="printAppById('${a.id}')">🖨️</button>
+      <button class="btn bd2" style="font-size:11px" onclick="delApplication('${a.id}')">🗑️</button>
+    </div></div>`).join(''):'<div style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีใบสมัคร — กด "เพิ่มใบสมัคร" หรือให้ผู้สมัครกรอกเอง</div>';
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" style="margin-right:auto" onclick="openApplyForm()">+ เพิ่มใบสมัคร</button><button class="btn bp" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function printAppById(id){ const a=(DB.applications||[]).find(x=>x.id===id); if(a) printJobAppForm(null,a); }
+function delApplication(id){ if(!confirm('ลบใบสมัครนี้?'))return; DB.applications=(DB.applications||[]).filter(a=>a.id!==id); saveData(); openApplicationsList(); }
+function convertAppToEmp(id){
+  const a=(DB.applications||[]).find(x=>x.id===id); if(!a) return;
+  a.status='รับเข้าทำงาน'; saveData(); closeModal();
+  empEditId=null; efPhotoData=null; openEmployeeForm();
+  setTimeout(()=>{ const set=(i,v)=>{ const el=document.getElementById(i); if(el&&v!=null&&v!=='')el.value=v; };
+    set('ef-name',a.name); set('ef-role',a.position); set('ef-phone',a.phone); set('ef-idcard',a.idCard); set('ef-addr',a.addr); set('ef-emg',a.emgName); set('ef-emgphone',a.emgPhone);
+    if(a.expectedSalary){ const rt=document.getElementById('ef-rate'); if(rt) rt.value=a.expectedSalary; }
+    toast('กรอกข้อมูลจากใบสมัครให้แล้ว — ตรวจสอบและบันทึก');
+  },180);
+}
 function openEmpDrawer(id){
   const e=empById(id); if(!e) return;
   const month=new Date().toISOString().slice(0,7);
@@ -5255,6 +5451,7 @@ function openEmpDrawer(id){
     ${row('PIN เข้าระบบ',e.pin)}
   </div>
   <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:10px" onclick="empMonthView('${e.id}')">📅 ดูประวัติเข้า-ออกรายเดือน</button>
+  <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();empDocsMenu('${e.id}')">📄 เอกสาร</button><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEvalForm('${e.id}')">⭐ ประเมิน${(()=>{const av=empAvgEval(e);return av?` (${av.toFixed(1)})`:'';})()}</button></div>
   <div style="display:flex;gap:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEmpForm('${e.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="closeDrawer();nav('payroll')">💵 เงินเดือน</button></div>`;
   openDrawer(e.id,null,[['พนักงาน',e.name],['รหัส',e.id]],info);
 }
