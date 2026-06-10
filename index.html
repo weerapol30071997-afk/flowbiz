@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.07h · 📄 เอกสารพนักงาน+ประเมินผล+ใบสมัคร</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.10d · 💾 สำรอง/กู้คืนข้อมูลครบวงจร (กันข้อมูลหาย)</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -1407,7 +1407,7 @@ function nav(page){
   if(!navAllowed(page)){ toast('🔒 ไม่มีสิทธิ์เข้าถึงเมนูนี้'); return; }
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
-  document.getElementById('pg-'+page).classList.add('on');
+  const _pg=document.getElementById('pg-'+page); if(!_pg){ toast('ไม่พบหน้า: '+page); return; } _pg.classList.add('on');
   const navKey = page==='quoteEdit' ? 'quotes' : page;
   document.querySelectorAll('.ni').forEach(n=>{ if(n.getAttribute('onclick')===`nav('${navKey}')`) n.classList.add('on'); });
   document.getElementById('tbTitle').textContent = pageLabels[page]||page;
@@ -1432,7 +1432,7 @@ function renderPage(page){
     reports:renderReports,settings:renderSettings,installments:renderInst,
     journal:renderJournal,ledger:renderLedger,financials:renderFinancials,vat:renderVat,coa:renderCOA,
     cashflow:renderCashflow,cogs:renderCOGS,wht:renderWht,aging:renderAging,closing:renderClosing,summary:renderSummary,jobs:renderJobs,jobcost:renderJobCost,employees:renderEmployees,timeclock:renderTimeclock,payroll:renderPayroll,tracking:renderTracking,leaves:renderLeaves,paytax:renderPayTax};
-  if(r[page]) r[page]();
+  if(r[page]){ try{ r[page](); }catch(e){ console.error('render '+page+' error:',e); try{ toast('⚠️ เกิดข้อผิดพลาดในการแสดงหน้านี้ — ลองรีเฟรชหน้าจอ'); }catch(_){} } }
 }
 
 // ══════════════════════════════════
@@ -1496,11 +1496,15 @@ function openDocForm(type){
   const opts = isSupp
     ? DB.contacts.filter(c=>c.type==='ผู้จัดจำหน่าย').map(c=>`<option value="${c.id}">${c.name}</option>`).join('')
     : DB.contacts.filter(c=>c.type==='ลูกค้า').map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
-  docItems=[];
+  docEditId=editId||null;
+  const _ekey=(typeof DB_KEY_BY_TYPE!=='undefined')?DB_KEY_BY_TYPE[type]:null;
+  const _edit=(editId&&_ekey)?(DB[_ekey]||[]).find(x=>String(x.id)===String(editId)):null;
+  docItems=(_edit&&Array.isArray(_edit.items))?JSON.parse(JSON.stringify(_edit.items)):[];
   curDocType=type;
+  const _docNo=_edit?_edit.id:nextId(type);
 
-  document.getElementById('ml-t').textContent = '+ สร้าง'+labels[type];
-  document.getElementById('ml-s').textContent = `เลขที่: ${nextId(type)} · วันที่: ${fmtD(iso(new Date()))}`;
+  document.getElementById('ml-t').textContent = (_edit?'✏️ แก้ไข':'+ สร้าง')+labels[type];
+  document.getElementById('ml-s').textContent = `เลขที่: ${_docNo} · วันที่: ${fmtD(iso(new Date()))}`;
   const _today=iso(new Date()), _due=iso(new Date(Date.now()+30*864e5));
 
   if(type==='expense'){
@@ -1518,7 +1522,7 @@ function openDocForm(type){
     document.getElementById('ml-bd').innerHTML = `
       <div class="fl2" style="margin-bottom:14px">
         <div class="fg full"><label class="flb">${isSupp?'ผู้จัดจำหน่าย':'ลูกค้า'} *</label><select class="fi" id="m-cust"><option value="">— เลือก —</option>${opts}</select></div>
-        <div class="fg full"><label class="flb">เลขที่เอกสาร (แก้ไขได้)</label><input class="fi" id="m-docno" value="${nextId(type)}" placeholder="เช่น 20260630001"></div>
+        <div class="fg full"><label class="flb">เลขที่เอกสาร (แก้ไขได้)</label><input class="fi" id="m-docno" value="${_docNo}" placeholder="เช่น 20260630001"></div>
         <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="m-date" value="${_today}"></div>
         ${['quotes','invoices','delivery'].includes(type)?`<div class="fg"><label class="flb">${type==='quotes'?'ยืนราคาถึง':'ครบกำหนด'}</label><input class="fi" type="date" id="m-due" value="${_due}"></div>`:'<div class="fg"></div>'}
       </div>
@@ -1540,17 +1544,24 @@ function openDocForm(type){
       </div>
       <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;padding:7px;margin-bottom:8px" onclick="addCustomDocItem()">✏️ เพิ่มรายการเอง (ระบุชื่อ/ราคาเอง)</button>
       <div id="m-itemlist" style="margin-bottom:10px"></div>
-      <div class="fg full" style="margin-bottom:8px"><label class="flb">ส่วนลดท้ายบิล (฿)</label><input class="fi" type="number" id="m-disc" value="0" step="any" oninput="renderDocItems()"></div>
+      <div class="fg full" style="margin-bottom:8px"><label class="flb">ส่วนลดท้ายบิล</label>
+        <div style="display:flex;gap:8px">
+          <input class="fi" type="number" id="m-disc" value="0" step="any" oninput="docCalcTotals()" style="flex:1">
+          <select class="fi" id="m-discmode" onchange="docCalcTotals()" style="width:108px"><option value="baht">฿ บาท</option><option value="pct">% เปอร์เซ็นต์</option></select>
+        </div>
+      </div>
+      ${['quotes','invoices','cashsale'].includes(type)?`<div class="fg full" style="margin-bottom:8px"><label class="flb">หัก ณ ที่จ่าย (ลูกค้าหักจากยอดที่จ่าย)</label><select class="fi" id="m-wht" onchange="docCalcTotals()"><option value="0">ไม่มี</option><option value="1">1% (ค่าขนส่ง)</option><option value="2">2% (ค่าโฆษณา)</option><option value="3">3% (ค่าบริการ/รับเหมา)</option><option value="5">5% (ค่าเช่า/วิชาชีพ)</option></select></div>`:''}
       <div id="m-totals" style="background:var(--bg);border-radius:10px;padding:12px 14px;font-size:13px"></div>
       <input type="hidden" id="m-amt" value="0">
       <div class="fg full" style="margin-top:12px"><label class="flb">หมายเหตุ</label><input class="fi" id="m-note" placeholder="หมายเหตุ (ถ้ามี)"></div>`;
     renderDocItems();
+    if(_edit){ const sv=(id,v)=>{const el=document.getElementById(id); if(el&&v!=null&&v!=='')el.value=v;}; sv('m-cust',_edit.custId||_edit.cust); sv('m-date',_edit.date); sv('m-due',_edit.due||_edit.exp); sv('m-vatmode',_edit.vatMode||(_edit.vat===false?'none':'ex')); sv('m-disc',_edit.disc||0); sv('m-discmode',_edit.discMode||'baht'); sv('m-terms',_edit.terms); sv('m-ship',_edit.ship); sv('m-note',_edit.note); sv('m-wht',_edit.wht||0); docCalcTotals(); }
   }
   document.getElementById('ml-act').innerHTML = `<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveDoc('${type}')">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
 }
 
-let curDocType='';
+let curDocType=''; let docEditId=null;
 function addDocItem(){
   const pid=document.getElementById('m-prod')?.value;
   const qty=parseFloat(document.getElementById('m-qty')?.value)||1;
@@ -1568,15 +1579,21 @@ function setItemField(i,f,v){ if(f==='qty'||f==='price'||f==='disc') docItems[i]
 function docLineTotal(it){ const gross=(it.price||0)*(it.qty||0); return gross-(gross*(it.disc||0)/100); }
 function docCalcTotals(){
   const mode=document.getElementById('m-vatmode')?.value||'ex';
-  const disc=parseFloat(document.getElementById('m-disc')?.value)||0;
-  let sub=docItems.reduce((a,b)=>a+docLineTotal(b),0)-disc; if(sub<0) sub=0;
+  const discVal=parseFloat(document.getElementById('m-disc')?.value)||0;
+  const discMode=document.getElementById('m-discmode')?.value||'baht';
+  const rawSub=docItems.reduce((a,b)=>a+docLineTotal(b),0);
+  const discAmt=discMode==='pct'?(rawSub*discVal/100):discVal;
+  let sub=rawSub-discAmt; if(sub<0) sub=0;
   let base,vat,tot;
   if(mode==='ex'){ base=sub; vat=sub*0.07; tot=sub+vat; }
   else if(mode==='in'){ tot=sub; base=sub/1.07; vat=tot-base; }
   else { base=sub; vat=0; tot=sub; }
   const amtEl=document.getElementById('m-amt'); if(amtEl) amtEl.value=tot;
+  const whtRate=parseFloat(document.getElementById('m-wht')?.value)||0;
+  const whtAmt=base*whtRate/100;
+  const netPay=tot-whtAmt;
   const tEl=document.getElementById('m-totals');
-  if(tEl) tEl.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">รวมรายการ</span><span>฿${fmt(docItems.reduce((a,b)=>a+docLineTotal(b),0))}</span></div>${disc>0?`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ส่วนลดท้ายบิล</span><span style="color:var(--dg)">-฿${fmt(disc)}</span></div>`:''}<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ยอดก่อนภาษี</span><span>฿${fmt(base)}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--mu)">VAT 7%${mode==='in'?' (รวมใน)':mode==='none'?' (ไม่มี)':''}</span><span>฿${fmt(vat)}</span></div><div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:6px;font-weight:700;font-size:15px;color:var(--p)"><span>ยอดรวมสุทธิ</span><span>฿${fmt(tot)}</span></div>`;
+  if(tEl) tEl.innerHTML=`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">รวมรายการ</span><span>฿${fmt(rawSub)}</span></div>${discAmt>0?`<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ส่วนลด${discMode==='pct'?' '+discVal+'%':'ท้ายบิล'}</span><span style="color:var(--dg)">-฿${fmt(discAmt)}</span></div>`:''}<div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mu)">ยอดก่อนภาษี</span><span>฿${fmt(base)}</span></div><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="color:var(--mu)">VAT 7%${mode==='in'?' (รวมใน)':mode==='none'?' (ไม่มี)':''}</span><span>฿${fmt(vat)}</span></div><div style="display:flex;justify-content:space-between;border-top:1px solid var(--bd);padding-top:6px;font-weight:700;font-size:15px;color:var(--p)"><span>ยอดรวมสุทธิ</span><span>฿${fmt(tot)}</span></div>${whtRate>0?`<div style="display:flex;justify-content:space-between;margin-top:4px;font-size:12px"><span style="color:var(--mu)">หัก ณ ที่จ่าย ${whtRate}%</span><span style="color:var(--dg)">-฿${fmt(whtAmt)}</span></div><div style="display:flex;justify-content:space-between;font-weight:700;color:var(--ok)"><span>ยอดชำระสุทธิ</span><span>฿${fmt(netPay)}</span></div>`:''}`;
 }
 function renderDocItems(){
   const list=document.getElementById('m-itemlist'); if(!list) return;
@@ -1796,31 +1813,51 @@ function saveDoc(type){
   const note=document.getElementById('m-note')?.value||'';
   const vatMode=document.getElementById('m-vatmode')?.value||'ex';
   const docDisc=parseFloat(document.getElementById('m-disc')?.value)||0;
+  const discMode=document.getElementById('m-discmode')?.value||'baht';
   const ship=document.getElementById('m-ship')?.value?.trim()||'';
   const terms=document.getElementById('m-terms')?.value?.trim()||'';
+  const wht=parseFloat(document.getElementById('m-wht')?.value)||0;
   if(type!=='expense'&&docItems.some(i=>i.custom&&!(i.name||'').trim())){ toast('⚠️ กรุณาตั้งชื่อรายการที่เพิ่มเอง'); return; }
   const items=docItems.map(i=>({name:i.name,qty:i.qty,price:i.price,unit:i.unit,disc:i.disc||0}));
   let newId=(document.getElementById('m-docno')?.value||'').trim()||nextId(type);
-  // กันเลขซ้ำในชนิดเดียวกัน
-  const arrK=DB_KEY_BY_TYPE[type]; if(arrK&&(DB[arrK]||[]).some(x=>String(x.id)===newId)){ toast('⚠️ เลขที่เอกสาร '+newId+' ซ้ำ — ใช้เลขอื่น'); return; }
+  // กันเลขซ้ำในชนิดเดียวกัน (ยกเว้นเอกสารที่กำลังแก้ไขเอง)
+  const arrK=DB_KEY_BY_TYPE[type]; if(arrK&&(DB[arrK]||[]).some(x=>String(x.id)===newId&&String(x.id)!==String(docEditId))){ toast('⚠️ เลขที่เอกสาร '+newId+' ซ้ำ — ใช้เลขอื่น'); return; }
   const hasVat=(vatMode!=='none');
 
+  // ── โหมดแก้ไข: อัปเดตเอกสารเดิม (คงสถานะ/การชำระ/การเชื่อมโยงไว้) ──
+  if(docEditId&&arrK){
+    const rec=(DB[arrK]||[]).find(x=>String(x.id)===String(docEditId));
+    if(rec){
+      rec.id=newId; rec.date=dateEl.value; rec.amt=amt; rec.items=items; rec.note=note;
+      rec.disc=docDisc; rec.discMode=discMode; rec.vatMode=vatMode; rec.vat=hasVat; rec.wht=wht;
+      if(['po','receive'].includes(type)){ rec.supp=custEl.value; }
+      else if(type==='cashsale'){ rec.cust=getCust(custEl.value).name||'ลูกค้าทั่วไป'; rec.custId=custEl.value; }
+      else { rec.cust=custEl.value; }
+      if(type==='quotes') rec.exp=dueEl?.value||rec.exp; else if(dueEl) rec.due=dueEl.value;
+      if(!['po','receive'].includes(type)){ rec.ship=ship; rec.terms=terms; }
+      // ลงบัญชีใหม่ให้ตรงกับเอกสารที่แก้ (กันบัญชีคลาดเคลื่อน)
+      if(['invoices','cashsale','expense','receive'].includes(type)&&typeof rebuildAccounting==='function'){ try{rebuildAccounting();}catch(e){} }
+      saveData(); closeModal(); toast('✅ แก้ไข'+(DOC_LABEL[type]||'เอกสาร')+' '+newId+' แล้ว'); rerenderDocs();
+    }
+    docEditId=null; return;
+  }
+
   if(type==='quotes'){
-    DB.quotes.unshift({id:newId,cust:custEl.value,date:dateEl.value,exp:dueEl?.value||'',status:'รออนุมัติ',amt,paid:0,items,note,vat:hasVat,vatMode,disc:docDisc,ship,terms});
+    DB.quotes.unshift({id:newId,cust:custEl.value,date:dateEl.value,exp:dueEl?.value||'',status:'รออนุมัติ',amt,paid:0,items,note,vat:hasVat,vatMode,disc:docDisc,discMode,ship,terms,wht});
   } else if(type==='invoices'){
-    const rec={id:newId,cust:custEl.value,date:dateEl.value,due:dueEl?.value||'',status:'รอชำระ',amt,vat:hasVat,vatMode,disc:docDisc,items,note,ship,terms};
+    const rec={id:newId,cust:custEl.value,date:dateEl.value,due:dueEl?.value||'',status:'รอชำระ',amt,vat:hasVat,vatMode,disc:docDisc,discMode,items,note,ship,terms,wht};
     DB.invoices.unshift(rec); try{autoPostInvoice(rec);}catch(e){}
   } else if(type==='delivery'){
-    DB.delivery.unshift({id:newId,cust:custEl.value,date:dateEl.value,status:'รอจัดส่ง',amt,items,note,vatMode,disc:docDisc,ship,terms});
+    DB.delivery.unshift({id:newId,cust:custEl.value,date:dateEl.value,status:'รอจัดส่ง',amt,items,note,vatMode,disc:docDisc,discMode,ship,terms});
     adjustStock(items,-1);
   } else if(type==='cashsale'){
-    const rec={id:newId,cust:getCust(custEl.value).name||'ลูกค้าทั่วไป',custId:custEl.value,date:dateEl.value,method:'โอนเงิน',amt,vat:hasVat,vatMode,disc:docDisc,items,note,ship,terms};
+    const rec={id:newId,cust:getCust(custEl.value).name||'ลูกค้าทั่วไป',custId:custEl.value,date:dateEl.value,method:'โอนเงิน',amt,vat:hasVat,vatMode,disc:docDisc,discMode,items,note,ship,terms,wht};
     DB.cashsale.unshift(rec); try{autoPostCashSale(rec);}catch(e){}
     adjustStock(items,-1);
   } else if(type==='po'){
-    DB.po.unshift({id:newId,supp:custEl.value,date:dateEl.value,status:'รอรับของ',amt,items,note,vatMode,disc:docDisc});
+    DB.po.unshift({id:newId,supp:custEl.value,date:dateEl.value,status:'รอรับของ',amt,items,note,vatMode,disc:docDisc,discMode});
   } else if(type==='receive'){
-    const rec={id:newId,supp:custEl.value,date:dateEl.value,ref:'',status:'บันทึกแล้ว',amt,items,note,vatMode,disc:docDisc};
+    const rec={id:newId,supp:custEl.value,date:dateEl.value,ref:'',status:'บันทึกแล้ว',amt,items,note,vatMode,disc:docDisc,discMode};
     DB.receive.unshift(rec); try{autoPostReceive(rec);}catch(e){}
     adjustStock(items,+1);
   } else if(type==='expense'){
@@ -1866,12 +1903,12 @@ function renderDashboard(){
   setTxt('pb-lb1','เก็บแล้ว '+collectPct.toFixed(1)+'%');
   setTxt('pb-lb2','คงเหลือ '+(100-collectPct).toFixed(1)+'%');
 
-  // ── กราฟรายเดือน คำนวณจากวันที่จริงของเอกสาร ──
-  const months=['มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.'];
-  // map: index 0=มิ.ย.2025 ... 11=พ.ค.2026 → เดือนปฏิทิน 6..12,1..5
-  const monthOrder=[6,7,8,9,10,11,12,1,2,3,4,5];
+  // ── กราฟรายเดือน คำนวณจากวันที่จริง (12 เดือนล่าสุดถึงเดือนปัจจุบัน แบบไดนามิก) ──
+  const _now=new Date();
+  const months=[], monthKeys=[];
+  for(let k=11;k>=0;k--){ const d=new Date(_now.getFullYear(),_now.getMonth()-k,1); months.push(d.toLocaleDateString('th-TH',{month:'short'})); monthKeys.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')); }
   const inc=new Array(12).fill(0), exp=new Array(12).fill(0);
-  function addToMonth(arr,dateStr,amt){ if(!dateStr) return; const mo=new Date(dateStr).getMonth()+1; const idx=monthOrder.indexOf(mo); if(idx>=0) arr[idx]+=amt; }
+  function addToMonth(arr,dateStr,amt){ if(!dateStr) return; const key=String(dateStr).slice(0,7); const idx=monthKeys.indexOf(key); if(idx>=0) arr[idx]+=amt; }
   DB.invoices.forEach(i=>addToMonth(inc,i.date,i.amt));
   DB.cashsale.forEach(i=>addToMonth(inc,i.date,i.amt));
   DB.expense.forEach(e=>addToMonth(exp,e.date,e.amt));
@@ -2220,10 +2257,11 @@ function convertQuote(id,type,label){
   const r=DB.quotes.find(x=>x.id===id); if(!r) return;
   const newId=nextId(type); const today=new Date().toISOString().slice(0,10);
   const items=r.items?JSON.parse(JSON.stringify(r.items)):undefined;
-  if(type==='invoices') DB.invoices.unshift({id:newId,cust:r.cust,date:today,due:'2026-06-28',status:'รอชำระ',amt:r.amt,items,ref:id,refType:'quotes'});
-  else if(type==='delivery') DB.delivery.unshift({id:newId,cust:r.cust,date:today,status:'รอจัดส่ง',amt:r.amt,items,ref:id,refType:'quotes'});
-  else if(type==='cashsale') DB.cashsale.unshift({id:newId,cust:getCust(r.cust).name,date:today,method:'เงินสด',amt:r.amt,items,ref:id,refType:'quotes'});
-  else if(type==='po') DB.po.unshift({id:newId,supp:r.cust,date:today,status:'รอรับของ',amt:r.amt,items,ref:id,refType:'quotes'});
+  const X={vat:r.vat,vatMode:r.vatMode,disc:r.disc,discMode:r.discMode,terms:r.terms,ship:r.ship}; // ส่งข้อมูลต่อให้ตรงกัน
+  if(type==='invoices') DB.invoices.unshift(Object.assign({id:newId,cust:r.cust,date:today,due:today,status:'รอชำระ',amt:r.amt,items,ref:id,refType:'quotes'},X));
+  else if(type==='delivery') DB.delivery.unshift(Object.assign({id:newId,cust:r.cust,date:today,status:'รอจัดส่ง',amt:r.amt,items,ref:id,refType:'quotes'},X));
+  else if(type==='cashsale') DB.cashsale.unshift(Object.assign({id:newId,cust:getCust(r.cust).name,date:today,method:'เงินสด',amt:r.amt,items,ref:id,refType:'quotes'},X));
+  else if(type==='po') DB.po.unshift(Object.assign({id:newId,supp:r.cust,date:today,status:'รอรับของ',amt:r.amt,items,ref:id,refType:'quotes'},X));
   if(r.status==='รออนุมัติ'||r.status==='อนุมัติแล้ว') r.status='ดำเนินการแล้ว';
   saveData(); toast('✅ สร้าง'+label+' '+newId+' จาก '+id+' แล้ว'); renderQuotes();
 }
@@ -2239,6 +2277,8 @@ function convertDoc(fromType,fromId,toType){
   const items=src.items?JSON.parse(JSON.stringify(src.items)):undefined;
   const who=src.cust||src.supp;
   let rec={id:newId,date:today,amt:src.amt||src.total||0,ref:fromId,refType:fromType}; if(items) rec.items=items;
+  // ส่งข้อมูลต่อให้ตรงกัน (VAT/ส่วนลด/เงื่อนไข/ที่อยู่จัดส่ง)
+  ['vat','vatMode','disc','discMode','terms','ship'].forEach(k=>{ if(src[k]!==undefined) rec[k]=src[k]; });
   if(toType==='invoices'){ rec.cust=who; rec.due=today; rec.status='รอชำระ'; }
   else if(toType==='delivery'){ rec.cust=who; rec.status='รอจัดส่ง'; }
   else if(toType==='cashsale'){ rec.cust=getCust(who).name||who; rec.method='เงินสด'; }
@@ -2311,7 +2351,7 @@ function openInvDrawer(id){
     itemsBlock(r.items)+(
     r.status==='รอชำระ'?`<button class="btn bp" style="width:100%;justify-content:center" onclick="openPayModal('invoice','${r.id}')">💳 บันทึกการชำระเงิน</button>`:
     `<div class="rm-ind rm-ok">✓ ชำระเงินแล้ว</div>${r.payment?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:12px"><div style="font-weight:700;margin-bottom:6px">ข้อมูลการชำระ</div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">ช่องทาง</span><span>${r.payment.methodName}</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">จำนวน</span><span>฿${fmt(r.payment.amt)}</span></div><div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">วันที่</span><span>${fmtD(r.payment.date)}</span></div>${r.payment.ref?`<div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--mu)">อ้างอิง</span><span>${r.payment.ref}</span></div>`:''}${r.payment.slip?`<div style="margin-top:8px;border-top:1px dashed var(--bd);padding-top:8px"><div style="color:var(--mu);margin-bottom:5px">📎 หลักฐานการจ่าย</div><img src="${r.payment.slip}" onclick="photoView('${r.payment.slip}')" style="height:90px;border-radius:8px;border:1px solid var(--bd);cursor:pointer"></div>`:''}</div>`:''}`)
-    +`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">${r.status==='ชำระแล้ว'?`<button class="btn bp" style="flex:1;justify-content:center" onclick="printReceipt('invoices','${r.id}')">🧾 ใบเสร็จรับเงิน</button>`:''}<button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('invoices','${r.id}','delivery')">→ ใบส่งของ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('invoices','${r.id}')">🖨️ พิมพ์</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('invoices','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('invoices','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('invoices',r.id),'invoices');
+    +`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('invoices','${r.id}')">✏️ แก้ไข</button>${r.status==='ชำระแล้ว'?`<button class="btn bp" style="flex:1;justify-content:center" onclick="printReceipt('invoices','${r.id}')">🧾 ใบเสร็จรับเงิน</button>`:''}<button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('invoices','${r.id}','delivery')">→ ใบส่งของ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('invoices','${r.id}')">🖨️ พิมพ์</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('invoices','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('invoices','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('invoices',r.id),'invoices');
 }
 // ══════════════════════════════════
 // ระบบชำระเงิน (หลายช่องทาง + QR พร้อมเพย์)
@@ -2879,7 +2919,7 @@ function renderPO(){
 function openPODrawer(id){ const r=DB.po.find(x=>x.id===id); if(!r) return; const c=getCust(r.supp);
   openDrawer(r.id,r.supp,[['ผู้จัดจำหน่าย',c.name],['วันที่',fmtD(r.date)],['สถานะ',r.status],['ยอด','฿'+fmt(r.amt)]],
     ((r.items&&r.items.length)?`<div><div style="font-size:13px;font-weight:700;margin-bottom:8px">รายการสินค้า</div>${r.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><div>${it.name} <span style="color:var(--mu)">×${it.qty}</span></div><div style="font-weight:600">฿${fmt(it.price*it.qty)}</div></div>`).join('')}</div>`:'')
-    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','receive')">→ รับสินค้า</button><button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','expense')">→ ค่าใช้จ่าย</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('po','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('po','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('po',r.id));
+    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('po','${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','receive')">→ รับสินค้า</button><button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','expense')">→ ค่าใช้จ่าย</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('po','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('po','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('po',r.id));
 }
 
 // ══════════════════════════════════
@@ -2897,7 +2937,7 @@ function openReceiveDrawer(id){
   const r=DB.receive.find(x=>x.id===id); if(!r) return; const c=getCust(r.supp);
   openDrawer(r.id,r.supp,[['ผู้จัดจำหน่าย',c.name],['วันที่',fmtD(r.date)],['อ้างอิง',r.ref||'—'],['สถานะ',r.status],['ยอด','฿'+fmt(r.amt)]],
     ((r.items&&r.items.length)?`<div><div style="font-size:13px;font-weight:700;margin-bottom:8px">รายการสินค้า</div>${r.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><div>${it.name} <span style="color:var(--mu)">×${it.qty}</span></div><div style="font-weight:600">฿${fmt(it.price*it.qty)}</div></div>`).join('')}</div>`:'')
-    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('receive','${r.id}','expense')">→ บันทึกค่าใช้จ่าย</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('receive','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('receive',r.id));
+    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('receive','${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('receive','${r.id}','expense')">→ บันทึกค่าใช้จ่าย</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('receive','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('receive',r.id));
 }
 
 // ══════════════════════════════════
@@ -3175,22 +3215,6 @@ function compressReceiptImage(file,maxDim,quality){
     img.src=url;
   });
 }
-function renderSlipPreview(){
-  const prev=document.getElementById('ex-slip-preview');
-  const empty=document.getElementById('ex-slip-empty');
-  if(!prev) return;
-  if(expSlip){
-    empty.style.display='none';
-    prev.innerHTML=`<img src="${expSlip}" style="max-width:100%;max-height:240px;border-radius:10px;margin-bottom:10px;display:block;margin-left:auto;margin-right:auto">
-      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-        <button class="btn bp" style="font-size:12px" onclick="extractAmountFromImage()">🤖 ให้ AI อ่านใบเสร็จ</button>
-        <button class="btn bo" style="font-size:12px" onclick="document.getElementById('ex-slip-input').click()">🔄 เปลี่ยนรูป</button>
-        <button class="btn bd2" style="font-size:12px" onclick="expSlip=null;renderSlipPreview()">✕ ลบรูป</button>
-      </div>
-      <div id="ex-ai-status" style="display:none;text-align:center;font-size:12px;margin-top:8px;font-weight:600"></div>`;
-  } else { empty.style.display='block'; prev.innerHTML=''; }
-}
-
 function renderSlipPreview(){} // legacy stub — ใช้ expRenderSlips แทน
 // ดึงข้อมูลจากรูปใบเสร็จด้วย AI (Claude API)
 async function extractAmountFromImage(){
@@ -4389,8 +4413,7 @@ function renderSettings(){
     {ic:'☁️',t:'สำรองข้อมูลอัตโนมัติ',s:'สำรองทุกวันเที่ยงคืน',key:'backup'},
     {ic:'🌐',t:'จัดเก็บข้อมูลบนคลาวด์',s:'ซิงค์ข้อมูลข้ามอุปกรณ์ (Firebase)',key:null,action:'cloud'},
     {ic:'🎨',t:'ธีมและการแสดงผล',s:'ปรับสี, ขนาดตัวอักษร',key:null,action:'theme'},
-    {ic:'💾',t:'สำรองข้อมูล (Backup)',s:'ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์',key:null,action:'export'},
-    {ic:'📂',t:'นำเข้าข้อมูล (Restore)',s:'กู้คืนจากไฟล์สำรองข้อมูล',key:null,action:'import'},
+    {ic:'💾',t:'สำรอง / กู้คืนข้อมูล',s:'ดาวน์โหลดข้อมูลทั้งหมด หรือกู้คืนจากไฟล์ (กันข้อมูลหาย)',key:null,action:'backup'},
     {ic:'🗑️',t:'ล้างข้อมูลทั้งหมด',s:'รีเซ็ตกลับเป็นข้อมูลตัวอย่าง',key:null,action:'reset'},
   ];
   const g=document.getElementById('settingsGrid'); g.innerHTML='';
@@ -4398,7 +4421,7 @@ function renderSettings(){
     const div=document.createElement('div'); div.className='set-row';
     const right=item.key!=null
       ? `<button class="sw ${settingsState[item.key]?'on':''}" id="sw-${item.key}" onclick="toggleSetting('${item.key}')"></button>`
-      : (()=>{ const map={reset:["bd2","ล้างข้อมูل","resetData()"],export:["bp","ดาวน์โหลด","exportBackup()"],import:["bo","เลือกไฟล์","importBackup()"],editCompany:["bp","แก้ไขหัวบิล","openCompanyForm()"],cloud:["bp","ตั้งค่าคลาวด์","openCloudForm()"],docnum:["bp","ตั้งค่าเลขที่","openDocNumForm()"]}; const m=map[item.action]||["bo","ตั้งค่า","toast('⚙️ เปิดหน้า"+item.t+"แล้ว')"]; return `<button class="btn ${m[0]}" style="font-size:12px" onclick="${m[2]}">${m[1]}</button>`; })();
+      : (()=>{ const map={reset:["bd2","ล้างข้อมูل","resetData()"],backup:["bp","เปิด","openBackupRestore()"],export:["bp","ดาวน์โหลด","exportBackup()"],import:["bo","เลือกไฟล์","importBackup()"],editCompany:["bp","แก้ไขหัวบิล","openCompanyForm()"],cloud:["bp","ตั้งค่าคลาวด์","openCloudForm()"],docnum:["bp","ตั้งค่าเลขที่","openDocNumForm()"]}; const m=map[item.action]||["bo","ตั้งค่า","toast('⚙️ เปิดหน้า"+item.t+"แล้ว')"]; return `<button class="btn ${m[0]}" style="font-size:12px" onclick="${m[2]}">${m[1]}</button>`; })();
     div.innerHTML=`<div class="set-ic">${item.ic}</div><div style="flex:1"><div class="set-t">${item.t}</div><div class="set-s">${item.s}</div></div>${right}`;
     g.appendChild(div);
   });
@@ -4455,7 +4478,7 @@ function handleSigImg(e){
 function handleLogoImg(e){
   const file=e.target.files[0]; if(!file) return;
   if(file.size>10*1024*1024){ toast('⚠️ ไฟล์ใหญ่เกิน 10MB'); return; }
-  compressReceiptImage(file,400,0.85).then(data=>{ coLogoData=data; const box=document.getElementById('co-logo-box'); if(box) box.innerHTML=`<img src="${data}" style="max-width:100%;max-height:100%;object-fit:contain">`; toast('🏢 เพิ่มโลโก้แล้ว'); });
+  compressReceiptImage(file,400,0.85).then(d=>maybeStorage(d,'logo')).then(data=>{ coLogoData=data; const box=document.getElementById('co-logo-box'); if(box) box.innerHTML=`<img src="${data}" style="max-width:100%;max-height:100%;object-fit:contain">`; toast('🏢 เพิ่มโลโก้แล้ว'); });
 }
 function saveCompany(){
   companyInfo={name:document.getElementById('co-name').value,shortName:document.getElementById('co-short').value,addr:document.getElementById('co-addr').value,tax:document.getElementById('co-tax').value,tel:document.getElementById('co-tel').value,mobile:document.getElementById('co-mobile').value,seller:document.getElementById('co-seller').value,sigImg:coSigData||null,logo:coLogoData||null,showLogo:document.getElementById('co-showlogo')?document.getElementById('co-showlogo').checked:true};
@@ -4497,6 +4520,18 @@ function openCloudForm(){
       <button class="btn bo" style="justify-content:center;padding:12px" onclick="cloudPull()">⬇️ ดึงข้อมูลจากคลาวด์มาเครื่องนี้</button>
     </div>
     <details style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">
+      <summary style="font-size:13px;font-weight:700;cursor:pointer;color:var(--p)">📦 Firebase Storage (เก็บรูปภาพ — ลดพื้นที่ในเครื่อง)</summary>
+      <div style="font-size:11.5px;color:var(--mu);margin:8px 0;line-height:1.7">
+        เก็บรูปสลิป/พนักงาน/เอกสาร บน Firebase Storage แทน base64 ในเครื่อง (กันพื้นที่เต็ม)<br>
+        <b style="color:var(--tx)">ตั้งค่า:</b> Firebase Console → Build → <b>Storage</b> → Get started → แท็บ <b>Rules</b> → แก้เป็น:<br>
+        <code style="background:#fff;padding:3px 6px;border-radius:4px;display:inline-block;margin:4px 0">allow read, write: if true;</code> → Publish
+      </div>
+      <div class="set-row" style="margin-bottom:10px"><div class="set-ic">⬆️</div><div style="flex:1"><div class="set-t">อัปโหลดรูปใหม่ขึ้น Storage อัตโนมัติ</div><div class="set-s">รูปที่เพิ่มหลังจากนี้จะเก็บบนคลาวด์ทันที</div></div><button class="sw ${cloudCfg.autoStorage?'on':''}" id="cl-autost" onclick="this.classList.toggle('on')"></button></div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">Storage Bucket</label><input class="fi" id="cl-bucket" value="${cloudCfg.storageBucket||''}" placeholder="${cloudCfg.projectId?cloudCfg.projectId+'.appspot.com':'my-project.appspot.com'}"><div style="font-size:10.5px;color:var(--mu);margin-top:4px">เว้นว่าง = ใช้ <b>${(cloudCfg.projectId||'project')}.appspot.com</b> · ดูค่าจริงที่หน้า Storage (บนสุด gs://...)</div></div>
+      <div style="background:var(--bg);border-radius:9px;padding:9px 12px;font-size:11.5px;color:var(--mu);margin-bottom:10px">🖼️ รูป base64 ในเครื่อง: <b style="color:var(--tx)" id="cl-imgcount">${countBase64Imgs()} รูป</b> · พื้นที่รวม <b style="color:var(--tx)">${localStorageKB()} KB</b></div>
+      <button class="btn bp" style="width:100%;justify-content:center;padding:11px" onclick="migrateImagesToStorage()">📦 ย้ายรูปทั้งหมดขึ้น Storage</button>
+    </details>
+    <details style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">
       <summary style="font-size:13px;font-weight:700;cursor:pointer;color:var(--p)">🔔 ตั้งค่า Push (แจ้งเตือนตอนล็อกจอ) — ขั้นสูง</summary>
       <div style="font-size:11.5px;color:var(--mu);margin:8px 0;line-height:1.6">ใส่ค่าจาก Firebase Console → Project Settings → Cloud Messaging (ดูคู่มือที่แนบมา) แล้วกด "เปิด" ด้านบน</div>
       <div class="fg" style="margin-bottom:8px"><label class="flb">Messaging Sender ID</label><input class="fi" id="cl-sid" value="${cloudCfg.msgSenderId||''}" placeholder="123456789012"></div>
@@ -4515,6 +4550,8 @@ function saveCloudForm(){
   const _sid=document.getElementById('cl-sid'); if(_sid) cloudCfg.msgSenderId=_sid.value.trim();
   const _aid=document.getElementById('cl-aid'); if(_aid) cloudCfg.appId=_aid.value.trim();
   const _vap=document.getElementById('cl-vap'); if(_vap) cloudCfg.vapidKey=_vap.value.trim();
+  const _bk=document.getElementById('cl-bucket'); if(_bk) cloudCfg.storageBucket=_bk.value.trim();
+  const _ast=document.getElementById('cl-autost'); if(_ast) cloudCfg.autoStorage=_ast.classList.contains('on');
   saveCloudCfg();
   if(cloudCfg.enabled&&cloudCfg.projectId&&cloudCfg.apiKey){
     cloudInitDone=true; // ผู้ใช้ตั้งค่าเอง = พร้อมซิงค์
@@ -4647,9 +4684,20 @@ function addDays(ds,n){ const d=new Date(ds); d.setDate(d.getDate()+n); return d
 // PERSISTENCE (localStorage)
 // ══════════════════════════════════
 const STORE_KEY='flowbiz_data_v1';
+let _storageWarned=false;
 function saveData(){
-  try{ localStorage.setItem(STORE_KEY,JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo})); }
-  catch(e){ /* storage unavailable */ }
+  try{
+    localStorage.setItem(STORE_KEY,JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo}));
+    _storageWarned=false;
+  }
+  catch(e){
+    const full=e&&(e.name==='QuotaExceededError'||e.code===22||e.code===1014||/quota|exceeded/i.test(e.message||''));
+    if(full&&!_storageWarned){
+      _storageWarned=true;
+      try{ toast('⚠️ พื้นที่จัดเก็บเต็ม! ข้อมูลล่าสุดอาจไม่ถูกบันทึก'); }catch(_){}
+      setTimeout(()=>{ try{ alert('⚠️ พื้นที่จัดเก็บในเครื่องเต็ม\n\nข้อมูลล่าสุดอาจไม่ถูกบันทึก เพื่อความปลอดภัยกรุณา:\n• สำรองข้อมูล (ส่งออกไฟล์) ทันที\n• ลบรูปสลิป/เอกสารแนบเก่าที่ไม่ใช้แล้ว\n\nหมายเหตุ: รูปภาพใช้พื้นที่มากที่สุด'); }catch(_){} },100);
+    }
+  }
   try{ cloudAutoSync(); }catch(e){}
   try{ updateNotifDot(); }catch(e){}
   try{ updateNavBadges(); }catch(e){}
@@ -4677,10 +4725,72 @@ function loadData(){
 // ══════════════════════════════════
 // ระบบจัดเก็บข้อมูลบนคลาวด์ (Firebase Firestore REST — ไม่ต้องมีเซิร์ฟเวอร์)
 // ══════════════════════════════════
-let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:''};
+let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:'',storageBucket:'',autoStorage:false};
 try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assign(cloudCfg,JSON.parse(cc)); }catch(e){}
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
+
+// ── Firebase Storage (เก็บรูปภาพ — เหมาะกว่าเก็บ base64 ในเครื่อง) ──
+function storageBucketName(){ return (cloudCfg.storageBucket||'').trim() || (cloudCfg.projectId?cloudCfg.projectId+'.appspot.com':''); }
+function dataUrlToBytes(dataUrl){
+  const i=dataUrl.indexOf(','); const meta=dataUrl.slice(0,i); const b64=dataUrl.slice(i+1);
+  const mime=(meta.match(/data:([^;]+)/)||[])[1]||'image/jpeg';
+  const bin=atob(b64); const len=bin.length; const arr=new Uint8Array(len);
+  for(let j=0;j<len;j++) arr[j]=bin.charCodeAt(j);
+  return {bytes:arr,mime};
+}
+async function storageUpload(dataUrl,folder){
+  const bucket=storageBucketName(); if(!bucket) throw new Error('ยังไม่ได้ตั้งค่า Storage bucket');
+  const {bytes,mime}=dataUrlToBytes(dataUrl);
+  const ext=(mime.split('/')[1]||'jpg').replace('+xml','');
+  const path=(folder||'flowbiz')+'/'+Date.now()+'_'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  const url=`https://firebasestorage.googleapis.com/v0/b/${bucket}/o?name=${encodeURIComponent(path)}`;
+  const r=await fetchTimeout(url,{method:'POST',headers:{'Content-Type':mime},body:bytes},30000);
+  if(!r.ok){ const t=await r.text().catch(()=>''); throw new Error('upload '+r.status+' '+t.slice(0,120)); }
+  const m=await r.json();
+  const token=(m.downloadTokens||'').split(',')[0];
+  return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media${token?'&token='+token:''}`;
+}
+// อัปโหลดรูปขึ้น Storage ถ้าเปิด autoStorage (คืน URL) — ไม่งั้นคืน base64 เดิม
+async function maybeStorage(dataUrl,folder){
+  if(!dataUrl||typeof dataUrl!=='string'||dataUrl.indexOf('data:image')!==0) return dataUrl;
+  if(cloudCfg.enabled&&cloudCfg.autoStorage&&storageBucketName()){
+    try{ return await storageUpload(dataUrl,folder); }catch(e){ console.warn('storage upload failed, keep base64:',e); }
+  }
+  return dataUrl;
+}
+// ประมาณการพื้นที่ที่ใช้ในเครื่อง
+function localStorageKB(){ try{ const s=localStorage.getItem(STORE_KEY)||''; return Math.round(s.length/1024); }catch(e){ return 0; } }
+function countBase64Imgs(){
+  let n=0; const seen=new Set();
+  function scan(o){ if(!o) return; if(typeof o==='string'){ if(o.indexOf('data:image')===0&&!seen.has(o)){ seen.add(o); n++; } return; } if(Array.isArray(o)){ o.forEach(scan); } else if(typeof o==='object'){ Object.values(o).forEach(scan); } }
+  scan(DB); scan(companyInfo); return n;
+}
+// ย้ายรูป base64 ทั้งหมด → Firebase Storage แล้วแทนที่ด้วยลิงก์ (ลดพื้นที่ในเครื่อง)
+async function migrateImagesToStorage(){
+  if(!cloudCfg.enabled){ toast('⚠️ เปิดใช้งานคลาวด์ก่อน'); return; }
+  const bucket=storageBucketName(); if(!bucket){ toast('⚠️ ใส่ Storage bucket ก่อน'); return; }
+  const seen=new Set(); const imgs=[];
+  function scan(o){ if(!o) return; if(typeof o==='string'){ if(o.indexOf('data:image')===0&&!seen.has(o)){ seen.add(o); imgs.push(o); } return; } if(Array.isArray(o)){ o.forEach(scan); } else if(typeof o==='object'){ Object.values(o).forEach(scan); } }
+  scan(DB); scan(companyInfo);
+  if(!imgs.length){ toast('✅ ไม่มีรูป base64 ที่ต้องย้าย (อาจย้ายขึ้นคลาวด์ไปแล้ว)'); return; }
+  if(!confirm(`พบรูปในเครื่อง ${imgs.length} รูป\n\nจะอัปโหลดขึ้น Firebase Storage แล้วแทนที่ด้วยลิงก์ เพื่อลดพื้นที่จัดเก็บในเครื่อง\n\n⚠️ ต้องตั้ง Storage Rules เป็น public ก่อน (ดูวิธีในหน้านี้)\n\nดำเนินการต่อ?`)) return;
+  const map={}; let done=0,failN=0;
+  setCloudStatus('📦 กำลังย้ายรูป 0/'+imgs.length+'...','#0A6EBD');
+  for(const d of imgs){
+    try{ map[d]=await storageUpload(d,'flowbiz'); done++; }
+    catch(e){ failN++; console.error('upload fail',e); if(failN===1){ setCloudStatus('⚠️ อัปโหลดล้มเหลว — ตรวจ bucket/Rules','#c0392b'); } }
+    setCloudStatus(`📦 กำลังย้ายรูป ${done+failN}/${imgs.length}...`,'#0A6EBD');
+  }
+  function repl(o){ if(Array.isArray(o)){ for(let i=0;i<o.length;i++){ if(typeof o[i]==='string'){ if(map[o[i]]) o[i]=map[o[i]]; } else repl(o[i]); } } else if(o&&typeof o==='object'){ Object.keys(o).forEach(k=>{ if(typeof o[k]==='string'){ if(map[o[k]]) o[k]=map[o[k]]; } else repl(o[k]); }); } }
+  repl(DB);
+  Object.keys(companyInfo).forEach(k=>{ if(typeof companyInfo[k]==='string'&&map[companyInfo[k]]) companyInfo[k]=map[companyInfo[k]]; });
+  saveData();
+  const savedKB=localStorageKB();
+  setCloudStatus(`✅ ย้ายรูปแล้ว ${done} รูป`+(failN?` (ล้มเหลว ${failN})`:'')+` · ใช้พื้นที่ ${savedKB} KB`,failN?'#b45309':'#0F9D58');
+  toast(`✅ ย้าย ${done} รูปขึ้น Storage แล้ว`+(failN?` · ล้มเหลว ${failN} (ลองใหม่)`:''));
+  try{ renderPage(curPage); }catch(e){}
+}
 
 let cloudBusy=false, cloudTimer=null, cloudInitDone=false;
 let cloudLastSeen=null, _cloudWatch=null;
@@ -4966,15 +5076,17 @@ function doResetDemo(){
 }
 // สำรองข้อมูลเป็นไฟล์
 function exportBackup(){
-  const data=JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo,_v:1,_date:new Date().toISOString()},null,2);
+  const cnt=dbRecordCount();
+  const data=JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo,_v:1,_date:new Date().toISOString(),_count:cnt},null,2);
   const blob=new Blob([data],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url; a.download='flowbiz-backup-'+new Date().toISOString().slice(0,10)+'.json';
+  a.href=url; a.download='flowbiz-backup-'+new Date().toISOString().slice(0,16).replace(/[:T]/g,'-')+'.json';
   a.click(); URL.revokeObjectURL(url);
-  toast('💾 ดาวน์โหลดไฟล์สำรองข้อมูลแล้ว');
+  try{ localStorage.setItem('flowbiz_last_export',new Date().toISOString()); }catch(e){}
+  toast('💾 ดาวน์โหลดไฟล์สำรอง '+cnt+' รายการแล้ว');
 }
-// นำเข้าข้อมูลจากไฟล์
+// นำเข้าข้อมูลจากไฟล์ (แสดงตัวอย่างก่อน + ล้างข้อมูลเก่าให้สะอาด)
 function importBackup(){
   const inp=document.createElement('input');
   inp.type='file'; inp.accept='.json,application/json';
@@ -4982,22 +5094,48 @@ function importBackup(){
     const f=e.target.files[0]; if(!f) return;
     const rd=new FileReader();
     rd.onload=ev=>{
-      try{
-        const d=JSON.parse(ev.target.result);
-        if(!d.DB){ toast('⚠️ ไฟล์ไม่ถูกต้อง'); return; }
-        if(confirm('นำเข้าข้อมูลจากไฟล์นี้? ข้อมูลปัจจุบันจะถูกแทนที่')){
-          Object.assign(DB,d.DB);
-          if(d.idCounters) Object.assign(idCounters,d.idCounters); if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
-          if(d.settingsState) Object.assign(settingsState,d.settingsState);
-          if(d.companyInfo) Object.assign(companyInfo,d.companyInfo);
-          saveData(); renderPage(curPage);
-          toast('✅ นำเข้าข้อมูลเรียบร้อยแล้ว');
-        }
-      }catch(err){ toast('⚠️ อ่านไฟล์ไม่สำเร็จ'); }
+      let d; try{ d=JSON.parse(ev.target.result); }catch(err){ toast('⚠️ อ่านไฟล์ไม่สำเร็จ — ไฟล์อาจเสียหรือไม่ใช่ไฟล์สำรอง'); return; }
+      if(!d||!d.DB){ toast('⚠️ ไฟล์นี้ไม่ใช่ไฟล์สำรองของ FlowBiz'); return; }
+      const cnt=(typeof dbRecordCount==='function')?dbRecordCount(d.DB):'?';
+      const bkDate=d._date?new Date(d._date).toLocaleString('th-TH'):'ไม่ทราบ';
+      if(!confirm(`📂 ไฟล์สำรองนี้:\n• วันที่สำรอง: ${bkDate}\n• จำนวนรายการ: ${cnt}\n\n⚠️ ข้อมูลปัจจุบันทั้งหมดจะถูกแทนที่ด้วยไฟล์นี้\n\nกู้คืนข้อมูล?`)) return;
+      try{ Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].length=0; }); }catch(e){}
+      Object.keys(d.DB).forEach(k=>{ DB[k]=d.DB[k]; });
+      if(d.idCounters) Object.assign(idCounters,d.idCounters);
+      if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
+      if(d.settingsState) Object.assign(settingsState,d.settingsState);
+      if(d.companyInfo) companyInfo=Object.assign({},d.companyInfo);
+      try{ DB._acctBuilt=false; }catch(e){}
+      saveData(); closeModal();
+      try{ renderPage(curPage); renderDashboard(); updateNavBadges(); updateNotifDot(); }catch(e){}
+      toast('✅ กู้คืนข้อมูลเรียบร้อย ('+cnt+' รายการ)');
     };
     rd.readAsText(f);
   };
   inp.click();
+}
+// หน้าสำรอง/กู้คืนข้อมูลโดยเฉพาะ
+function openBackupRestore(){
+  const cnt=(typeof dbRecordCount==='function')?dbRecordCount():0;
+  let imgN=0; try{ imgN=countBase64Imgs(); }catch(e){}
+  let lastExp=''; try{ const le=localStorage.getItem('flowbiz_last_export'); if(le) lastExp=new Date(le).toLocaleString('th-TH'); }catch(e){}
+  const kb=(typeof localStorageKB==='function')?localStorageKB():0;
+  document.getElementById('ml-t').textContent='💾 สำรอง / กู้คืนข้อมูล';
+  document.getElementById('ml-s').textContent='ป้องกันข้อมูลหาย — เก็บไฟล์ไว้กับตัว';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;font-size:12px;margin-bottom:14px;line-height:1.9">
+      📊 ข้อมูลปัจจุบัน: <b style="color:var(--p)">${cnt} รายการ</b>${imgN?` · ${imgN} รูป`:''}<br>
+      💽 พื้นที่ในเครื่อง: <b>${kb} KB</b><br>
+      🕐 สำรองล่าสุด: <b style="color:${lastExp?'var(--ok)':'var(--dg)'}">${lastExp||'ยังไม่เคยสำรอง'}</b>
+    </div>
+    <div style="background:rgba(245,130,31,.08);border:1px solid rgba(245,130,31,.3);border-radius:10px;padding:11px;font-size:11.5px;color:#b45309;margin-bottom:14px;line-height:1.6">
+      💡 แนะนำสำรองข้อมูลเป็นประจำ (เช่น สัปดาห์ละครั้ง) เผื่อเปลี่ยนเครื่อง / ล้าง Safari / คลาวด์มีปัญหา<br>ไฟล์เดียวเก็บข้อมูลทั้งระบบ เปิดกู้คืนได้ทุกเครื่อง
+    </div>
+    <button class="btn bp" style="width:100%;justify-content:center;padding:14px;margin-bottom:10px" onclick="exportBackup()">⬇️ ดาวน์โหลดไฟล์สำรอง (.json)</button>
+    <button class="btn bo" style="width:100%;justify-content:center;padding:14px;margin-bottom:10px" onclick="importBackup()">⬆️ กู้คืนจากไฟล์สำรอง</button>
+    <button class="btn bo" style="width:100%;justify-content:center;padding:13px" onclick="closeModal();openBackupHistory()">🗄️ สำรอง/กู้คืนบนคลาวด์</button>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bp" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
 }
 // auto-save wrapper: call after any mutation
 const _origToast=toast;
@@ -5171,7 +5309,7 @@ let empEditId=null; let efPhotoData=null;
 function handleEmpPhoto(e){
   const file=e.target.files[0]; if(!file) return;
   if(file.size>10*1024*1024){ toast('⚠️ ไฟล์ใหญ่เกิน 10MB'); return; }
-  compressReceiptImage(file,400,0.82).then(data=>{ efPhotoData=data; const box=document.getElementById('ef-photo-box'); if(box) box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover">`; toast('📷 เพิ่มรูปแล้ว'); });
+  compressReceiptImage(file,400,0.82).then(d=>maybeStorage(d,'employees')).then(data=>{ efPhotoData=data; const box=document.getElementById('ef-photo-box'); if(box) box.innerHTML=`<img src="${data}" style="width:100%;height:100%;object-fit:cover">`; toast('📷 เพิ่มรูปแล้ว'); });
 }
 function efPhotoClear(){ efPhotoData=null; const box=document.getElementById('ef-photo-box'); if(box) box.innerHTML='<div style="text-align:center;color:var(--mu)"><div style="font-size:22px">📷</div><div style="font-size:9px">รูป</div></div>'; }
 function saveEmployee(){
@@ -5236,7 +5374,7 @@ function empDocsMenu(id){
   document.getElementById('ml-act').innerHTML=`<button class="btn bp" onclick="closeModal()">ปิด</button>`;
   document.getElementById('ml').classList.add('op');
 }
-function saveEmpDocImg(id,slot,ev){ const f=ev.target.files[0]; if(!f) return; if(f.size>10*1024*1024){toast('⚠️ ไฟล์ใหญ่เกิน 10MB');return;} compressReceiptImage(f,1000,0.78).then(d=>{ const e=empById(id); if(!e||!d) return; e.docImgs=e.docImgs||{}; e.docImgs[slot]=d; saveData(); empDocsMenu(id); toast('📎 บันทึกเอกสารแล้ว'); }); }
+function saveEmpDocImg(id,slot,ev){ const f=ev.target.files[0]; if(!f) return; if(f.size>10*1024*1024){toast('⚠️ ไฟล์ใหญ่เกิน 10MB');return;} compressReceiptImage(f,1000,0.78).then(d=>maybeStorage(d,'empdocs')).then(d=>{ const e=empById(id); if(!e||!d) return; e.docImgs=e.docImgs||{}; e.docImgs[slot]=d; saveData(); empDocsMenu(id); toast('📎 บันทึกเอกสารแล้ว'); }); }
 function delEmpDocImg(id,slot){ if(!confirm('ลบเอกสารนี้?'))return; const e=empById(id); if(!e||!e.docImgs) return; delete e.docImgs[slot]; saveData(); empDocsMenu(id); }
 
 // พิมพ์สัญญาจ้างงาน
@@ -6564,9 +6702,11 @@ function printDoc(type,id,opts){
   const custName = type==='expense'
     ? (r.desc||'ผู้รับเงิน')
     : (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
-  const disc=r.disc||0; // ส่วนลดท้ายบิล (บาท)
   const _lt=it=>{ const g=(it.price||0)*(it.qty||0); return g-(g*(it.disc||0)/100); };
-  const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+_lt(b),0):(((r.amt||0)/(r.vat?1.07:1))+disc);
+  const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+_lt(b),0):(((r.amt||0)/(r.vat?1.07:1)));
+  const discMode=r.discMode||'baht';
+  const discRaw=r.disc||0;
+  const disc=discMode==='pct'?(itemsSub*discRaw/100):discRaw; // ส่วนลดเป็นบาท
   const afterDisc=Math.max(0,itemsSub-disc);
   const vmode=r.vatMode||(r.vat?'ex':'none');
   let base,vat;
@@ -6614,11 +6754,13 @@ function printDoc(type,id,opts){
       ? r.items.map((it,i)=>{ const parts=String(it.name||'').split('\n'); const nm=parts[0]||''; const sub=it.sub||parts.slice(1).join(' '); return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${sub}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}${it.disc?`<div style="font-size:10px;color:#c0392b">-${it.disc}%</div>`:''}</td><td style="text-align:right">${fmt(_lt(it))}</td></tr>`; }).join('')
       : `<tr><td style="text-align:center">1</td><td>ค่าสินค้า/บริการตามเอกสาร ${r.id}</td><td style="text-align:center">1</td><td></td><td style="text-align:right">${fmt(itemsSub)}</td><td style="text-align:right">${fmt(itemsSub)}</td></tr>`;
     let sumRows=`<tr><td>รวมเป็นเงิน</td><td>${fmt(disc>0?afterDisc:itemsSub)} บาท</td></tr>`;
-    if(disc>0) sumRows=`<tr><td>รวมเป็นเงิน</td><td>${fmt(itemsSub)} บาท</td></tr><tr><td>ส่วนลดท้ายบิล</td><td>-${fmt(disc)} บาท</td></tr><tr><td>จำนวนเงินหลังหักส่วนลด</td><td>${fmt(afterDisc)} บาท</td></tr>`;
+    if(disc>0) sumRows=`<tr><td>รวมเป็นเงิน</td><td>${fmt(itemsSub)} บาท</td></tr><tr><td>ส่วนลด${discMode==='pct'?' '+discRaw+'%':'ท้ายบิล'}</td><td>-${fmt(disc)} บาท</td></tr><tr><td>จำนวนเงินหลังหักส่วนลด</td><td>${fmt(afterDisc)} บาท</td></tr>`;
     if(vmode==='in') sumRows+=`<tr><td>มูลค่าก่อนภาษี</td><td>${fmt(base)} บาท</td></tr><tr><td>ภาษีมูลค่าเพิ่ม 7% (รวมใน)</td><td>${fmt(vat)} บาท</td></tr>`;
     else if(vmode!=='none'&&r.vat) sumRows+=`<tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vat)} บาท</td></tr>`;
+    const whtR=r.wht||0; const whtA=base*whtR/100;
+    const whtRows=whtR>0?`<tr><td>หัก ณ ที่จ่าย ${whtR}%</td><td>-${fmt(whtA)} บาท</td></tr><tr class="grand"><td>ยอดชำระสุทธิ</td><td>${fmt(total-whtA)} บาท</td></tr>`:'';
     return `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายละเอียด</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคาต่อหน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${itemRows}</tbody></table>
-    <table class="sumt">${sumRows}<tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(total)} บาท</td></tr></table>
+    <table class="sumt">${sumRows}<tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(total)} บาท</td></tr>${whtRows}</table>
     <div class="baht">(${bahtText(total)})</div>`;
   }
   const body=buildBody();
@@ -6658,8 +6800,8 @@ function printDoc(type,id,opts){
       ${body}
       ${r.note?`<div class="note">หมายเหตุ: ${r.note}</div>`:''}
       <div class="ft">
-        <div class="ft-col"><div class="ft-name">ในนาม ${custName}</div><div class="sig-sign">&nbsp;</div><div class="sig-row"><span>${sigLeft}</span><span>วันที่</span></div></div>
-        <div class="ft-col"><div class="ft-name">ในนาม ${CO.shortName}</div>${(CO.showSig!==false&&CO.sigImg)?`<div style="text-align:center;height:auto;margin-bottom:-6px"><img src="${CO.sigImg}" style="max-height:54px;max-width:160px;object-fit:contain"></div>`:''}<div class="sig-sign">${(CO.showSig!==false&&!CO.sigImg)?CO.seller:'&nbsp;'}</div><div class="sig-row"><span>${sigRight}</span><span>${docDate}</span></div></div>
+        <div class="ft-col"><div class="ft-name">ในนาม ${custName}</div><div class="sig-zone"></div><div class="sig-name">&nbsp;</div><div class="sig-row"><span>${sigLeft}</span><span>วันที่ ____/____/____</span></div></div>
+        <div class="ft-col"><div class="ft-name">ในนาม ${CO.shortName}</div><div class="sig-zone">${(CO.showSig!==false&&CO.sigImg)?`<img src="${CO.sigImg}">`:''}</div><div class="sig-name">${(CO.showSig!==false&&!CO.sigImg)?'('+CO.seller+')':'&nbsp;'}</div><div class="sig-row"><span>${sigRight}</span><span>วันที่ ${docDate}</span></div></div>
       </div>
     </div>`;
   }
@@ -6672,17 +6814,17 @@ function printDoc(type,id,opts){
   @page{size:A4 portrait;margin:0}
   *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun','IBM Plex Sans Thai',sans-serif}
   html,body{background:#fff}
-  body{color:#2b3a4a;font-size:11px;line-height:1.4}
+  body{color:#2b3a4a;font-size:11.5px;line-height:1.45}
   .sheet{width:210mm;min-height:272mm;margin:0 auto 10mm;padding:11mm 12mm;background:#fff;position:relative;overflow:hidden;page-break-after:always;display:flex;flex-direction:column;box-sizing:border-box}
   .sheet:last-child{margin-bottom:0;page-break-after:auto}
   .corner{position:absolute;top:0;right:0;width:0;height:0;border-style:solid;border-width:0 66px 66px 0;border-color:transparent ${theme} transparent transparent}
   .pageno{position:absolute;top:4mm;right:5mm;font-size:13px;font-weight:700;color:#fff;z-index:2}
-  .title{text-align:right;font-size:19px;font-weight:700;color:${theme};margin-bottom:2px;padding-right:6px;padding-top:40px}
-  .title .subtitle{font-size:13px;font-weight:400;color:#8a96a3;margin-top:2px}
+  .title{text-align:right;font-size:22px;font-weight:800;color:${theme};margin-bottom:2px;padding-right:6px;padding-top:40px;letter-spacing:.3px}
+  .title .subtitle{font-size:13px;font-weight:400;color:#8a96a3;margin-top:3px}
   .title-rule{border-bottom:1px solid #e2e2e2;margin-bottom:14px}
   .top{display:flex;justify-content:space-between;gap:30px;margin-bottom:16px}
-  .co-name{font-size:12px;font-weight:700;color:#2b3a4a;margin-bottom:3px}
-  .co-addr{font-size:10.5px;color:#52606d;line-height:1.55;max-width:340px}
+  .co-name{font-size:13.5px;font-weight:700;color:#1f2d3d;margin-bottom:3px}
+  .co-addr{font-size:11px;color:#52606d;line-height:1.6;max-width:340px}
   .docmeta{flex-shrink:0;min-width:240px}
   .docmeta table{border-collapse:collapse;width:100%}
   .docmeta td{padding:2px 0;font-size:11px;vertical-align:top}
@@ -6692,23 +6834,26 @@ function printDoc(type,id,opts){
   .cust-lb{font-size:11.5px;color:${theme};font-weight:600;margin-bottom:2px}
   .cust-nm{font-size:11.5px;font-weight:500}
   .pt{width:100%;border-collapse:collapse;margin-bottom:8px}
-  .pt th{color:#52606d;padding:6px 8px;font-size:10.5px;font-weight:500;border-bottom:1.5px solid #d5dde5}
+  .pt th{color:#52606d;padding:7px 8px;font-size:11px;font-weight:600;border-bottom:1.5px solid #d5dde5;background:${themeBg}}
   .pt th:first-child{text-align:center}.pt th:nth-child(2){text-align:left}
   .pt td{padding:6px 8px;border-bottom:1px solid #f0f2f5;font-size:11px;vertical-align:top}
   .sumt{width:300px;margin-left:auto;border-collapse:collapse;margin-top:10px}
   .sumt td{padding:3px 10px;font-size:11px}
   .sumt td:first-child{color:${theme};text-align:right}
   .sumt td:last-child{text-align:right;color:#2b3a4a;min-width:130px}
-  .sumt .grand td{font-weight:700;padding-top:4px}
-  .sumt .grand td:first-child{color:${theme}}
+  .sumt .grand td{font-weight:800;padding:8px 12px;font-size:14px;background:${theme};color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .sumt .grand td:first-child{color:#fff;border-radius:6px 0 0 6px}
+  .sumt .grand td:last-child{border-radius:0 6px 6px 0}
   .baht{text-align:left;font-size:12.5px;color:#2b3a4a;margin-top:10px}
   .note{font-size:12px;color:#52606d;margin:14px 0 0;padding:10px 14px;background:${themeBg};border-radius:8px;border-left:3px solid ${theme}}
-  .ft{margin-top:auto;padding-top:36px;display:flex;justify-content:space-between;gap:60px;flex-shrink:0}
-  .ft-col{flex:1}
-  .ft-name{font-size:11px;color:#2b3a4a;margin-bottom:22px}
-  .sig-sign{text-align:center;font-family:'Sarabun';font-size:14px;color:#2b3a4a;font-weight:600;height:20px}
-  .sig-row{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #c4cad1;padding-top:6px;font-size:12px;color:#52606d}
-  @media print{ .sheet{width:auto;min-height:auto;height:auto;margin:0;padding:11mm 12mm;box-shadow:none;page-break-after:always} .sheet:last-child{page-break-after:auto} .ft{margin-top:48px} .corner,.pageno,.title,.sumt td:first-child,.cust-lb,.docmeta td.k{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
+  .ft{margin-top:auto;padding-top:30px;display:flex;justify-content:space-between;gap:60px;flex-shrink:0}
+  .ft-col{flex:1;text-align:center}
+  .ft-name{font-size:11.5px;color:#2b3a4a;margin-bottom:4px;font-weight:500}
+  .sig-zone{height:52px;display:flex;align-items:flex-end;justify-content:center;overflow:hidden}
+  .sig-zone img{max-height:50px;max-width:150px;object-fit:contain}
+  .sig-name{text-align:center;font-family:'Sarabun';font-size:13px;color:#2b3a4a;font-weight:600;height:18px;line-height:18px}
+  .sig-row{display:flex;justify-content:space-between;gap:20px;border-top:1px solid #c4cad1;padding-top:6px;margin-top:2px;font-size:11.5px;color:#52606d}
+  @media print{ .sheet{width:auto;min-height:272mm;margin:0;padding:11mm 12mm;box-shadow:none;page-break-after:always} .sheet:last-child{page-break-after:auto} .corner,.pageno,.title,.sumt td:first-child,.cust-lb,.docmeta td.k{-webkit-print-color-adjust:exact;print-color-adjust:exact} }
   @media screen{body{background:#fff}}
   </style></head><body>${pages}</body></html>`;
   showPrintPreview(innerHTML, type, id, {copyMode, docType:docTypeName, showSig:CO.showSig});
@@ -7938,6 +8083,13 @@ try{ updateNotifDot(); }catch(e){}
 try{ updateNavBadges(); }catch(e){}
 // ดึงข้อมูลจากคลาวด์ตอนเปิดแอป (ถ้าเปิดใช้งานคลาวด์) — คลาวด์เป็นแหล่งข้อมูลหลัก
 try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }); }catch(e){ cloudInitDone=true; }
+// ── ตัวดักจับข้อผิดพลาดทั่วระบบ (กันแอป "กดแล้วเงียบ" โดยไม่รู้สาเหตุ) ──
+(function(){
+  let _lastErr=0;
+  function report(){ const now=Date.now(); if(now-_lastErr<4000) return; _lastErr=now; try{ toast('⚠️ เกิดข้อผิดพลาด — หากทำรายการไม่สำเร็จ ลองรีเฟรชหน้าจอ'); }catch(_){} }
+  window.addEventListener('error', e=>{ try{ console.error('JS error:', e.message, (e.filename||'')+':'+(e.lineno||'')); }catch(_){} report(); });
+  window.addEventListener('unhandledrejection', e=>{ try{ console.error('Promise rejected:', e.reason); }catch(_){} report(); });
+})();
 </script>
 </body>
 </html>
