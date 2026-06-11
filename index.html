@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.11 · ✏️ แก้ไขเลขเอกสารได้ทุกชนิด + auto-save</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.12 · ✏️ แก้ไขเลขเอกสารได้ + กัน error เน็ตหลุด</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -5263,7 +5263,7 @@ function cloudAutoSync(){
   if(!cloudCfg.enabled) return;
   if(!cloudInitDone) return; // รอให้ดึงข้อมูลครั้งแรกเสร็จก่อน กันเขียนทับ
   clearTimeout(cloudTimer);
-  cloudTimer=setTimeout(()=>cloudPush(true),2500);
+  cloudTimer=setTimeout(()=>{ try{ cloudPush(true).catch(()=>{}); }catch(e){} },2500);
 }
 // ── เฝ้าดูคลาวด์: เช็คเฉพาะเวลาแก้ล่าสุด (เบามาก) ถ้าอีกเครื่องแก้ → ดึงใหม่อัตโนมัติ ──
 async function cloudCheckRemote(){
@@ -8360,7 +8360,7 @@ loadData();
     document.head.appendChild(link);
     if('serviceWorker' in navigator && location.protocol==='https:'){
       // network-first: โหลดของใหม่เสมอ ใช้ cache เฉพาะตอนออฟไลน์ (กันไฟล์/ข้อมูลเก่าค้าง)
-      const swCode=`self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil(self.clients.claim()));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(resp=>{const c=resp.clone();caches.open('flowbiz-v2').then(ca=>ca.put(e.request,c));return resp;}).catch(()=>caches.match(e.request)))});`;
+      const swCode=`const CN='flowbiz-v3';self.addEventListener('install',e=>self.skipWaiting());self.addEventListener('activate',e=>e.waitUntil((async()=>{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!==CN).map(k=>caches.delete(k)));await self.clients.claim();})()));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(fetch(e.request).then(resp=>{const c=resp.clone();caches.open(CN).then(ca=>ca.put(e.request,c));return resp;}).catch(()=>caches.match(e.request)))});`;
       const sblob=new Blob([swCode],{type:'application/javascript'});
       Promise.resolve().then(()=>navigator.serviceWorker.register(URL.createObjectURL(sblob))).catch(()=>{});
     }
@@ -8380,13 +8380,14 @@ try{ renderDashboard(); }catch(e){ console.warn('init dashboard:',e); }
 try{ updateNotifDot(); }catch(e){}
 try{ updateNavBadges(); }catch(e){}
 // ดึงข้อมูลจากคลาวด์ตอนเปิดแอป (ถ้าเปิดใช้งานคลาวด์) — คลาวด์เป็นแหล่งข้อมูลหลัก
-try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }); }catch(e){ cloudInitDone=true; }
+try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch(()=>{ cloudInitDone=true; }); }catch(e){ cloudInitDone=true; }
 // ── ตัวดักจับข้อผิดพลาดทั่วระบบ (กันแอป "กดแล้วเงียบ" โดยไม่รู้สาเหตุ) ──
 (function(){
   let _lastErr=0;
   function report(){ const now=Date.now(); if(now-_lastErr<4000) return; _lastErr=now; try{ toast('⚠️ เกิดข้อผิดพลาด — หากทำรายการไม่สำเร็จ ลองรีเฟรชหน้าจอ'); }catch(_){} }
   window.addEventListener('error', e=>{ try{ console.error('JS error:', e.message, (e.filename||'')+':'+(e.lineno||'')); }catch(_){} report(); });
-  window.addEventListener('unhandledrejection', e=>{ try{ console.error('Promise rejected:', e.reason); }catch(_){} report(); });
+  // promise rejection ส่วนใหญ่มาจากเน็ตหลุด/คลาวด์ timeout ชั่วคราว — แค่ log ไม่รบกวนผู้ใช้
+  window.addEventListener('unhandledrejection', e=>{ try{ console.error('Promise rejected:', e.reason); }catch(_){} });
 })();
 </script>
 </body>
