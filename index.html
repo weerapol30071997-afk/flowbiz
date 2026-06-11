@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.12 · ✏️ แก้ไขเลขเอกสารได้ + กัน error เน็ตหลุด</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.12b · ✏️ ปุ่มเปลี่ยนเลขบิลในหน้ารายละเอียด</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2406,6 +2406,24 @@ function renderInvoices(){
   document.getElementById('inv-paid').textContent=DB.invoices.filter(r=>r.status==='ชำระแล้ว').length;
   document.getElementById('inv-pend').textContent=DB.invoices.filter(r=>r.status==='รอชำระ').length;
 }
+function editDocNumber(type,id){
+  const arrK=DB_KEY_BY_TYPE[type]; const rec=(DB[arrK]||[]).find(x=>String(x.id)===String(id)); if(!rec) return;
+  const nv=prompt('✏️ เปลี่ยนเลขที่เอกสาร\n\nเลขปัจจุบัน: '+rec.id+'\nกรอกเลขใหม่:', String(rec.id));
+  if(nv==null) return;
+  const newId=String(nv).trim();
+  if(!newId){ toast('⚠️ เลขที่ห้ามว่าง'); return; }
+  if(newId===String(rec.id)) return;
+  if((DB[arrK]||[]).some(x=>String(x.id)===newId)){ toast('⚠️ เลขที่ '+newId+' ซ้ำ — ใช้เลขอื่น'); return; }
+  const oldId=String(rec.id);
+  rec.id=newId;
+  // อัปเดตเอกสารอื่นที่อ้างอิงถึงเลขเก่า (ใบเสนอราคา/ใบส่งของ/ใบแบ่งจ่าย ฯลฯ)
+  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(d=>{ if(d&&typeof d==='object'){ if(String(d.ref)===oldId) d.ref=newId; if(Array.isArray(d.refs)) d.refs=d.refs.map(x=>String(x)===oldId?newId:x); } }); });
+  if(['invoices','cashsale','expense','receive'].includes(type)&&typeof rebuildAccounting==='function'){ try{rebuildAccounting();}catch(e){} }
+  saveData();
+  toast('✅ เปลี่ยนเลขเป็น '+newId+' แล้ว');
+  closeDrawer();
+  rerenderDocs();
+}
 function openInvDrawer(id){
   const r=DB.invoices.find(x=>x.id===id); if(!r) return;
   const c=getCust(r.cust);
@@ -2418,7 +2436,8 @@ function openInvDrawer(id){
   const history=pays.length?`<div style="background:var(--bg);border-radius:10px;padding:12px;margin-top:10px;font-size:12px"><div style="font-weight:700;margin-bottom:6px">ประวัติการชำระ (${pays.length})</div>${pays.map(p=>`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--bd)"><div><span style="color:var(--mu)">${fmtD(p.date)}</span> · ${p.methodName||''}${p.ref?' · '+p.ref:''}</div><div style="font-weight:600">฿${fmt(p.amt)}</div></div>`).join('')}<div style="display:flex;justify-content:space-between;padding:6px 0 0;font-weight:700"><span>รวมชำระแล้ว</span><span>฿${fmt(paid)}</span></div>${remain>0.01?`<div style="display:flex;justify-content:space-between;padding:2px 0;color:var(--dg);font-weight:700"><span>คงเหลือ</span><span>฿${fmt(remain)}</span></div>`:''}${r.payment&&r.payment.slip?`<div style="margin-top:8px;border-top:1px dashed var(--bd);padding-top:8px"><div style="color:var(--mu);margin-bottom:5px">📎 หลักฐานล่าสุด</div><img src="${r.payment.slip}" onclick="photoView('${r.payment.slip}')" style="height:90px;border-radius:8px;border:1px solid var(--bd);cursor:pointer"></div>`:''}</div>`:'';
   const payBtn=r.status!=='ชำระแล้ว'?`<button class="btn bp" style="width:100%;justify-content:center;margin-top:10px" onclick="openPayModal('invoice','${r.id}')">💳 ${paid>0?'รับชำระเพิ่ม':'บันทึกการชำระเงิน'}</button>`:'';
   openDrawer(r.id,r.cust,info,
-    itemsBlock(r.items)+banner+history+payBtn
+    `<button class="btn bo" style="width:100%;justify-content:center;margin-bottom:12px;border-color:var(--p);color:var(--p)" onclick="editDocNumber('invoices','${r.id}')">✏️ เปลี่ยนเลขที่บิล (${r.id})</button>`
+    +itemsBlock(r.items)+banner+history+payBtn
     +`<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('invoices','${r.id}')">✏️ แก้ไข</button>${paid>0?`<button class="btn bp" style="flex:1;justify-content:center" onclick="printReceipt('invoices','${r.id}')">🧾 ใบเสร็จรับเงิน</button>`:''}<button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('invoices','${r.id}','delivery')">→ ใบส่งของ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('invoices','${r.id}')">🖨️ พิมพ์</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('invoices','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('invoices','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('invoices',r.id),'invoices');
 }
 // ══════════════════════════════════
