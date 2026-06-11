@@ -520,7 +520,7 @@ tbody tr:hover td{background:#FAFBFD}
         <button class="btn bo" onclick="nav('quotes')">✕ ปิด</button>
         <div style="text-align:right">
           <div style="font-size:20px;font-weight:700;color:var(--p)">ใบเสนอราคา</div>
-          <div style="margin-top:4px"><span id="qe-statusbadge"></span> <span class="dn" id="qe-docno" style="font-size:13px"></span></div>
+          <div style="margin-top:4px;display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap"><span id="qe-statusbadge"></span> <input id="qe-docno" class="fi" style="font-size:13px;width:175px;padding:4px 9px;text-align:right;font-weight:700;color:var(--p)" placeholder="เลขที่เอกสาร"></div>
           <div style="font-size:12px;color:var(--mu);margin-top:4px">ราคาสินค้าไม่รวมภาษี</div>
         </div>
       </div>
@@ -1505,7 +1505,7 @@ function closeModal(){ document.getElementById('ml').classList.remove('op'); }
 // DOC FORM (Generic create)
 // ══════════════════════════════════
 let docItems=[];
-function openDocForm(type){
+function openDocForm(type, editId){
   const labels={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย'};
   const isSupp=['po','receive'].includes(type);
   const opts = isSupp
@@ -1570,7 +1570,7 @@ function openDocForm(type){
       <input type="hidden" id="m-amt" value="0">
       <div class="fg full" style="margin-top:12px"><label class="flb">หมายเหตุ</label><input class="fi" id="m-note" placeholder="หมายเหตุ (ถ้ามี)"></div>`;
     renderDocItems();
-    if(_edit){ const sv=(id,v)=>{const el=document.getElementById(id); if(el&&v!=null&&v!=='')el.value=v;}; sv('m-cust',_edit.custId||_edit.cust); sv('m-date',_edit.date); sv('m-due',_edit.due||_edit.exp); sv('m-vatmode',_edit.vatMode||(_edit.vat===false?'none':'ex')); sv('m-disc',_edit.disc||0); sv('m-discmode',_edit.discMode||'baht'); sv('m-terms',_edit.terms); sv('m-ship',_edit.ship); sv('m-note',_edit.note); sv('m-wht',_edit.wht||0); docCalcTotals(); }
+    if(_edit){ const sv=(id,v)=>{const el=document.getElementById(id); if(el&&v!=null&&v!=='')el.value=v;}; sv('m-cust',_edit.custId||_edit.cust); sv('m-date',_edit.date); sv('m-due',_edit.due||_edit.exp); sv('m-vatmode',_edit.vatMode||(_edit.vat===false?'none':'ex')); sv('m-disc',_edit.disc||0); sv('m-discmode',_edit.discMode||'baht'); sv('m-terms',_edit.terms); sv('m-ship',_edit.ship); sv('m-note',_edit.note); sv('m-wht',_edit.wht||0); sv('m-edesc',_edit.desc); sv('m-ecat',_edit.cat); docCalcTotals(); }
   }
   document.getElementById('ml-act').innerHTML = `<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveDoc('${type}')">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
@@ -2054,7 +2054,7 @@ function editQuote(id){
   };
   nav('quoteEdit');
   // fill fields
-  document.getElementById('qe-docno').textContent=qeState.id;
+  document.getElementById('qe-docno').value=qeState.id;
   document.getElementById('qe-statusbadge').innerHTML=statusBadge(qeState.status);
   const cs=document.getElementById('qe-cust');
   cs.innerHTML='<option value="">— เลือกลูกค้า —</option>'+DB.contacts.filter(c=>c.type==='ลูกค้า').map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
@@ -2225,15 +2225,18 @@ function qeSave(){
   const validItems=qeState.items.filter(it=>it.name&&(it.price>0||it.qty>0));
   if(!validItems.length){ toast('⚠️ กรุณาเพิ่มรายการสินค้าอย่างน้อย 1 รายการ'); return; }
   qeRecalc();
+  const newId=(document.getElementById('qe-docno')?.value||'').trim()||qeState.id||nextId('quotes');
+  if(DB.quotes.some(x=>String(x.id)===newId&&String(x.id)!==String(qeState.id))){ toast('⚠️ เลขที่เอกสาร '+newId+' ซ้ำ — ใช้เลขอื่น'); return; }
   const rec={
-    id:qeState.id, cust, date:document.getElementById('qe-date').value, exp:document.getElementById('qe-exp').value,
+    id:newId, cust, date:document.getElementById('qe-date').value, exp:document.getElementById('qe-exp').value,
     credit:parseInt(document.getElementById('qe-credit').value)||0, disc:parseFloat(document.getElementById('qe-disc').value)||0,
     vat:qeState.vat, whtRate:qeState._whtRate||0, note:document.getElementById('qe-note').value,
     status:qeState.status, amt:qeState._grand, items:validItems, noSig:qeState.noSig,
     paid: (DB.quotes.find(x=>x.id===qeState.id)?.paid)||0,
   };
-  if(qeState.isNew){ rec.id=nextId('quotes'); DB.quotes.unshift(rec); }
-  else{ const idx=DB.quotes.findIndex(x=>x.id===qeState.id); if(idx>=0) DB.quotes[idx]=rec; }
+  if(qeState.isNew){ DB.quotes.unshift(rec); }
+  else{ const idx=DB.quotes.findIndex(x=>x.id===qeState.id); if(idx>=0) DB.quotes[idx]=rec; else DB.quotes.unshift(rec); }
+  qeState.id=newId; qeState.isNew=false;
   saveData();
   toast('✅ บันทึกใบเสนอราคา '+rec.id+' แล้ว');
   nav('quotes');
@@ -2535,8 +2538,10 @@ function stlUpdateSummary(){
 }
 function stlSelectCust(v){ stlCust=v; stlBillSel={}; renderSettlement(); }
 function stlToggleBill(id){ if(stlBillSel[id]) delete stlBillSel[id]; else stlBillSel[id]=true; renderSettlement(); }
-function stlAddExtra(){ stlExtra.push({desc:'',amt:0}); renderSettlement(); }
+function stlAddExtra(){ stlExtra.push({desc:'',amt:0,imgs:[]}); renderSettlement(); }
 function stlDelExtra(i){ stlExtra.splice(i,1); renderSettlement(); }
+function stlExtraImg(i){ pickPhotos(true, imgs=>{ if(imgs&&imgs.length){ stlExtra[i].imgs=(stlExtra[i].imgs||[]).concat(imgs); renderSettlement(); } }); }
+function stlDelExtraImg(i,j){ if(stlExtra[i]&&stlExtra[i].imgs) stlExtra[i].imgs.splice(j,1); renderSettlement(); }
 function stlAddDeduct(){ stlDeduct.push({note:'',amt:0}); renderSettlement(); }
 function stlDelDeduct(i){ stlDeduct.splice(i,1); renderSettlement(); }
 function stlAddTransfer(){ stlTransfers.push({amt:0,date:new Date().toISOString().slice(0,10),note:'',imgs:[]}); renderSettlement(); }
@@ -2569,10 +2574,16 @@ function renderSettlement(){
       <div style="flex:1;min-width:0"><div style="font-weight:600;font-size:13px">${b.id}</div><div style="font-size:11px;color:var(--mu)">${fmtD(b.date)} · ${statusBadge(b.status)}${paid>0?' · ชำระแล้ว ฿'+fmt(paid):''}</div></div>
       <div style="font-weight:700;white-space:nowrap">฿${fmt(b.amt)}</div></div>`; }).join('')
     :`<div style="text-align:center;color:var(--mu);font-size:13px;padding:18px">${stlCust?'ลูกค้ารายนี้ยังไม่มีใบวางบิล':'เลือกลูกค้าเพื่อแสดงใบวางบิล'}</div>`;
-  const extraRows=stlExtra.map((e,i)=>`<div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
-      <input class="fi" style="flex:1" placeholder="รายการค่าของ / ค่าใช้จ่าย" value="${(e.desc||'').replace(/"/g,'&quot;')}" onchange="stlExtra[${i}].desc=this.value">
-      <input class="fi" type="number" style="width:120px" placeholder="0" value="${e.amt||''}" oninput="stlExtra[${i}].amt=parseFloat(this.value)||0;stlUpdateSummary()">
-      <button class="btn bd2" style="padding:8px 10px" onclick="stlDelExtra(${i})">✕</button></div>`).join('');
+  const extraRows=stlExtra.map((e,i)=>`<div style="border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <input class="fi" style="flex:1" placeholder="รายการค่าของ / ค่าใช้จ่าย" value="${(e.desc||'').replace(/"/g,'&quot;')}" onchange="stlExtra[${i}].desc=this.value">
+        <input class="fi" type="number" style="width:120px" placeholder="0" value="${e.amt||''}" oninput="stlExtra[${i}].amt=parseFloat(this.value)||0;stlUpdateSummary()">
+        <button class="btn bd2" style="padding:8px 10px" onclick="stlDelExtra(${i})">✕</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+        ${(e.imgs||[]).map((im,j)=>`<div style="position:relative"><img src="${im}" onclick="photoView('${im}')" style="height:64px;width:64px;object-fit:cover;border-radius:8px;border:1px solid var(--bd);cursor:pointer"><button onclick="stlDelExtraImg(${i},${j})" style="position:absolute;top:-6px;right:-6px;width:20px;height:20px;border-radius:50%;border:none;background:var(--dg);color:#fff;font-size:11px;cursor:pointer">✕</button></div>`).join('')}
+        <button class="btn bo" style="padding:8px 12px;font-size:12px" onclick="stlExtraImg(${i})">📎 แนบรูป (หลายรูป)</button>
+      </div></div>`).join('');
   const deductRows=stlDeduct.map((e,i)=>`<div style="display:flex;gap:8px;margin-bottom:6px;align-items:center">
       <input class="fi" style="flex:1" placeholder="หมายเหตุ (เช่น งานไม่เสร็จ / ลูกค้ายกเลิกงาน)" value="${(e.note||'').replace(/"/g,'&quot;')}" onchange="stlDeduct[${i}].note=this.value">
       <input class="fi" type="number" style="width:120px" placeholder="0" value="${e.amt||''}" oninput="stlDeduct[${i}].amt=parseFloat(this.value)||0;stlUpdateSummary()">
@@ -2647,6 +2658,8 @@ function stlPrint(id){
   const transferList=(s.transfers||[]).map((t,i)=>`<tr><td>${i+1}</td><td>${fmtSlash(t.date)}${t.note?' · '+t.note:''}</td><td style="text-align:right">${fmt(t.amt)}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:#888">—</td></tr>';
   const allImgs=[].concat(...(s.transfers||[]).map(t=>t.imgs||[]));
   const imgHtml=allImgs.length?`<div class="sub">📎 หลักฐานการโอน (${allImgs.length} รูป)</div><div class="imgs">${allImgs.map(im=>`<img src="${im}">`).join('')}</div>`:'';
+  const extraImgs=[].concat(...(s.extra||[]).map(e=>e.imgs||[]));
+  const extraImgHtml=extraImgs.length?`<div class="sub">📎 หลักฐานค่าของ/ค่าใช้จ่าย (${extraImgs.length} รูป)</div><div class="imgs">${extraImgs.map(im=>`<img src="${im}">`).join('')}</div>`:'';
   const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>สรุปยอด ${s.id}</title>
   <style>@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap');*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
   body{padding:28px;color:#1a1a1a;font-size:12.5px}.hd{text-align:center;border-bottom:3px solid #0A6EBD;padding-bottom:12px;margin-bottom:14px}.hd h1{font-size:19px;color:#0A6EBD}.cn{font-size:13px;font-weight:700;margin-top:6px}.ca{font-size:11px;color:#555;margin-top:3px}
@@ -2672,6 +2685,7 @@ function stlPrint(id){
     <div class="net"><span>${s.net>=0?'ลูกค้าค้างชำระ (คงเหลือ)':'รับเกิน / ต้องคืนลูกค้า'}</span><span>฿ ${fmt(Math.abs(s.net))}</span></div>
   </div>
   ${imgHtml}
+  ${extraImgHtml}
   <div style="margin-top:16px;font-size:11px;color:#888">* เอกสารสรุปยอดภายใน ใช้สำหรับกระทบยอดกับลูกค้า</div>
   </body></html>`;
   if(typeof showPrintPreview==='function') showPrintPreview(html,'settlement-'+s.id,{});
@@ -4718,6 +4732,18 @@ function openCloudForm(){
       • เครื่องใหม่/ว่าง → เปิดแอปจะ <b>ดึงข้อมูลอัตโนมัติ</b> หรือกด "⬇️ ดึงจากคลาวด์"<br>
       • 📷 <b>รูปภาพซิงค์ข้ามเครื่องด้วย</b> (ครั้งแรกอาจช้าหน่อยตามจำนวนรูป)
     </div>
+    <details style="margin-bottom:14px;border:1px solid var(--bd);border-radius:10px">
+      <summary style="font-size:12.5px;font-weight:700;cursor:pointer;color:var(--p);padding:11px">📖 วิธีใช้แบบย่อ (แตะอ่าน)</summary>
+      <div style="font-size:11.5px;color:var(--mu);line-height:1.85;padding:0 13px 13px">
+        <b style="color:var(--tx)">• รหัสชุดข้อมูล (Document ID)</b> ต้องใส่<b>เหมือนกันทุกเครื่อง</b> ถึงจะใช้ข้อมูลชุดเดียวกัน<br>
+        <b style="color:var(--tx)">• ใช้ประจำวันไม่ต้องกดอะไร</b> — แก้ข้อมูล = ส่งขึ้นเอง, เปิดแอป = ดึงลงเอง, อีกเครื่องแก้ = อัปเดตตามเองใน ~20 วิ<br>
+        <b style="color:var(--tx)">• ⬆️ ส่งขึ้น</b> = เอาข้อมูลเครื่องนี้ไป<b>ทับ</b>บนคลาวด์<br>
+        <b style="color:var(--tx)">• ⬇️ ดึงลง</b> = เอาข้อมูลคลาวด์มา<b>ทับ</b>เครื่องนี้<br>
+        <b style="color:#c0392b">⚠️ ทุกปุ่มคือ "ทับ" ไม่ใช่ "รวม"</b> — อย่าดึงลงทับเครื่องที่มีข้อมูลใหม่ที่ยังไม่ส่งขึ้น<br>
+        <b style="color:var(--tx)">• เครื่องใหม่:</b> ใส่ค่าให้เหมือนเครื่องแรก → บันทึก → กด ⬇️ ดึงลง<br>
+        <b style="color:var(--tx)">• เลข "รายการ"</b> ด้านล่าง = จำนวนข้อมูลในเครื่องนี้ ใช้เช็คก่อนกดปุ่ม
+      </div>
+    </details>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔌</div><div style="flex:1"><div class="set-t">เปิดใช้งานคลาวด์</div><div class="set-s">เปิดแอป=ดึงอัตโนมัติ · แก้ไข=ส่งขึ้นอัตโนมัติ</div></div><button class="sw ${cloudCfg.enabled?'on':''}" id="cl-en" onclick="this.classList.toggle('on')"></button></div>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔄</div><div style="flex:1"><div class="set-t">รีเฟรชอัตโนมัติ</div><div class="set-s">อัปเดตทันทีเมื่ออีกเครื่องแก้ไข/เพิ่มรายการ</div></div><button class="sw ${cloudCfg.autoRefresh!==false?'on':''}" id="cl-auto" onclick="this.classList.toggle('on')"></button></div>
     <div class="set-row" style="margin-bottom:12px"><div class="set-ic">🔔</div><div style="flex:1"><div class="set-t">แจ้งเตือนบนเครื่องนี้</div><div class="set-s">เด้งเตือนเมื่อมีบิล/งาน/ลาใหม่ (ขณะเปิดแอป)</div></div><button class="btn bp" style="padding:8px 14px;font-size:12px" onclick="requestPushPerm()">${('Notification' in window && Notification.permission==='granted')?'✅ เปิดอยู่':'เปิด'}</button></div>
@@ -4750,6 +4776,17 @@ function openCloudForm(){
       <div class="fg" style="margin-bottom:8px"><label class="flb">Messaging Sender ID</label><input class="fi" id="cl-sid" value="${cloudCfg.msgSenderId||''}" placeholder="123456789012"></div>
       <div class="fg" style="margin-bottom:8px"><label class="flb">App ID</label><input class="fi" id="cl-aid" value="${cloudCfg.appId||''}" placeholder="1:123...:web:abc..."></div>
       <div class="fg" style="margin-bottom:8px"><label class="flb">VAPID Key (Web Push certificate)</label><input class="fi" id="cl-vap" value="${cloudCfg.vapidKey||''}" placeholder="B...."></div>
+    </details>
+    <details style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px">
+      <summary style="font-size:13px;font-weight:700;cursor:pointer;color:var(--p)">💾 สำรอง / กู้คืนเป็นไฟล์ (เก็บไว้เอง)</summary>
+      <div style="font-size:11.5px;color:var(--mu);margin:8px 0 10px;line-height:1.7">
+        ดาวน์โหลดข้อมูลทั้งหมดเป็นไฟล์ <b>.json</b> เก็บไว้ในเครื่อง/Google Drive ไว้กันเหนียว — แม้ไม่ได้ใช้คลาวด์ก็สำรองได้<br>
+        <b style="color:#c0392b">⚠️ กู้คืน = แทนที่ข้อมูลปัจจุบันทั้งหมดด้วยไฟล์</b>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn bp" style="justify-content:center;padding:11px" onclick="exportBackup()">💾 สำรองเป็นไฟล์ (.json)</button>
+        <button class="btn bo" style="justify-content:center;padding:11px" onclick="importBackup()">📂 กู้คืนจากไฟล์</button>
+      </div>
     </details>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveCloudForm()">💾 บันทึกการตั้งค่า</button>`;
   document.getElementById('ml').classList.add('op');
@@ -5042,7 +5079,7 @@ function cloudExtractImages(db,imgMap){
         const c=Object.assign({},rec);
         IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(c[f])) c[f]=c[f].map(v=>{ if(isImgData(v)){ const h=imgHash(v); imgMap[h]=v; return IMG_REF+h; } return v; }); });
         IMG_FIELDS_ONE.forEach(f=>{ if(isImgData(c[f])){ const h=imgHash(c[f]); imgMap[h]=c[f]; c[f]=IMG_REF+h; } });
-        if(Array.isArray(c.transfers)) c.transfers=c.transfers.map(t=>{ if(t&&Array.isArray(t.imgs)){ const tt=Object.assign({},t); tt.imgs=t.imgs.map(v=>{ if(isImgData(v)){ const h=imgHash(v); imgMap[h]=v; return IMG_REF+h; } return v; }); return tt; } return t; });
+        ['transfers','extra'].forEach(tf=>{ if(Array.isArray(c[tf])) c[tf]=c[tf].map(t=>{ if(t&&Array.isArray(t.imgs)){ const tt=Object.assign({},t); tt.imgs=t.imgs.map(v=>{ if(isImgData(v)){ const h=imgHash(v); imgMap[h]=v; return IMG_REF+h; } return v; }); return tt; } return t; }); });
         return c;
       });
     } else out[k]=db[k];
@@ -5053,7 +5090,7 @@ function cloudExtractImages(db,imgMap){
 function cloudBuildLocalImgMap(){
   const map={};
   const add=v=>{ if(isImgData(v)) map[imgHash(v)]=v; };
-  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])) rec[f].forEach(add); }); IMG_FIELDS_ONE.forEach(f=>add(rec[f])); if(Array.isArray(rec.transfers)) rec.transfers.forEach(t=>{ if(t&&Array.isArray(t.imgs)) t.imgs.forEach(add); }); } }); });
+  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])) rec[f].forEach(add); }); IMG_FIELDS_ONE.forEach(f=>add(rec[f])); ['transfers','extra'].forEach(tf=>{ if(Array.isArray(rec[tf])) rec[tf].forEach(t=>{ if(t&&Array.isArray(t.imgs)) t.imgs.forEach(add); }); }); } }); });
   add(companyInfo.sigImg); add(companyInfo.logo);
   return map;
 }
@@ -5061,7 +5098,7 @@ function cloudBuildLocalImgMap(){
 function cloudExpandImages(map,clean){
   const missing={};
   const fix=v=>{ if(isImgRef(v)){ const h=v.slice(IMG_REF.length); if(map[h]) return map[h]; missing[h]=1; return clean?null:v; } return v; };
-  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])){ rec[f]=rec[f].map(fix); if(clean) rec[f]=rec[f].filter(x=>x!=null); } }); IMG_FIELDS_ONE.forEach(f=>{ rec[f]=fix(rec[f]); }); if(Array.isArray(rec.transfers)) rec.transfers.forEach(t=>{ if(t&&Array.isArray(t.imgs)){ t.imgs=t.imgs.map(fix); if(clean) t.imgs=t.imgs.filter(x=>x!=null); } }); } }); });
+  Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].forEach(rec=>{ if(rec&&typeof rec==='object'){ IMG_FIELDS_ARR.forEach(f=>{ if(Array.isArray(rec[f])){ rec[f]=rec[f].map(fix); if(clean) rec[f]=rec[f].filter(x=>x!=null); } }); IMG_FIELDS_ONE.forEach(f=>{ rec[f]=fix(rec[f]); }); ['transfers','extra'].forEach(tf=>{ if(Array.isArray(rec[tf])) rec[tf].forEach(t=>{ if(t&&Array.isArray(t.imgs)){ t.imgs=t.imgs.map(fix); if(clean) t.imgs=t.imgs.filter(x=>x!=null); } }); }); } }); });
   if(isImgRef(companyInfo.sigImg)) companyInfo.sigImg=fix(companyInfo.sigImg);
   if(isImgRef(companyInfo.logo)) companyInfo.logo=fix(companyInfo.logo);
   return Object.keys(missing);
@@ -8088,76 +8125,58 @@ function sumPreset(p){
   renderSummary();
 }
 function renderSummary(){
+ try{
   acctInit();
-  // ตั้งค่าเริ่มต้น: เดือนปัจจุบัน (ถ้ายังไม่ได้เลือก)
+  const setT=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  const setH=(id,v)=>{ const el=document.getElementById(id); if(el) el.innerHTML=v; };
+  const num=v=>{ const n=parseFloat(v); return isNaN(n)?0:n; };
   const fEl=document.getElementById('sum-from'); const tEl=document.getElementById('sum-to');
   if(fEl&&!fEl.value){ const n=new Date(); fEl.value=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`; }
   if(tEl&&!tEl.value){ const n=new Date(new Date().getFullYear(),new Date().getMonth()+1,0); tEl.value=n.toISOString().slice(0,10); }
-  const from=document.getElementById('sum-from')?.value||'';
-  const to=document.getElementById('sum-to')?.value||'';
-  // ── กรอง journal ตามช่วงวันที่ ──
-  const jvAll=DB.journal||[];
-  const jvFilt=jvAll.filter(e=>{
-    if(from&&e.date<from) return false;
-    if(to&&e.date>to) return false;
-    return true;
-  });
-  // ── คำนวณยอดบัญชีในช่วง ──
-  const bal={};
-  (DB.coa||[]).forEach(a=>bal[a.code]={debit:0,credit:0});
-  jvFilt.forEach(e=>e.lines.forEach(l=>{
-    if(!bal[l.code]) bal[l.code]={debit:0,credit:0};
-    bal[l.code].debit+=l.debit; bal[l.code].credit+=l.credit;
-  }));
-  const getbal=(code)=>{
-    const a=acctOf(code); if(!a) return 0;
-    const b=bal[code]||{debit:0,credit:0};
-    return ACCT_TYPES[a.type].normal==='debit'?b.debit-b.credit:b.credit-b.debit;
-  };
-  // ── ยอดสะสมถึงวันที่ "ถึง" (สำหรับงบดุล — ไม่ขึ้นกับวันเริ่ม) ──
-  const balCum={};
-  (DB.coa||[]).forEach(a=>balCum[a.code]={debit:0,credit:0});
-  jvAll.filter(e=>!to||e.date<=to).forEach(e=>e.lines.forEach(l=>{ if(!balCum[l.code])balCum[l.code]={debit:0,credit:0}; balCum[l.code].debit+=l.debit; balCum[l.code].credit+=l.credit; }));
-  const getbalCum=(code)=>{ const a=acctOf(code); if(!a) return 0; const b=balCum[code]||{debit:0,credit:0}; return ACCT_TYPES[a.type].normal==='debit'?b.debit-b.credit:b.credit-b.debit; };
-  // ── P&L (ตามช่วงวันที่) ──
-  const revAccts=DB.coa.filter(a=>a.type==='revenue');
-  const expAccts=DB.coa.filter(a=>a.type==='expense');
+  const from=(fEl&&fEl.value)||''; const to=(tEl&&tEl.value)||'';
+  const coa=DB.coa||[];
+  const jvAll=(DB.journal||[]).filter(e=>e&&Array.isArray(e.lines));
+  const inRange=e=>(!from||e.date>=from)&&(!to||e.date<=to);
+  // ── ยอดบัญชีในช่วง (P&L) ──
+  const bal={}; coa.forEach(a=>bal[a.code]={debit:0,credit:0});
+  jvAll.filter(inRange).forEach(e=>e.lines.forEach(l=>{ if(!l) return; if(!bal[l.code])bal[l.code]={debit:0,credit:0}; bal[l.code].debit+=num(l.debit); bal[l.code].credit+=num(l.credit); }));
+  // ── ยอดสะสมถึงวันที่ "ถึง" (งบดุล) ──
+  const balCum={}; coa.forEach(a=>balCum[a.code]={debit:0,credit:0});
+  jvAll.filter(e=>!to||e.date<=to).forEach(e=>e.lines.forEach(l=>{ if(!l) return; if(!balCum[l.code])balCum[l.code]={debit:0,credit:0}; balCum[l.code].debit+=num(l.debit); balCum[l.code].credit+=num(l.credit); }));
+  const sideBal=(map,code)=>{ const a=acctOf(code); if(!a||!ACCT_TYPES[a.type]) return 0; const b=map[code]||{debit:0,credit:0}; return ACCT_TYPES[a.type].normal==='debit'?b.debit-b.credit:b.credit-b.debit; };
+  const getbal=code=>sideBal(bal,code); const getbalCum=code=>sideBal(balCum,code);
+  // ── P&L (ตามช่วง) ──
+  const revAccts=coa.filter(a=>a.type==='revenue'); const expAccts=coa.filter(a=>a.type==='expense');
   const totalRev=revAccts.reduce((s,a)=>s+getbal(a.code),0);
   const totalExp=expAccts.reduce((s,a)=>s+getbal(a.code),0);
   const netProfit=totalRev-totalExp;
-  // ── Balance Sheet (ยอดสะสม) ──
-  const totalAsset=DB.coa.filter(a=>a.type==='asset').reduce((s,a)=>s+getbalCum(a.code),0);
-  const totalLiab=DB.coa.filter(a=>a.type==='liability').reduce((s,a)=>s+getbalCum(a.code),0);
-  const totalEquity=DB.coa.filter(a=>a.type==='equity').reduce((s,a)=>s+getbalCum(a.code),0);
-  // กำไรสะสมทั้งหมด (รายได้-ค่าใช้จ่าย สะสมถึงวันที่ "ถึง") → ทำให้งบดุลสมดุล
+  // ── Balance Sheet (สะสม) ──
+  const totalAsset=coa.filter(a=>a.type==='asset').reduce((s,a)=>s+getbalCum(a.code),0);
+  const totalLiab=coa.filter(a=>a.type==='liability').reduce((s,a)=>s+getbalCum(a.code),0);
+  const totalEquity=coa.filter(a=>a.type==='equity').reduce((s,a)=>s+getbalCum(a.code),0);
   const retainedCum=revAccts.reduce((s,a)=>s+getbalCum(a.code),0)-expAccts.reduce((s,a)=>s+getbalCum(a.code),0);
-  // ── VAT (ใช้รหัสที่ลงบัญชีจริง: 2040 ภาษีขาย, 1060 ภาษีซื้อ) ──
-  const vatOut=getbal('2040'); const vatIn=getbal('1060');
-  const vatNet=vatOut-vatIn;
-  // ── Cash flow ──
-  const cashIn=jvFilt.reduce((s,e)=>s+(e.lines.filter(l=>['1010','1020'].includes(l.code)&&l.debit>0).reduce((a,l)=>a+l.debit,0)),0);
-  const cashOut=jvFilt.reduce((s,e)=>s+(e.lines.filter(l=>['1010','1020'].includes(l.code)&&l.credit>0).reduce((a,l)=>a+l.credit,0)),0);
+  // ── VAT (ช่วง) + ฐานะคงค้าง (สะสม) ──
+  const vatOut=getbal('2040'); const vatIn=getbal('1060'); const vatNet=vatOut-vatIn;
+  const arOut=getbalCum('1030'); const apOut=getbalCum('2010');
+  // ── กระแสเงินสด (ช่วง) ──
+  let cashIn=0, cashOut=0;
+  jvAll.filter(inRange).forEach(e=>e.lines.forEach(l=>{ if(l&&(l.code==='1010'||l.code==='1020')){ cashIn+=num(l.debit); cashOut+=num(l.credit); } }));
   // ── เอกสารในช่วง ──
-  const docFilter=arr=>arr.filter(r=>(!from||r.date>=from)&&(!to||r.date<=to));
+  const docFilter=arr=>(arr||[]).filter(r=>r&&(!from||r.date>=from)&&(!to||r.date<=to));
+  const sumAmt=arr=>arr.reduce((s,r)=>s+num(r.amt),0);
   const qCount=docFilter(DB.quotes).length;
-  const invCount=docFilter(DB.invoices).length;
-  const invAmt=docFilter(DB.invoices).reduce((s,r)=>s+r.amt,0);
-  const csCount=docFilter(DB.cashsale).length;
-  const csAmt=docFilter(DB.cashsale).reduce((s,r)=>s+r.amt,0);
-  const expCount=docFilter(DB.expense).length;
-  const expAmt=docFilter(DB.expense).reduce((s,r)=>s+r.amt,0);
+  const invDocs=docFilter(DB.invoices); const invCount=invDocs.length; const invAmt=sumAmt(invDocs);
+  const csDocs=docFilter(DB.cashsale); const csCount=csDocs.length; const csAmt=sumAmt(csDocs);
+  const expDocs=docFilter(DB.expense); const expCount=expDocs.length; const expAmt=sumAmt(expDocs);
   const poCount=docFilter(DB.po).length;
-  // ── อัปเดต KPI ──
-  document.getElementById('sum-k1').textContent=fmt(totalRev);
-  document.getElementById('sum-k2').textContent=fmt(totalExp);
-  document.getElementById('sum-k3').textContent=fmt(netProfit);
-  document.getElementById('sum-k4').textContent=fmt(vatOut);
+  // ── KPI ──
+  setT('sum-k1',fmt(totalRev)); setT('sum-k2',fmt(totalExp)); setT('sum-k3',fmt(netProfit)); setT('sum-k4',fmt(vatOut));
   sumData={rev:totalRev,exp:totalExp,net:netProfit,vat:vatNet,cashIn,cashOut,from,to};
-  // ── helper row ──
+  // ── helper ──
   const row=(label,val,bold,color)=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px">
     <span style="color:${bold?'var(--tx)':'var(--mu)'};font-weight:${bold?700:400}">${label}</span>
     <span style="font-weight:${bold?700:600};color:${color||'var(--tx)'}">${val}</span></div>`;
-  const divider=(label)=>`<div style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:.5px;margin:10px 0 4px;text-transform:uppercase">${label}</div>`;
+  const divider=label=>`<div style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:.5px;margin:10px 0 4px;text-transform:uppercase">${label}</div>`;
   // ── P&L ──
   let plHtml=divider('รายได้');
   revAccts.filter(a=>getbal(a.code)!==0).forEach(a=>{ plHtml+=row(a.name,`฿${fmt(getbal(a.code))}`,false,'var(--ok)'); });
@@ -8168,16 +8187,16 @@ function renderSummary(){
   plHtml+=`<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:14px;font-weight:700;border-top:2px solid var(--bd);margin-top:4px">
     <span>${netProfit>=0?'กำไรสุทธิ':'ขาดทุนสุทธิ'}${totalRev>0?` <span style="font-size:11px;font-weight:400;color:var(--mu)">(${(netProfit/totalRev*100).toFixed(1)}% ของรายได้)</span>`:''}</span>
     <span style="color:${netProfit>=0?'var(--ok)':'var(--dg)'}">฿${fmt(Math.abs(netProfit))}</span></div>`;
-  document.getElementById('sum-pl').innerHTML=plHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
-  // ── Balance Sheet (ยอดสะสมถึงวันที่ "ถึง") ──
+  setH('sum-pl',plHtml);
+  // ── Balance Sheet (สะสมถึงวันที่ "ถึง") ──
   let bsHtml=divider('สินทรัพย์');
-  DB.coa.filter(a=>a.type==='asset'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
+  coa.filter(a=>a.type==='asset'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
   bsHtml+=row('รวมสินทรัพย์',`฿${fmt(totalAsset)}`,true,'var(--bl)');
   bsHtml+=divider('หนี้สิน');
-  DB.coa.filter(a=>a.type==='liability'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
+  coa.filter(a=>a.type==='liability'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
   bsHtml+=row('รวมหนี้สิน',`฿${fmt(totalLiab)}`,true,'var(--dg)');
   bsHtml+=divider('ส่วนของผู้ถือหุ้น');
-  DB.coa.filter(a=>a.type==='equity'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
+  coa.filter(a=>a.type==='equity'&&getbalCum(a.code)!==0).forEach(a=>bsHtml+=row(a.name,`฿${fmt(getbalCum(a.code))}`));
   bsHtml+=row(retainedCum>=0?'กำไรสะสม':'ขาดทุนสะสม',`฿${fmt(retainedCum)}`,false,retainedCum>=0?'var(--ok)':'var(--dg)');
   const totalEquityFull=totalEquity+retainedCum;
   bsHtml+=row('รวมส่วนทุน',`฿${fmt(totalEquityFull)}`,true,'var(--ok)');
@@ -8187,40 +8206,40 @@ function renderSummary(){
   bsHtml+=Math.abs(bdiff)<0.5
     ? `<div style="text-align:center;font-size:11px;color:#0F9D58;background:#E8F8F0;border-radius:8px;padding:8px;margin-top:10px;font-weight:600">✓ งบดุลสมดุล (สินทรัพย์ = หนี้สิน + ทุน)</div>`
     : `<div style="text-align:center;font-size:11px;color:#b45309;background:#FEF3C7;border-radius:8px;padding:8px;margin-top:10px;font-weight:600">⚠️ ผลต่าง ฿${fmt(bdiff)} — ตรวจรายการบัญชี</div>`;
-  document.getElementById('sum-bs').innerHTML=bsHtml||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีข้อมูล</div>';
-  // ── รายได้แยกหมวด (จากบัญชีรายได้ — ตรงกับ P&L) ──
+  setH('sum-bs',bsHtml);
+  // ── รายได้แยกหมวด ──
   const revByCat={};
   revAccts.filter(a=>getbal(a.code)>0).forEach(a=>{ revByCat[a.name]=getbal(a.code); });
   const totalRevDoc=Object.values(revByCat).reduce((a,b)=>a+b,0)||1;
-  document.getElementById('sum-rev-detail').innerHTML=Object.entries(revByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+  setH('sum-rev-detail',Object.entries(revByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
         <span style="font-weight:500">${k}</span><span style="color:var(--ok);font-weight:600">฿${fmt(v)}</span>
       </div>
       <div style="background:var(--bd);border-radius:4px;height:6px"><div style="background:var(--ok);height:100%;border-radius:4px;width:${Math.max(4,v/totalRevDoc*100).toFixed(1)}%"></div></div>
-    </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีรายได้ในช่วงนี้</div>';
-  // ── ค่าใช้จ่ายแยกหมวด (จากบัญชีค่าใช้จ่าย — ตรงกับ P&L) ──
+    </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีรายได้ในช่วงนี้</div>');
+  // ── ค่าใช้จ่ายแยกหมวด ──
   const expByCat={};
   expAccts.filter(a=>getbal(a.code)>0).forEach(a=>{ expByCat[a.name]=getbal(a.code); });
   const totalExpDoc=Object.values(expByCat).reduce((a,b)=>a+b,0)||1;
-  document.getElementById('sum-exp-detail').innerHTML=Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+  setH('sum-exp-detail',Object.entries(expByCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
     <div style="margin-bottom:8px">
       <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
         <span style="font-weight:500">${k}</span><span style="color:var(--dg);font-weight:600">฿${fmt(v)}</span>
       </div>
       <div style="background:var(--bd);border-radius:4px;height:6px"><div style="background:rgba(229,62,62,.6);height:100%;border-radius:4px;width:${Math.max(4,v/totalExpDoc*100).toFixed(1)}%"></div></div>
-    </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีค่าใช้จ่ายในช่วงนี้</div>';
+    </div>`).join('')||'<div style="color:var(--mu);font-size:12px;padding:10px">ไม่มีค่าใช้จ่ายในช่วงนี้</div>');
   // ── กระแสเงินสด ──
   const cfPct=cashIn>0?Math.min(cashOut/cashIn*100,100):0;
-  document.getElementById('sum-cf').innerHTML=`
+  setH('sum-cf',`
     ${row('เงินสดรับ',`฿${fmt(cashIn)}`,false,'var(--ok)')}
     ${row('เงินสดจ่าย',`฿${fmt(cashOut)}`,false,'var(--dg)')}
     ${row('กระแสเงินสดสุทธิ',`฿${fmt(cashIn-cashOut)}`,true,(cashIn-cashOut)>=0?'var(--ok)':'var(--dg)')}
     <div style="margin-top:12px;font-size:11px;color:var(--mu);margin-bottom:4px">อัตราส่วนจ่าย/รับ</div>
     <div style="background:var(--bd);border-radius:6px;height:10px"><div style="background:${cfPct<80?'var(--ok)':cfPct<100?'var(--wn)':'var(--dg)'};height:100%;border-radius:6px;width:${cfPct.toFixed(1)}%;transition:width .6s"></div></div>
-    <div style="font-size:11px;color:var(--mu);margin-top:4px;text-align:right">${cfPct.toFixed(1)}%</div>`;
-  // ── สรุปเอกสาร ──
-  document.getElementById('sum-docs').innerHTML=`
+    <div style="font-size:11px;color:var(--mu);margin-top:4px;text-align:right">${cfPct.toFixed(1)}%</div>`);
+  // ── สรุปเอกสาร + ฐานะคงค้าง ──
+  setH('sum-docs',`
     ${row('ใบเสนอราคา',`${qCount} ใบ`)}
     ${row('ใบวางบิล',`${invCount} ใบ · ฿${fmt(invAmt)}`)}
     ${row('ขายเงินสด',`${csCount} รายการ · ฿${fmt(csAmt)}`)}
@@ -8228,22 +8247,38 @@ function renderSummary(){
     ${row('ใบสั่งซื้อ',`${poCount} ใบ`)}
     <div style="border-top:2px solid var(--bd);margin-top:8px;padding-top:8px;display:flex;justify-content:space-between;font-size:13px;font-weight:700">
       <span>ยอดขายรวม</span><span style="color:var(--ok)">฿${fmt(invAmt+csAmt)}</span>
-    </div>`;
+    </div>
+    <div style="border-top:1px solid var(--bd);margin-top:8px;padding-top:4px">
+      <div style="font-size:10px;font-weight:700;color:var(--p);letter-spacing:.5px;margin:4px 0;text-transform:uppercase">ฐานะคงค้าง (สะสมถึงวันที่เลือก)</div>
+      ${row('ลูกหนี้การค้าคงค้าง',`฿${fmt(arOut)}`,false,'var(--bl)')}
+      ${row('เจ้าหนี้การค้าคงค้าง',`฿${fmt(apOut)}`,false,'var(--dg)')}
+      ${row('VAT สุทธิที่ต้องนำส่ง (ในช่วง)',`฿${fmt(vatNet)}`,false,vatNet>=0?'var(--dg)':'var(--ok)')}
+    </div>`);
   // ── รายการ journal ──
-  const tb=document.getElementById('sum-jv-tbl'); tb.innerHTML='';
+  const tb=document.getElementById('sum-jv-tbl');
   const cnt=document.getElementById('sum-jv-count');
+  const jvFilt=jvAll.filter(inRange);
   if(cnt) cnt.textContent=`${jvFilt.length} รายการ`;
-  if(!jvFilt.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">ไม่มีรายการในช่วงนี้</td></tr>'; return; }
-  const srcLbl={invoice:'ใบวางบิล',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',payment:'รับชำระ',manual:'บันทึกเอง',closing:'ปิดงวด'};
-  jvFilt.forEach(e=>{
-    const dr=e.lines.reduce((s,l)=>s+l.debit,0);
-    const cr=e.lines.reduce((s,l)=>s+l.credit,0);
-    tb.innerHTML+=`<tr><td style="white-space:nowrap">${fmtD(e.date)}</td><td style="max-width:220px">${e.desc||'-'}</td>
-      <td style="text-align:right;color:var(--ok);font-weight:600">฿${fmt(dr)}</td>
-      <td style="text-align:right;color:var(--dg);font-weight:600">฿${fmt(cr)}</td>
-      <td><span class="badge b-part" style="font-size:10px">${srcLbl[e.source]||e.source||'-'}</span></td></tr>`;
-  });
+  if(tb){
+    if(!jvFilt.length){ tb.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">ไม่มีรายการในช่วงนี้</td></tr>'; }
+    else {
+      const srcLbl={invoice:'ใบวางบิล',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',payment:'รับชำระ',inst:'ใบแบ่งจ่าย',instpay:'รับชำระงวด',payroll:'จ่ายเงินเดือน',manual:'บันทึกเอง',closing:'ปิดงวด'};
+      tb.innerHTML=jvFilt.map(e=>{
+        const dr=e.lines.reduce((s,l)=>s+num(l&&l.debit),0);
+        const cr=e.lines.reduce((s,l)=>s+num(l&&l.credit),0);
+        return `<tr><td style="white-space:nowrap">${fmtD(e.date)}</td><td style="max-width:220px">${e.desc||'-'}</td>
+        <td style="text-align:right;color:var(--ok);font-weight:600">฿${fmt(dr)}</td>
+        <td style="text-align:right;color:var(--dg);font-weight:600">฿${fmt(cr)}</td>
+        <td><span class="badge b-part" style="font-size:10px">${srcLbl[e.source]||e.source||'-'}</span></td></tr>`;
+      }).join('');
+    }
+  }
+ }catch(err){
+  try{ const el=document.getElementById('sum-pl'); if(el) el.innerHTML='<div style="color:var(--dg);font-size:12px;padding:12px">⚠️ คำนวณสรุปบัญชีไม่สำเร็จ — ลองกด “แสดงผล” อีกครั้ง หรือเลือกช่วงวันที่ใหม่</div>'; }catch(e){}
+  try{ toast('⚠️ สรุปบัญชีมีปัญหา: '+((err&&err.message)||err)); }catch(e){}
+ }
 }
+
 function exportSummaryCSV(){
   const from=document.getElementById('sum-from')?.value||'';
   const to=document.getElementById('sum-to')?.value||'';
