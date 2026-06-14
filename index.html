@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16b · 🧾 ใบแจ้งยอดลูกหนี้ (Statement)</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16e · 🖨️ พรีวิวเอกสารดีขึ้น (ซูม + ชื่อเอกสาร)</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -1099,8 +1099,10 @@ tbody tr:hover td{background:#FAFBFD}
       <button class="pt-b" onclick="pcToday()">วันนี้</button>
       <div style="flex:1"></div>
       <button class="btn bo" onclick="pcPrintReport()">🖨️ พิมพ์/PDF</button>
+      <button class="btn bo" onclick="pcCloseForm()">🔒 ปิดงวด</button>
       <button class="btn bp" onclick="pcForm()">+ บันทึกเงินสดย่อย</button>
     </div>
+    <div id="pc-close-banner"></div>
     <div class="kpi-g" style="grid-template-columns:repeat(4,1fr)">
       <div class="kpi bl"><div class="kpi-ic bl">📥</div><div class="kpi-lb">ยอดยกมา</div><div class="kpi-vl"><small>฿</small><span id="pc-k-open">0</span></div></div>
       <div class="kpi gn"><div class="kpi-ic gn">➕</div><div class="kpi-lb">รับเข้า/เติมเงิน</div><div class="kpi-vl"><small>฿</small><span id="pc-k-in">0</span></div></div>
@@ -1288,6 +1290,7 @@ tbody tr:hover td{background:#FAFBFD}
 // ══════════════════════════════════
 const DB = {
   pettycash:[],
+  pcClosings:[],
   contacts:[
     {id:'C001',name:'บ.สยามเทรดดิ้ง จำกัด',type:'ลูกค้า',phone:'02-111-2233',email:'info@siam.co.th',tax:'0105560012345',color:'#0A6EBD'},
     {id:'C002',name:'หจก.เอ็มพาวเวอร์',type:'ลูกค้า',phone:'081-234-5678',email:'mp@empower.th',tax:'0993560098765',color:'#059669'},
@@ -7482,14 +7485,19 @@ function bahtText(num){
 // แสดงพรีวิวในหน้าเดียวกัน (iframe) — ไม่ใช้ popup จึงไม่ติด popup blocker
 let printCtx={type:null,id:null,copyMode:'both',docType:'',showSig:true};
 function showPrintPreview(html, type, id, opts){
-  if(type){ printCtx={type,id,copyMode:(opts&&opts.copyMode)||'both',docType:(opts&&opts.docType)||'',showSig:(opts&&opts.showSig!==undefined)?opts.showSig:true}; }
+  const PV_DOC_TYPES=['quotes','invoices','delivery','cashsale','installments','po','receive'];
+  const isDoc = !!type && PV_DOC_TYPES.includes(type);
+  if(isDoc){ printCtx={type,id,copyMode:(opts&&opts.copyMode)||'both',docType:(opts&&opts.docType)||'',showSig:(opts&&opts.showSig!==undefined)?opts.showSig:true}; }
+  const pvTitle = isDoc ? 'พรีวิวเอกสาร' : ((typeof type==='string'&&type)?type:'พรีวิวเอกสาร');
+  pvZoom=null;
   let ov=document.getElementById('printOverlay');
   if(!ov){
     ov=document.createElement('div'); ov.id='printOverlay';
     ov.style.cssText='position:fixed;inset:0;z-index:9000;background:#5a6b7e;display:flex;flex-direction:column';
     ov.innerHTML=`
-      <div id="printBar" style="display:flex;align-items:center;gap:12px;padding:12px 18px;background:#0D1B2A;color:#fff;flex-shrink:0;flex-wrap:wrap">
-        <div style="font-weight:700;font-size:15px">🖨️ พรีวิวเอกสาร</div>
+      <div id="printBar" style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:#0D1B2A;color:#fff;flex-shrink:0;flex-wrap:wrap;box-shadow:0 2px 12px rgba(0,0,0,.3)">
+        <div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44vw" id="pv-title">🖨️ พรีวิวเอกสาร</div>
+        <div id="pv-doc-ctrls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <div style="display:flex;align-items:center;gap:6px;font-size:12px">
           <span style="color:#9fb0c2">ชนิด:</span>
           <select id="pv-copy" onchange="reprintPreview()" style="padding:6px 10px;border-radius:7px;border:none;font-family:inherit;font-size:12px;cursor:pointer">
@@ -7506,6 +7514,12 @@ function showPrintPreview(html, type, id, opts){
           <span style="color:#9fb0c2">ลายเซ็น:</span>
           <button id="pv-sig" onclick="toggleSigPreview()" style="padding:6px 12px;border-radius:7px;border:none;font-family:inherit;font-size:12px;cursor:pointer;font-weight:600;background:#00C9A7;color:#fff">✓ แสดง</button>
         </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:2px;background:rgba(255,255,255,.12);border-radius:8px;padding:3px">
+          <button onclick="pvZoomOut()" title="ย่อ" style="width:30px;height:28px;border:none;border-radius:6px;background:transparent;color:#fff;font-size:18px;line-height:1;cursor:pointer;font-family:inherit">−</button>
+          <button onclick="pvZoomFit()" id="pv-zoom-lb" title="พอดีจอ" style="min-width:50px;height:28px;border:none;border-radius:6px;background:transparent;color:#fff;font-size:12px;cursor:pointer;font-family:inherit;font-weight:600">พอดี</button>
+          <button onclick="pvZoomIn()" title="ขยาย" style="width:30px;height:28px;border:none;border-radius:6px;background:transparent;color:#fff;font-size:16px;line-height:1;cursor:pointer;font-family:inherit">+</button>
+        </div>
         <div style="margin-left:auto;display:flex;gap:8px">
           <button onclick="shareDoc()" style="padding:9px 18px;border-radius:8px;border:none;background:#00C9A7;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">📤 แชร์ PDF</button>
           <button onclick="doPrintPreview()" style="padding:9px 18px;border-radius:8px;border:none;background:#6B2FA6;color:#fff;font-weight:600;font-size:13px;cursor:pointer;font-family:inherit">พิมพ์ / บันทึก PDF</button>
@@ -7515,13 +7529,16 @@ function showPrintPreview(html, type, id, opts){
       <div style="flex:1;overflow:auto;display:flex;justify-content:center;padding:16px"><div id="printScaleWrap" style="width:794px;flex:none;transform-origin:top center"><iframe id="printFrame" style="width:794px;min-height:1123px;border:none;background:#fff;box-shadow:0 6px 30px rgba(0,0,0,.3);display:block" scrolling="no"></iframe></div></div>`;
     document.body.appendChild(ov);
   }
+  // ตั้งชื่อเอกสารบนหัว + ซ่อนตัวควบคุมเอกสารถ้าเป็นรายงาน/ใบรับรอง
+  const titleEl=document.getElementById('pv-title'); if(titleEl) titleEl.textContent='🖨️ '+pvTitle;
+  const docCtrls=document.getElementById('pv-doc-ctrls'); if(docCtrls) docCtrls.style.display=isDoc?'flex':'none';
   // ปรับสเกลพรีวิวให้พอดีจอแคบ (A4 = 794px) แต่เนื้อหายังเป็น A4 จริง ไม่ตกบรรทัด
   setTimeout(fitPrintPreview,60);
   window.addEventListener('resize',fitPrintPreview);
-  // sync controls
-  const copySel=document.getElementById('pv-copy'); if(copySel) copySel.value=printCtx.copyMode;
-  const sigBtn=document.getElementById('pv-sig'); if(sigBtn){ const on=printCtx.showSig!==false; sigBtn.textContent=on?'✓ แสดง':'✕ ซ่อน'; sigBtn.style.background=on?'#00C9A7':'rgba(255,255,255,.2)'; }
-  const dtSel=document.getElementById('pv-doctype');
+  // sync controls (เฉพาะเอกสารจริงเท่านั้น)
+  const copySel=isDoc?document.getElementById('pv-copy'):null; if(copySel) copySel.value=printCtx.copyMode;
+  const sigBtn=isDoc?document.getElementById('pv-sig'):null; if(sigBtn){ const on=printCtx.showSig!==false; sigBtn.textContent=on?'✓ แสดง':'✕ ซ่อน'; sigBtn.style.background=on?'#00C9A7':'rgba(255,255,255,.2)'; }
+  const dtSel=isDoc?document.getElementById('pv-doctype'):null;
   if(dtSel){
     // หัวบิลให้เลือกได้หลากหลาย (ทุกประเภทเอกสาร)
     const ALL_HEADERS=[
@@ -7653,6 +7670,11 @@ async function shareDoc(){
   }catch(e){ toast('⚠️ สร้าง PDF ไม่สำเร็จ: '+(e.message||'ลองใหม่')); }
   if(btn){ btn.disabled=false; btn.style.opacity='1'; }
 }
+let pvZoom=null, pvCurScale=1;
+function pvSetZoom(z){ pvZoom=Math.max(0.3,Math.min(2.2,z)); fitPrintPreview(); }
+function pvZoomIn(){ pvSetZoom((pvCurScale||0.6)+0.15); }
+function pvZoomOut(){ pvSetZoom((pvCurScale||0.6)-0.15); }
+function pvZoomFit(){ pvZoom=null; fitPrintPreview(); }
 function fitPrintPreview(){
   try{
     const wrap=document.getElementById('printScaleWrap'); const fr=document.getElementById('printFrame');
@@ -7660,8 +7682,13 @@ function fitPrintPreview(){
     const container=wrap.parentElement;
     const avail=container.clientWidth-32; // ลบ padding
     const A4=794;
-    const scale=Math.min(1, avail/A4);
+    const fit=Math.min(1, avail/A4);
+    const scale=(pvZoom!=null)?pvZoom:fit;
     wrap.style.transform='scale('+scale+')';
+    pvCurScale=scale;
+    const lb=document.getElementById('pv-zoom-lb'); if(lb) lb.textContent=(pvZoom!=null)?(Math.round(scale*100)+'%'):'พอดี';
+    // จัดตำแหน่ง: ถ้าซูมจนกว้างกว่าจอให้ชิดซ้าย (เลื่อนดูได้) ไม่งั้นกึ่งกลาง
+    if(container) container.style.justifyContent=(scale*A4>avail+1)?'flex-start':'center';
     // ปรับความสูง iframe ตามเนื้อหาจริง แล้วชดเชยความสูงที่หายจากการ scale
     try{
       const doc=fr.contentDocument;
@@ -7864,6 +7891,7 @@ function rebuildAccounting(){
   (DB.installments||[]).forEach(it=>{ try{autoPostInstallment(it);}catch(e){} (it.rows||[]).forEach((row,idx)=>{ if(row.paid){ try{autoPostInstPayment(it,row,idx);}catch(e){} } }); });
   Object.keys(DB.payroll||{}).forEach(key=>{ const d=DB.payroll[key]; if(d&&d.paid){ try{autoPostPayroll(key,d);}catch(e){} } });
   (DB.pettycash||[]).forEach(x=>{ try{autoPostPettyCash(x);}catch(e){} });
+  (DB.pcClosings||[]).forEach(c=>{ try{autoPostPcClosing(c);}catch(e){} });
   saveData();
 }
 
@@ -7884,7 +7912,7 @@ function acctBalance(code){
 // ══════════════════════════════════════════════════════════
 // RENDER: สมุดรายวัน
 // ══════════════════════════════════════════════════════════
-const SRC_LABEL={invoice:'ใบวางบิล',payment:'รับชำระ',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',inst:'ใบแบ่งจ่าย',instpay:'รับชำระงวด',payroll:'จ่ายเงินเดือน',closing:'ปิดงวด',pettycash:'เงินสดย่อย',manual:'บันทึกเอง'};
+const SRC_LABEL={invoice:'ใบวางบิล',payment:'รับชำระ',cashsale:'ขายเงินสด',expense:'ค่าใช้จ่าย',receive:'รับสินค้า',inst:'ใบแบ่งจ่าย',instpay:'รับชำระงวด',payroll:'จ่ายเงินเดือน',closing:'ปิดงวด',pettycash:'เงินสดย่อย',pcclosing:'ปิดงวดเงินสดย่อย',manual:'บันทึกเอง'};
 function renderJournal(){
   acctInit();
   const q=(document.getElementById('jr-search')?.value||'').toLowerCase();
@@ -8040,6 +8068,14 @@ function renderPettyCash(){
   const setT=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
   setT('pc-k-open',fmt(open)); setT('pc-k-in',fmt(totIn)); setT('pc-k-out',fmt(totOut)); setT('pc-k-bal',fmt(bal));
   setT('pc-period','เงินสดย่อย · '+p.label); setT('pc-count',inP.length+' รายการ');
+  const bn=document.getElementById('pc-close-banner');
+  if(bn){
+    const ym=((document.getElementById('pc-date')?.value)||iso(new Date())).slice(0,7);
+    const cl=(typeof pcClosingOf==='function')?pcClosingOf(ym):null;
+    if(cl&&pcMode!=='year'){ const sign=cl.diff<-0.005?('เงินขาด ฿'+fmt(-cl.diff)):(cl.diff>0.005?('เงินเกิน ฿'+fmt(cl.diff)):'ตรงพอดี'); const col=cl.diff<-0.005?'var(--dg)':(cl.diff>0.005?'#B8860B':'var(--ok)');
+      bn.innerHTML=`<div style="background:#EAF4FF;border:1px solid #b9dcff;border-radius:11px;padding:11px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><div style="font-size:18px">🔒</div><div style="flex:1;min-width:160px"><div style="font-size:12.5px;font-weight:700">ปิดงวด ${pcMonthLabel(ym)} แล้ว</div><div style="font-size:11.5px;color:var(--mu)">ตามบัญชี ฿${fmt(cl.book)} · นับจริง ฿${fmt(cl.counted)} · <b style="color:${col}">${sign}</b>${cl.note?' · '+cl.note:''}</div></div><button class="btn bo" style="font-size:11px;padding:5px 10px" onclick="pcCloseForm()">ดู/แก้ไข</button></div>`;
+    } else bn.innerHTML='';
+  }
   const tb=document.getElementById('pc-tbl'); if(!tb) return; tb.innerHTML='';
   if(!inP.length){ tb.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:24px">ไม่มีรายการในช่วงนี้ — แตะ "+ บันทึกเงินสดย่อย"</td></tr>'; return; }
   let run=open;
@@ -8131,6 +8167,75 @@ function pcDelete(id){
   try{ if(typeof removeJournalBySource==='function') removeJournalBySource('pettycash',id); }catch(e){}
   DB.pettycash=(DB.pettycash||[]).filter(x=>x.id!==id); saveData(); renderPettyCash(); toast('🗑️ ลบแล้ว');
 }
+// ── ปิดงวด/ตัดยอดเงินสดย่อยรายเดือน (กระทบยอด: บัญชี vs นับจริง → เงินขาด/เกิน) ──
+function pcBalanceAsOf(dateStr){ return r2((DB.pettycash||[]).reduce((s,x)=>(x.date&&x.date<=dateStr)?s+(x.type==='in'?(+x.amount||0):-(+x.amount||0)):s,0)); }
+function pcMonthEnd(ym){ const [y,mo]=ym.split('-').map(Number); const last=new Date(y,mo,0).getDate(); return `${ym}-${String(last).padStart(2,'0')}`; }
+function pcClosingOf(ym){ return (DB.pcClosings||[]).find(c=>c.period===ym); }
+function pcMonthLabel(ym){ const TH=['มกราคม','กุมภาพันธ์','มีนาคม','เมษายน','พฤษภาคม','มิถุนายน','กรกฎาคม','สิงหาคม','กันยายน','ตุลาคม','พฤศจิกายน','ธันวาคม']; const [y,mo]=ym.split('-').map(Number); return TH[mo-1]+' '+(y+543); }
+function pcCloseForm(){
+  if(!Array.isArray(DB.pcClosings)) DB.pcClosings=[];
+  const d=(document.getElementById('pc-date')?.value)||iso(new Date());
+  const ym=d.slice(0,7);
+  const book=pcBalanceAsOf(pcMonthEnd(ym));
+  const ex=pcClosingOf(ym);
+  document.getElementById('ml-t').textContent='🔒 ปิดงวด/ตัดยอดเงินสดย่อย';
+  document.getElementById('ml-s').textContent='งวดเดือน '+pcMonthLabel(ym);
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="pcc-ym" value="${ym}">
+    <div style="background:var(--bg);border-radius:10px;padding:12px 14px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center">
+      <div><div style="font-size:11px;color:var(--mu)">ยอดเงินสดคงเหลือตามบัญชี ณ สิ้นเดือน</div><div style="font-size:11px;color:var(--mu)">${pcMonthLabel(ym)}</div></div>
+      <div style="font-size:20px;font-weight:800;color:var(--p)" id="pcc-book" data-v="${book}">฿${fmt(book)}</div>
+    </div>
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">เงินสดนับจริง (บาท)</label><input class="fi" type="number" inputmode="decimal" id="pcc-counted" placeholder="0.00" value="${ex?ex.counted:''}" oninput="pcCloseCalc()"></div>
+    <div id="pcc-diff" style="border-radius:9px;padding:10px 14px;font-size:13px;margin-bottom:12px"></div>
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">หมายเหตุ (ไม่บังคับ)</label><input class="fi" id="pcc-note" placeholder="เช่น สาเหตุเงินขาด/เกิน" value="${ex?String(ex.note||'').replace(/"/g,'&quot;'):''}"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;cursor:pointer"><input type="checkbox" id="pcc-post" ${(!ex||ex.posted)?'checked':''}> ลงบัญชีส่วนต่าง (เงินขาด/เกิน) ในสมุดรายวันอัตโนมัติ</label>`;
+  document.getElementById('ml-act').innerHTML=`${ex?'<button class="btn bd2" onclick="pcUnclose(\''+ym+'\')">ยกเลิกปิดงวด</button>':''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="pcDoClose()">🔒 ${ex?'อัปเดต':'ยืนยันปิดงวด'}</button>`;
+  document.getElementById('ml').classList.add('op');
+  pcCloseCalc();
+}
+function pcCloseCalc(){
+  const book=parseFloat(document.getElementById('pcc-book')?.dataset.v)||0;
+  const counted=parseFloat(document.getElementById('pcc-counted')?.value)||0;
+  const diff=r2(counted-book);
+  const el=document.getElementById('pcc-diff'); if(!el) return;
+  if(Math.abs(diff)<0.01){ el.style.background='#E7F8F0'; el.innerHTML='<b style="color:var(--ok)">✓ ตรงพอดี</b> — เงินสดนับจริงเท่ากับยอดตามบัญชี'; }
+  else if(diff<0){ el.style.background='#FFF0F0'; el.innerHTML=`<b style="color:var(--dg)">เงินขาด ฿${fmt(-diff)}</b> — นับจริงน้อยกว่าบัญชี (จะลงเป็นค่าใช้จ่าย)`; }
+  else { el.style.background='#FFF8E6'; el.innerHTML=`<b style="color:#B8860B">เงินเกิน ฿${fmt(diff)}</b> — นับจริงมากกว่าบัญชี`; }
+}
+function pcDoClose(){
+  if(!Array.isArray(DB.pcClosings)) DB.pcClosings=[];
+  const ym=document.getElementById('pcc-ym').value;
+  const book=parseFloat(document.getElementById('pcc-book').dataset.v)||0;
+  const countedRaw=document.getElementById('pcc-counted').value;
+  if(countedRaw===''){ toast('⚠️ กรอกเงินสดนับจริง'); return; }
+  const counted=r2(parseFloat(countedRaw)||0);
+  const diff=r2(counted-book);
+  const note=(document.getElementById('pcc-note').value||'').trim();
+  const posted=!!document.getElementById('pcc-post').checked;
+  let c=pcClosingOf(ym);
+  if(c){ c.book=book; c.counted=counted; c.diff=diff; c.note=note; c.posted=posted; c.date=iso(new Date()); }
+  else { c={id:'PCC'+Date.now().toString(36),period:ym,date:iso(new Date()),book,counted,diff,note,posted}; DB.pcClosings.push(c); }
+  try{ autoPostPcClosing(c); }catch(e){}
+  saveData(); closeModal(); renderPettyCash();
+  toast('🔒 ปิดงวด '+pcMonthLabel(ym)+' แล้ว');
+}
+function pcUnclose(ym){
+  const c=pcClosingOf(ym); if(!c) return;
+  if(!confirm('ยกเลิกการปิดงวด '+pcMonthLabel(ym)+'? (รายการลงบัญชีส่วนต่างจะถูกลบด้วย)')) return;
+  try{ removeJournalBySource('pcclosing',c.id); }catch(e){}
+  DB.pcClosings=(DB.pcClosings||[]).filter(x=>x.id!==c.id);
+  saveData(); closeModal(); renderPettyCash(); toast('ยกเลิกปิดงวดแล้ว');
+}
+function autoPostPcClosing(c){
+  try{ removeJournalBySource('pcclosing',c.id); }catch(e){}
+  if(!c.posted) return;
+  const diff=r2(c.diff||0); if(Math.abs(diff)<0.01) return;
+  let lines;
+  if(diff<0){ lines=[{code:'5090',debit:-diff,credit:0},{code:'1010',debit:0,credit:-diff}]; }
+  else { lines=[{code:'1010',debit:diff,credit:0},{code:'5090',debit:0,credit:diff}]; }
+  postJournal({date:pcMonthEnd(c.period),desc:'ปรับปรุงเงินสดย่อย'+(diff<0?'ขาด':'เกิน')+'บัญชี (ปิดงวด '+pcMonthLabel(c.period)+')',lines,source:'pcclosing',sourceId:c.id});
+}
 // ── OCR อ่านรูปบิลด้วย AI (Claude API) → กรอกยอด/วันที่/หมวด/ผู้ขาย ──
 async function pcReadReceipt(){
   const img=pcImgs[0];
@@ -8198,6 +8303,9 @@ function pcPrintReport(){
   let run=open;
   const rows=inP.map(x=>{ run += x.type==='in'?amt(x):-amt(x); const clip=(Array.isArray(x.imgs)&&x.imgs.length)?' 📎':''; return `<tr><td>${fmtD(x.date)}</td><td>${esc(x.desc||'-')}${clip}</td><td>${esc(x.cat||'-')}</td><td class="r">${x.type==='in'?fmt(amt(x)):''}</td><td class="r">${x.type==='out'?fmt(amt(x)):''}</td><td class="r">฿${fmt(run)}</td></tr>`; }).join('');
   const today=fmtD(new Date().toISOString().slice(0,10));
+  const _ym=p.start.slice(0,7);
+  const _cl=(p.start.slice(0,7)===p.end.slice(0,7)&&typeof pcClosingOf==='function')?pcClosingOf(_ym):null;
+  const reconHtml=_cl?`<div style="margin-top:14px;border:1px solid #b9dcff;border-radius:9px;padding:12px 14px;background:#f5faff"><div style="font-weight:700;font-size:13px;margin-bottom:8px">🔒 การกระทบยอด (ปิดงวด ${pcMonthLabel(_ym)})</div><div style="display:flex;gap:10px"><div style="flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff"><div style="font-size:10px;color:#6b7280">ยอดตามบัญชี</div><div style="font-size:14px;font-weight:700">฿${fmt(_cl.book)}</div></div><div style="flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff"><div style="font-size:10px;color:#6b7280">เงินสดนับจริง</div><div style="font-size:14px;font-weight:700">฿${fmt(_cl.counted)}</div></div><div style="flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px;background:#fff"><div style="font-size:10px;color:#6b7280">${_cl.diff<0?'เงินขาด':_cl.diff>0?'เงินเกิน':'ผลต่าง'}</div><div style="font-size:14px;font-weight:700;color:${_cl.diff<0?'#dc2626':_cl.diff>0?'#B8860B':'#059669'}">฿${fmt(Math.abs(_cl.diff))}</div></div></div>${_cl.note?`<div style="font-size:11px;color:#555;margin-top:8px">หมายเหตุ: ${esc(_cl.note)}</div>`:''}</div>`:'';
   const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
 @page{size:A4 portrait;margin:14mm}
 *{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
@@ -8235,6 +8343,7 @@ tfoot td{font-weight:700;border-top:2px solid #d1d5db;background:#f4f6f8;padding
     </tbody>
     <tfoot><tr><td colspan="3">รวมทั้งสิ้น</td><td class="r" style="color:#059669">฿${fmt(totIn)}</td><td class="r" style="color:#dc2626">฿${fmt(totOut)}</td><td class="r" style="color:#0A6EBD">฿${fmt(bal)}</td></tr></tfoot>
   </table>
+  ${reconHtml}
   <div class="foot">ออกโดยระบบ FlowBiz · ${CO.name} · พิมพ์เมื่อ ${today}</div>
 </body></html>`;
   if(typeof showPrintPreview==='function') showPrintPreview(html,'รายงานเงินสดย่อย '+p.label,{});
@@ -8567,7 +8676,7 @@ function renderWht(){
   let p3=0,p53=0;
   const tb=document.getElementById('whtTbl'); tb.innerHTML='';
   list.forEach((w,i)=>{ if(w.form==='3')p3+=w.tax; else p53+=w.tax;
-    tb.innerHTML+=`<tr><td>${fmtD(w.date)}</td><td>${w.payee}</td><td>${w.type}</td><td style="text-align:center">${w.rate}%</td><td style="text-align:right">฿${fmt(w.base)}</td><td style="text-align:right;font-weight:700;color:var(--p)">฿${fmt(w.tax)}</td><td><span class="badge b-done2">ภงด.${w.form}</span></td><td><button class="btn bd2" style="font-size:11px;padding:4px 9px" onclick="delWht(${DB.wht.indexOf(w)})">🗑️</button></td></tr>`;
+    tb.innerHTML+=`<tr><td>${fmtD(w.date)}</td><td>${w.payee}</td><td>${w.type}</td><td style="text-align:center">${w.rate}%</td><td style="text-align:right">฿${fmt(w.base)}</td><td style="text-align:right;font-weight:700;color:var(--p)">฿${fmt(w.tax)}</td><td><span class="badge b-done2">ภงด.${w.form}</span></td><td style="white-space:nowrap"><button class="btn bo" style="font-size:11px;padding:4px 8px" onclick="printWht50(${DB.wht.indexOf(w)})">🖨️ 50ทวิ</button> <button class="btn bd2" style="font-size:11px;padding:4px 9px" onclick="delWht(${DB.wht.indexOf(w)})">🗑️</button></td></tr>`;
   });
   if(!list.length) tb.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีรายการภาษีหัก ณ ที่จ่าย</td></tr>';
   document.getElementById('wht-p3').textContent=fmt(p3);
@@ -8579,8 +8688,10 @@ function openWhtForm(){
   document.getElementById('ml-bd').innerHTML=`
     <div class="fl2">
       <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="wh-date" value="${new Date().toISOString().slice(0,10)}"></div>
-      <div class="fg"><label class="flb">ผู้ถูกหักภาษี</label><input class="fi" id="wh-payee" placeholder="ชื่อผู้รับเงิน"></div>
-      <div class="fg full"><label class="flb">ประเภทเงินได้</label><select class="fi" id="wh-type" onchange="whtCalc()">${WHT_TYPES.map((t,i)=>`<option value="${i}">${t.t} (${t.rate}% · ภงด.${t.form})</option>`).join('')}</select></div>
+      <div class="fg"><label class="flb">ผู้ถูกหักภาษี (ผู้รับเงิน)</label><input class="fi" id="wh-payee" placeholder="ชื่อผู้รับเหมา/ผู้ขาย"></div>
+      <div class="fg"><label class="flb">เลขผู้เสียภาษี/บัตรประชาชน</label><input class="fi" id="wh-payeetax" placeholder="13 หลัก" inputmode="numeric"></div>
+      <div class="fg"><label class="flb">ประเภทเงินได้</label><select class="fi" id="wh-type" onchange="whtCalc()">${WHT_TYPES.map((t,i)=>`<option value="${i}">${t.t} (${t.rate}% · ภงด.${t.form})</option>`).join('')}</select></div>
+      <div class="fg full"><label class="flb">ที่อยู่ผู้ถูกหัก (สำหรับใบ 50 ทวิ — ไม่บังคับ)</label><input class="fi" id="wh-payeeaddr" placeholder="ที่อยู่ผู้รับเงิน"></div>
       <div class="fg"><label class="flb">ฐานภาษี (ก่อน VAT)</label><input class="fi" type="number" id="wh-base" placeholder="0.00" oninput="whtCalc()"></div>
       <div class="fg"><label class="flb">ภาษีหัก ณ ที่จ่าย</label><input class="fi" id="wh-tax" readonly style="background:var(--bg);font-weight:700"></div>
     </div>
@@ -8601,11 +8712,32 @@ function saveWht(){
   const t=WHT_TYPES[+document.getElementById('wh-type').value];
   const base=parseFloat(document.getElementById('wh-base').value)||0;
   const payee=document.getElementById('wh-payee').value||'-';
+  const payeeTax=(document.getElementById('wh-payeetax')?.value||'').trim();
+  const payeeAddr=(document.getElementById('wh-payeeaddr')?.value||'').trim();
   if(base<=0){ toast('⚠️ กรอกฐานภาษี'); return; }
-  DB.wht.unshift({date:document.getElementById('wh-date').value,payee,type:t.t,rate:t.rate,form:t.form,base,tax:base*t.rate/100});
+  DB.wht.unshift({date:document.getElementById('wh-date').value,payee,payeeTax,payeeAddr,type:t.t,rate:t.rate,form:t.form,base,tax:base*t.rate/100});
   saveData(); closeModal(); renderWht(); toast('✅ บันทึกภาษีหัก ณ ที่จ่ายแล้ว');
 }
 function delWht(i){ if(i>=0&&confirm('ลบรายการนี้?')){ DB.wht.splice(i,1); saveData(); renderWht(); toast('🗑️ ลบแล้ว'); } }
+// ── พิมพ์ใบรับรองหัก ณ ที่จ่าย (50 ทวิ) สำหรับผู้รับเหมา/ผู้ขาย ──
+function printWht50(idx){
+  const w=DB.wht[idx]; if(!w){ toast('ไม่พบรายการ'); return; }
+  const CO=payTaxCompany();
+  const masMap={'ค่าบริการ/รับเหมา':'มาตรา 40(7)(8) ค่าจ้างทำของ/ค่าบริการ','ค่าจ้างทำของ (บุคคล)':'มาตรา 40(7)(8) ค่าจ้างทำของ','ค่าเช่า':'มาตรา 40(5) ค่าเช่าทรัพย์สิน','ค่าวิชาชีพ':'มาตรา 40(6) วิชาชีพอิสระ','ค่าขนส่ง':'มาตรา 40(8) ค่าขนส่ง','ค่าโฆษณา':'มาตรา 40(8) ค่าโฆษณา'};
+  const incLabel=(masMap[w.type]||w.type);
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>50 ทวิ ${w.payee}</title>${payTaxDocHead()}</head><body>
+  <div class="doc-hd"><h1>หนังสือรับรองการหักภาษี ณ ที่จ่าย</h1><div class="sub">ตามมาตรา 50 ทวิ แห่งประมวลรัษฎากร · แบบ ภ.ง.ด.${w.form} (${w.form==='3'?'บุคคลธรรมดา':'นิติบุคคล'})</div></div>
+  <div class="box"><b>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย (ผู้จ่ายเงิน)</b><br>ชื่อ: ${CO.name}<br>เลขประจำตัวผู้เสียภาษี: ${CO.tax||'________________'}<br>ที่อยู่: ${CO.addr}</div>
+  <div class="box"><b>ผู้ถูกหักภาษี ณ ที่จ่าย (ผู้รับเงิน)</b><br>ชื่อ: ${w.payee}<br>เลขประจำตัวผู้เสียภาษี/บัตรประชาชน: ${w.payeeTax||'________________'}<br>ที่อยู่: ${w.payeeAddr||'-'}</div>
+  <table><thead><tr><th style="text-align:left">ประเภทเงินได้พึงประเมินที่จ่าย</th><th style="text-align:center">วันที่จ่าย</th><th style="text-align:right">จำนวนเงิน (บาท)</th><th style="text-align:right">ภาษีที่หัก (บาท)</th></tr></thead><tbody>
+  <tr><td>${incLabel}</td><td style="text-align:center">${fmtSlash(w.date)}</td><td style="text-align:right">${fmt(w.base)}</td><td style="text-align:right">${fmt(w.tax)}</td></tr>
+  <tr class="tot"><td colspan="2" style="text-align:right">รวม</td><td style="text-align:right">${fmt(w.base)}</td><td style="text-align:right">${fmt(w.tax)}</td></tr></tbody></table>
+  <div style="font-size:12px">รวมเงินภาษีที่หักและนำส่ง <b>฿${fmt(w.tax)}</b> (${bahtText(w.tax)})</div>
+  <div class="box" style="margin-top:12px;font-size:11px;color:#555">ผู้จ่ายเงิน (✓) หักภาษี ณ ที่จ่าย &nbsp; ( ) ออกภาษีให้ตลอดไป &nbsp; ( ) ออกภาษีให้ครั้งเดียว</div>
+  <div class="sig"><div class="sig-col"><div class="sig-line">ผู้จ่ายเงิน<br>(${CO.seller||'____________________'})<br>วันที่ ${fmtSlash(w.date)}</div></div></div>
+  </body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'50ทวิ '+w.payee,{}); else { const win=window.open('','_blank'); if(win){ win.document.write(html); win.document.close(); setTimeout(()=>win.print(),400); } }
+}
 function exportWhtCSV(){ if(!DB.wht||!DB.wht.length){toast('ไม่มีข้อมูล');return;} const csv='\uFEFFภาษีหัก ณ ที่จ่าย\n\nวันที่,ผู้ถูกหัก,ประเภท,อัตรา,ฐานภาษี,ภาษีหัก,แบบ\n'+DB.wht.map(w=>`"${fmtSlash(w.date)}","${w.payee}","${w.type}",${w.rate}%,${w.base},${w.tax},ภงด.${w.form}`).join('\n'); dlCSV(csv,'ภาษีหักณที่จ่าย.csv'); }
 
 // ══════════════════════════════════════════════════════════
