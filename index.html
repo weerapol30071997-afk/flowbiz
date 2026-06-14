@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16e · 🖨️ พรีวิวเอกสารดีขึ้น (ซูม + ชื่อเอกสาร)</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16h · 📊 ส่งออก Excel ทั้งระบบ (.xlsx)</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -938,15 +938,16 @@ tbody tr:hover td{background:#FAFBFD}
 
   <!-- ══ JOBCOST (ต้นทุน-กำไรต่องาน) ══ -->
   <div id="pg-jobcost" class="pg">
-    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+    <div class="kpi-g" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:16px">
       <div class="kpi bl"><div class="kpi-ic bl">💵</div><div class="kpi-lb">รายรับรวม</div><div class="kpi-vl"><small>฿</small><span id="jc-k-rev">0</span></div></div>
       <div class="kpi rd"><div class="kpi-ic rd">🧱</div><div class="kpi-lb">ต้นทุนรวม</div><div class="kpi-vl"><small>฿</small><span id="jc-k-cost">0</span></div></div>
       <div class="kpi gn"><div class="kpi-ic gn">📈</div><div class="kpi-lb">กำไรรวม</div><div class="kpi-vl"><small>฿</small><span id="jc-k-profit">0</span></div></div>
       <div class="kpi or"><div class="kpi-ic or">%</div><div class="kpi-lb">อัตรากำไรเฉลี่ย</div><div class="kpi-vl"><span id="jc-k-margin">0%</span></div></div>
+      <div class="kpi or"><div class="kpi-ic or">🎯</div><div class="kpi-lb">เทียบงบ (ประหยัด/เกิน)</div><div class="kpi-vl"><small>฿</small><span id="jc-k-var">0</span></div></div>
     </div>
     <div class="tc">
-      <div class="tc-hd"><div class="card-t">กำไร-ขาดทุนรายงาน</div><span style="font-size:11px;color:var(--mu)">แตะงานเพื่อใส่ต้นทุน</span></div>
-      <table><thead><tr><th>งาน</th><th style="text-align:right">รายรับ</th><th style="text-align:right">ต้นทุน</th><th style="text-align:right">กำไร</th><th style="text-align:right">%</th></tr></thead>
+      <div class="tc-hd"><div class="card-t">กำไร-ขาดทุนรายงาน</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--mu)">แตะงานเพื่อใส่ต้นทุน</span><button class="btn bo" style="font-size:12px;padding:6px 11px" onclick="printJobCostReport()">🖨️ พิมพ์รายงาน</button></div></div>
+      <table><thead><tr><th>งาน</th><th style="text-align:right">รายรับ</th><th style="text-align:right">ประมาณการ</th><th style="text-align:right">ต้นทุนจริง</th><th style="text-align:right">ผลต่างงบ</th><th style="text-align:right">กำไร</th><th style="text-align:right">%</th></tr></thead>
       <tbody id="jc-tbl"></tbody></table>
     </div>
     <div style="font-size:11px;color:var(--mu);margin-top:10px;padding:0 4px">💡 ต้นทุนต่องานเป็นข้อมูลวิเคราะห์กำไร (แยกจากบัญชีค่าใช้จ่าย) · ใส่ค่าวัสดุ/ค่าแรง/ผู้รับเหมาช่วงของแต่ละงานเพื่อดูกำไรจริง</div>
@@ -957,11 +958,17 @@ tbody tr:hover td{background:#FAFBFD}
       <input class="fi" placeholder="🔍 ค้นหาสินค้า / รหัส / บาร์โค้ด..." id="pr-search" oninput="renderProducts()">
       <button class="btn bp" onclick="openProductForm(null)">+ เพิ่มสินค้า</button>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="pr-tabs">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="pr-tabs">
       <button class="pt-b on" onclick="prFilter(this,'all')">🏪 ทั้งหมด</button>
       <button class="pt-b" onclick="prFilter(this,'บริการ')">🛎️ บริการ</button>
       <button class="pt-b" onclick="prFilter(this,'track')">📦 นับสต็อก</button>
+      <button class="pt-b" onclick="prFilter(this,'low')">⚠️ สต็อกต่ำ</button>
       <button class="pt-b" onclick="prFilter(this,'notrack')">📭 ไม่นับสต็อก</button>
+    </div>
+    <div class="kpi-g" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));margin-bottom:16px">
+      <div class="kpi bl"><div class="kpi-ic bl">📦</div><div class="kpi-lb">รายการนับสต็อก</div><div class="kpi-vl"><span id="ps-tracked">0</span></div></div>
+      <div class="kpi gn"><div class="kpi-ic gn">💰</div><div class="kpi-lb">มูลค่าสต็อก (ราคาทุน)</div><div class="kpi-vl"><small>฿</small><span id="ps-value">0</span></div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">⚠️</div><div class="kpi-lb">สต็อกต่ำ/หมด</div><div class="kpi-vl"><span id="ps-low">0</span></div></div>
     </div>
     <div class="pr-g" id="productGrid"></div>
   </div>
@@ -1183,6 +1190,7 @@ tbody tr:hover td{background:#FAFBFD}
     <div class="tc"><div class="tc-hd"><div class="card-t">ตารางกระแสเงินสด</div></div>
       <table><thead><tr><th>งวด</th><th style="text-align:right">เงินสดรับ</th><th style="text-align:right">เงินสดจ่าย</th><th style="text-align:right">สุทธิ</th><th style="text-align:right">สะสม</th></tr></thead><tbody id="cfTbl"></tbody></table>
     </div>
+    <div id="cf-forecast" style="margin-top:22px"></div>
   </div>
 
   <!-- ══ COGS (ต้นทุน-กำไรขั้นต้น) ══ -->
@@ -1291,6 +1299,7 @@ tbody tr:hover td{background:#FAFBFD}
 const DB = {
   pettycash:[],
   pcClosings:[],
+  stockMoves:[],
   contacts:[
     {id:'C001',name:'บ.สยามเทรดดิ้ง จำกัด',type:'ลูกค้า',phone:'02-111-2233',email:'info@siam.co.th',tax:'0105560012345',color:'#0A6EBD'},
     {id:'C002',name:'หจก.เอ็มพาวเวอร์',type:'ลูกค้า',phone:'081-234-5678',email:'mp@empower.th',tax:'0993560098765',color:'#059669'},
@@ -3854,8 +3863,11 @@ function jcRender(){
     <button class="btn bd2" style="padding:6px 9px" onclick="_jcRows.splice(${i},1);jcRender()">🗑️</button>
   </div>`).join('');
   document.getElementById('ml-bd').innerHTML=`
-    <div class="fg" style="margin-bottom:10px"><label class="flb">มูลค่างาน / รายรับ (บาท)</label><input class="fi" type="number" id="jc-value" value="${j.value||0}" oninput="jcTotals()"></div>
-    <div style="font-size:12px;font-weight:700;margin-bottom:6px">รายการต้นทุน</div>
+    <div class="fl2" style="margin-bottom:10px">
+      <div class="fg"><label class="flb">มูลค่างาน / รายรับ (บาท)</label><input class="fi" type="number" id="jc-value" value="${j.value||0}" oninput="jcTotals()"></div>
+      <div class="fg"><label class="flb">ประมาณการต้นทุน / งบประมาณ</label><input class="fi" type="number" id="jc-budget" value="${j.budget||0}" placeholder="งบที่ตั้งไว้" oninput="jcTotals()"></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">รายการต้นทุนจริง</div>
     <div id="jc-rows">${rows}</div>
     <button class="add-r" onclick="_jcRows.push({type:'material',desc:'',amount:0});jcRender()">+ เพิ่มต้นทุน</button>
     <div id="jc-sum" style="border-radius:10px;padding:12px 14px;margin-top:12px;background:var(--bg)"></div>`;
@@ -3863,16 +3875,22 @@ function jcRender(){
 }
 function jcTotals(){
   const val=+(document.getElementById('jc-value')?.value)||0;
+  const budget=+(document.getElementById('jc-budget')?.value)||0;
   const cost=_jcRows.reduce((s,c)=>s+(+c.amount||0),0);
   const profit=val-cost, margin=val>0?(profit/val*100):0;
+  const variance=budget-cost; // +ต่ำกว่างบ / -เกินงบ
   const el=document.getElementById('jc-sum'); if(!el) return;
+  const budgetRow=budget>0?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>ประมาณการต้นทุน (งบ)</span><b>฿${fmt(budget)}</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:12.5px;padding:2px 0"><span style="color:var(--mu)">ส่วนต่างงบ ${variance>=0?'(ต่ำกว่างบ ✓)':'(เกินงบ ⚠️)'}</span><b style="color:${variance>=0?'#0F9D58':'#c0392b'}">${variance>=0?'':'-'}฿${fmt(Math.abs(variance))}</b></div>`:'';
   el.innerHTML=`<div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>รายรับ</span><b style="color:var(--p)">฿${fmt(val)}</b></div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>ต้นทุนรวม</span><b style="color:#c0392b">฿${fmt(cost)}</b></div>
+    ${budgetRow}
+    <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0"><span>ต้นทุนจริงรวม</span><b style="color:#c0392b">฿${fmt(cost)}</b></div>
     <div style="display:flex;justify-content:space-between;font-size:16px;padding:7px 0 0;border-top:1px dashed var(--bd);margin-top:5px"><span style="font-weight:700">กำไรสุทธิ</span><b style="color:${profit>=0?'#0F9D58':'#c0392b'}">฿${fmt(profit)} (${margin.toFixed(1)}%)</b></div>`;
 }
 function jcSave(){
   const j=DB.jobs.find(x=>x.id===_jcJob); if(!j) return;
   j.value=+(document.getElementById('jc-value').value)||0;
+  j.budget=+(document.getElementById('jc-budget')?.value)||0;
   j.costs=_jcRows.filter(c=>(+c.amount||0)!==0||(c.desc||'').trim()).map(c=>({type:c.type,desc:(c.desc||'').trim(),amount:+c.amount||0}));
   saveData(); closeModal(); if(typeof renderJobs==='function') renderJobs(); if(curPage==='jobcost') renderJobCost();
   toast('💰 บันทึกต้นทุน-กำไรแล้ว'); setTimeout(()=>openJobDrawer(_jcJob),120);
@@ -3880,19 +3898,79 @@ function jcSave(){
 function renderJobCost(){
   const jobs=[...(DB.jobs||[])];
   const tv=jobs.reduce((s,j)=>s+(j.value||0),0), tc=jobs.reduce((s,j)=>s+jobCostTotal(j),0), tp=tv-tc, tm=tv>0?(tp/tv*100):0;
+  const budgeted=jobs.filter(j=>(j.budget||0)>0);
+  const tBudget=budgeted.reduce((s,j)=>s+(j.budget||0),0);
+  const tVar=tBudget-budgeted.reduce((s,j)=>s+jobCostTotal(j),0); // + ประหยัด / − เกินงบ
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
   set('jc-k-rev',fmt(tv)); set('jc-k-cost',fmt(tc)); set('jc-k-profit',fmt(tp)); set('jc-k-margin',tm.toFixed(1)+'%');
+  const varEl=document.getElementById('jc-k-var'); if(varEl){ varEl.textContent=(tVar<0?'-':'')+fmt(Math.abs(tVar)); varEl.style.color=budgeted.length?(tVar>=0?'#0F9D58':'#c0392b'):'var(--mu)'; }
   const tb=document.getElementById('jc-tbl'); if(!tb) return;
   const sorted=jobs.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-  tb.innerHTML=sorted.map(j=>{ const cost=jobCostTotal(j),profit=jobProfit(j),margin=jobMargin(j);
+  tb.innerHTML=sorted.map(j=>{ const cost=jobCostTotal(j),profit=jobProfit(j),margin=jobMargin(j),budget=j.budget||0,vv=budget-cost;
+    const varCell=budget>0?`<span style="color:${vv>=0?'#0F9D58':'#c0392b'};font-weight:600">${vv>=0?'ประหยัด ':'เกิน '}฿${fmt(Math.abs(vv))}</span>`:'<span style="color:var(--mu)">—</span>';
     return `<tr style="cursor:pointer" onclick="openJobCost('${j.id}')">
       <td><div style="font-weight:600">${j.title}</div><div style="font-size:11px;color:var(--mu)">${j.id} · ${getCust(j.cust).name||''}</div></td>
       <td style="text-align:right">฿${fmt(j.value||0)}</td>
+      <td style="text-align:right;color:var(--mu)">${budget>0?'฿'+fmt(budget):'—'}</td>
       <td style="text-align:right;color:#c0392b">฿${fmt(cost)}</td>
+      <td style="text-align:right">${varCell}</td>
       <td style="text-align:right;font-weight:700;color:${profit>=0?'#0F9D58':'#c0392b'}">฿${fmt(profit)}</td>
       <td style="text-align:right;color:${profit>=0?'#0F9D58':'#c0392b'};font-weight:600">${j.value?margin.toFixed(0)+'%':'-'}</td>
     </tr>`;
-  }).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีงาน</td></tr>';
+  }).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีงาน</td></tr>';
+}
+// ── รายงานกำไร-ขาดทุนรายโปรเจกต์ (A4 พิมพ์/PDF) ──
+function printJobCostReport(){
+  const jobs=[...(DB.jobs||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  if(!jobs.length){ toast('ยังไม่มีงาน'); return; }
+  const tv=jobs.reduce((s,j)=>s+(j.value||0),0);
+  const tc=jobs.reduce((s,j)=>s+jobCostTotal(j),0);
+  const tp=tv-tc; const tm=tv>0?(tp/tv*100):0;
+  const budgeted=jobs.filter(j=>(j.budget||0)>0);
+  const tBudget=budgeted.reduce((s,j)=>s+(j.budget||0),0);
+  const tVar=tBudget-budgeted.reduce((s,j)=>s+jobCostTotal(j),0);
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293'},companyInfo||{});
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const today=fmtD(iso(new Date()));
+  const rows=jobs.map(j=>{ const cost=jobCostTotal(j),profit=jobProfit(j),margin=jobMargin(j),budget=j.budget||0,vv=budget-cost; const cn=getCust(j.cust).name;
+    return `<tr><td>${esc(j.title)}<div class="sub">${esc(j.id)}${cn?' · '+esc(cn):''}</div></td><td class="r">${fmt(j.value||0)}</td><td class="r" style="color:#6b7280">${budget>0?fmt(budget):'-'}</td><td class="r" style="color:#c0392b">${fmt(cost)}</td><td class="r" style="color:${budget>0?(vv>=0?'#0f9d58':'#c0392b'):'#9ca3af'}">${budget>0?((vv>=0?'ประหยัด ':'เกิน ')+fmt(Math.abs(vv))):'-'}</td><td class="r" style="font-weight:700;color:${profit>=0?'#0f9d58':'#c0392b'}">${fmt(profit)}</td><td class="r" style="color:${profit>=0?'#0f9d58':'#c0392b'}">${j.value?margin.toFixed(0)+'%':'-'}</td></tr>`; }).join('');
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 landscape;margin:12mm}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:12px;line-height:1.45;background:#fff}
+.hd{border-bottom:2px solid #0A6EBD;padding-bottom:9px;margin-bottom:6px}
+.hd h1{font-size:18px;color:#0A6EBD;font-weight:700}
+.cn{font-weight:700;font-size:13px;margin-top:5px}.ca{font-size:11px;color:#555;margin-top:2px}
+.meta{display:flex;justify-content:space-between;font-size:11.5px;margin:10px 0;color:#374151}
+.sum{display:flex;gap:9px;margin:10px 0}
+.sum .b{flex:1;border:1px solid #e5e7eb;border-radius:8px;padding:8px 10px}
+.sum .lb{font-size:10px;color:#6b7280}.sum .vl{font-size:15px;font-weight:700;margin-top:2px}
+table{width:100%;border-collapse:collapse;margin-top:6px;font-size:11.5px}
+th{background:#f4f6f8;text-align:left;padding:7px 8px;border-bottom:2px solid #d1d5db;font-size:10.5px;color:#374151}
+td{padding:6px 8px;border-bottom:1px solid #eef1f4;vertical-align:top}.r{text-align:right}
+td .sub{font-size:10px;color:#9ca3af;margin-top:1px}
+tfoot td{font-weight:700;border-top:2px solid #d1d5db;background:#f4f6f8;padding:8px}
+.foot{margin-top:18px;font-size:10px;color:#9ca3af;text-align:center;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body>
+  <div class="hd"><h1>รายงานกำไร-ขาดทุนรายโปรเจกต์ <span style="font-size:12px;color:#6b7280;font-weight:400">/ Project Profitability</span></h1>
+    <div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)} · เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}</div></div>
+  <div class="meta"><div>จำนวนงาน: <b>${jobs.length}</b> โปรเจกต์</div><div>พิมพ์เมื่อ: ${today}</div></div>
+  <div class="sum">
+    <div class="b"><div class="lb">รายรับรวม</div><div class="vl">฿${fmt(tv)}</div></div>
+    <div class="b"><div class="lb">ต้นทุนจริงรวม</div><div class="vl" style="color:#c0392b">฿${fmt(tc)}</div></div>
+    <div class="b"><div class="lb">กำไรรวม</div><div class="vl" style="color:${tp>=0?'#0f9d58':'#c0392b'}">฿${fmt(tp)}</div></div>
+    <div class="b"><div class="lb">อัตรากำไรเฉลี่ย</div><div class="vl" style="color:#0A6EBD">${tm.toFixed(1)}%</div></div>
+    <div class="b"><div class="lb">เทียบงบ (ประหยัด/เกิน)</div><div class="vl" style="color:${budgeted.length?(tVar>=0?'#0f9d58':'#c0392b'):'#9ca3af'}">${budgeted.length?((tVar>=0?'ประหยัด ':'เกิน ')+'฿'+fmt(Math.abs(tVar))):'-'}</div></div>
+  </div>
+  <table>
+    <thead><tr><th>งาน / โปรเจกต์</th><th class="r">รายรับ</th><th class="r">ประมาณการ</th><th class="r">ต้นทุนจริง</th><th class="r">ผลต่างงบ</th><th class="r">กำไร</th><th class="r">%</th></tr></thead>
+    <tbody>${rows}</tbody>
+    <tfoot><tr><td>รวมทั้งสิ้น</td><td class="r">฿${fmt(tv)}</td><td class="r">฿${fmt(tBudget)}</td><td class="r" style="color:#c0392b">฿${fmt(tc)}</td><td class="r" style="color:${tVar>=0?'#0f9d58':'#c0392b'}">${budgeted.length?((tVar>=0?'+':'-')+'฿'+fmt(Math.abs(tVar))):'-'}</td><td class="r" style="color:${tp>=0?'#0f9d58':'#c0392b'}">฿${fmt(tp)}</td><td class="r">${tm.toFixed(0)}%</td></tr></tfoot>
+  </table>
+  <div class="foot">ออกโดยระบบ FlowBiz · ${esc(CO.name)} · พิมพ์เมื่อ ${today} · ต้นทุนต่องานเป็นข้อมูลวิเคราะห์กำไร (แยกจากบัญชีค่าใช้จ่าย)</div>
+</body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'รายงานกำไร-ขาดทุนรายโปรเจกต์',{});
+  else { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); } }
 }
 function renderJobs(){
   const jobs=DB.jobs||[];
@@ -4531,9 +4609,15 @@ function prFilter(el,f){ document.querySelectorAll('#pr-tabs .pt-b').forEach(b=>
 function renderProducts(){
   const q=(document.getElementById('pr-search')?.value||'').toLowerCase();
   const grid=document.getElementById('productGrid'); grid.innerHTML='';
+  const tracked=DB.products.filter(p=>p.track);
+  const sval=tracked.reduce((s,p)=>s+(p.stock||0)*(p.buyPrice||0),0);
+  const lowN=tracked.filter(p=>p.min>0&&(p.stock||0)<=p.min).length;
+  const setS=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v;};
+  setS('ps-tracked',tracked.length); setS('ps-value',fmt(sval)); setS('ps-low',lowN);
   let list=DB.products.filter(r=>!q||(r.name+(r.code||'')+(r.barcode||'')).toLowerCase().includes(q));
   if(prCurFilter==='บริการ') list=list.filter(p=>p.type==='บริการ');
   else if(prCurFilter==='track') list=list.filter(p=>p.track);
+  else if(prCurFilter==='low') list=list.filter(p=>p.track&&p.min>0&&(p.stock||0)<=p.min);
   else if(prCurFilter==='notrack') list=list.filter(p=>!p.track);
   if(!list.length){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:40px">ไม่พบสินค้า</div>'; return; }
   list.forEach((p)=>{
@@ -4545,10 +4629,56 @@ function renderProducts(){
       ${p.brand?`<div style="font-size:11px;color:var(--mu);margin-bottom:2px">${p.brand}${p.model?' · '+p.model:''}</div>`:''}
       ${p.code?`<div style="font-size:11px;color:var(--mu);margin-bottom:2px">รหัส: ${p.code}</div>`:''}
       <div class="pr-pr">฿${fmt(p.price)}<small style="font-size:11px;font-weight:400;color:var(--mu)">/${p.unit}</small></div>
-      ${p.track?`<div class="pr-st">คงเหลือ: ${p.stock} ${p.unit}${p.loc?' · 📍'+p.loc:''}</div><span class="pr-stk" style="background:${low?'rgba(229,62,62,.1)':'rgba(5,150,105,.1)'};color:${low?'var(--dg)':'var(--ok)'}">${low?'⚠ สต็อกต่ำ':'✓ พร้อมขาย'}</span>`:`<span class="pr-stk" style="background:rgba(100,116,139,.1);color:#64748B">ไม่นับสต็อก</span>`}`;
+      ${p.track?`<div class="pr-st">คงเหลือ: ${p.stock} ${p.unit}${p.loc?' · 📍'+p.loc:''}</div><span class="pr-stk" style="background:${low?'rgba(229,62,62,.1)':'rgba(5,150,105,.1)'};color:${low?'var(--dg)':'var(--ok)'}">${low?'⚠ สต็อกต่ำ':'✓ พร้อมขาย'}</span><button onclick="event.stopPropagation();stockAdjustForm('${p.id}')" style="display:block;width:100%;margin-top:8px;padding:6px;border:1px solid var(--bd);border-radius:7px;background:transparent;color:var(--p);font-size:11.5px;font-weight:600;cursor:pointer;font-family:inherit">📦 รับ/เบิก/ปรับสต็อก</button>`:`<span class="pr-stk" style="background:rgba(100,116,139,.1);color:#64748B">ไม่นับสต็อก</span>`}`;
     div.onclick=()=>openProductForm(p.id);
     grid.appendChild(div);
   });
+}
+
+// ── ปรับสต็อกเอง (รับเข้า/เบิกออก/ปรับยอด) + ประวัติการเคลื่อนไหว ──
+function stockMovesOf(pid){ return (DB.stockMoves||[]).filter(m=>m.productId===pid); }
+function stockAdjustForm(pid){
+  const p=DB.products.find(x=>x.id===pid); if(!p) return;
+  const moves=stockMovesOf(pid).slice(0,8);
+  const movesHtml=moves.length?`<div style="margin-top:14px"><div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:6px">📜 ประวัติล่าสุด</div>${moves.map(m=>{const lb={in:'รับเข้า',out:'เบิกออก',set:'ปรับยอด'}[m.type]||m.type; const sign=m.type==='in'?'+':m.type==='out'?'−':'='; const col=m.type==='in'?'var(--ok)':m.type==='out'?'var(--dg)':'var(--p)'; return `<div style="display:flex;justify-content:space-between;font-size:11.5px;padding:5px 0;border-bottom:1px solid var(--bd)"><span style="color:var(--mu)">${fmtD(m.date)} · <b style="color:${col}">${lb}</b>${m.reason?' · '+m.reason:''}</span><span style="font-weight:600;white-space:nowrap">${sign}${m.qty} → ${m.after}</span></div>`;}).join('')}</div>`:'';
+  document.getElementById('ml-t').textContent='📦 ปรับสต็อก: '+p.name;
+  document.getElementById('ml-s').textContent='คงเหลือปัจจุบัน '+(p.stock||0)+' '+(p.unit||'');
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="sa-pid" value="${pid}">
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">ประเภทการเคลื่อนไหว</label>
+      <select class="fi" id="sa-type" onchange="stockAdjHint()">
+        <option value="in">➕ รับเข้า (เพิ่มสต็อก)</option>
+        <option value="out">➖ เบิกออก / ตัดสต็อก (ลดสต็อก)</option>
+        <option value="set">✏️ ปรับยอดเป็น (ตรวจนับจริง)</option>
+      </select></div>
+    <div class="fg full" style="margin-bottom:10px"><label class="flb" id="sa-qty-lb">จำนวน (${p.unit||'หน่วย'})</label><input class="fi" type="number" inputmode="numeric" id="sa-qty" placeholder="0" oninput="stockAdjHint()"></div>
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">เหตุผล/อ้างอิง (ไม่บังคับ)</label><input class="fi" id="sa-reason" placeholder="เช่น ซื้อเพิ่ม / เบิกใช้งาน / ตรวจนับสต็อก"></div>
+    <div id="sa-hint" style="background:var(--bg);border-radius:9px;padding:10px 14px;font-size:13px"></div>
+    ${movesHtml}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="stockAdjustSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  stockAdjHint();
+}
+function stockAdjHint(){
+  const p=DB.products.find(x=>x.id===document.getElementById('sa-pid').value); if(!p) return;
+  const type=document.getElementById('sa-type').value; const qty=parseInt(document.getElementById('sa-qty').value)||0;
+  const cur=p.stock||0; let after=cur;
+  if(type==='in') after=cur+qty; else if(type==='out') after=cur-qty; else after=qty;
+  const lb=document.getElementById('sa-qty-lb'); if(lb) lb.textContent=(type==='set'?'ยอดนับจริง':'จำนวน')+' ('+(p.unit||'หน่วย')+')';
+  const el=document.getElementById('sa-hint'); if(el) el.innerHTML=`คงเหลือ: <b>${cur}</b> → <b style="color:${after<0?'var(--dg)':'var(--p)'}">${after}</b> ${p.unit||''}${after<0?' <span style="color:var(--dg)">⚠ ติดลบ</span>':''}`;
+}
+function stockAdjustSave(){
+  const p=DB.products.find(x=>x.id===document.getElementById('sa-pid').value); if(!p) return;
+  const type=document.getElementById('sa-type').value; const qty=parseInt(document.getElementById('sa-qty').value)||0;
+  const reason=(document.getElementById('sa-reason').value||'').trim();
+  if(qty<=0&&type!=='set'){ toast('⚠️ กรอกจำนวนมากกว่า 0'); return; }
+  if(type==='set'&&document.getElementById('sa-qty').value===''){ toast('⚠️ กรอกยอดนับจริง'); return; }
+  const before=p.stock||0; let after=before;
+  if(type==='in') after=before+qty; else if(type==='out') after=before-qty; else after=qty;
+  p.stock=after;
+  if(!Array.isArray(DB.stockMoves)) DB.stockMoves=[];
+  DB.stockMoves.unshift({id:'SM'+Date.now().toString(36),date:iso(new Date()),productId:p.id,type,qty:(type==='set'?after:qty),before,after,reason});
+  saveData(); closeModal(); renderProducts(); toast('📦 ปรับสต็อก '+p.name+' แล้ว (คงเหลือ '+after+' '+(p.unit||'')+')');
 }
 
 // ฟอร์มเพิ่ม/แก้ไขสินค้า (ละเอียดตามแอพจริง)
@@ -5116,6 +5246,7 @@ function openCloudForm(){
       <div style="display:flex;flex-direction:column;gap:8px">
         <button class="btn bp" style="justify-content:center;padding:11px" onclick="exportBackup()">💾 สำรองเป็นไฟล์ (.json)</button>
         <button class="btn bo" style="justify-content:center;padding:11px" onclick="importBackup()">📂 กู้คืนจากไฟล์</button>
+        <button class="btn bo" style="justify-content:center;padding:11px" onclick="exportAllExcel()">📊 ส่งออก Excel ทั้งระบบ (.xlsx)</button>
       </div>
     </details>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveCloudForm()">💾 บันทึกการตั้งค่า</button>`;
@@ -7352,6 +7483,35 @@ function printDoc(type,id,opts){
   }
   const body=buildBody();
 
+  // ── PromptPay QR สำหรับเอกสารที่รอชำระ (ใบวางบิล/ใบแจ้งหนี้/ใบแบ่งจ่าย) ──
+  let qrHtml='';
+  try{
+    const showQR=(type==='invoices'||type==='installments');
+    if(showQR && typeof promptPayPayload==='function' && typeof qrSVG==='function' && typeof PROMPTPAY_ID!=='undefined'){
+      let qrAmt, dynamic=true, hasWht=false;
+      if(type==='installments' && r.rows){ qrAmt=r.rows.filter(x=>!x.paid).reduce((s,x)=>s+(+x.amt||0),0); }
+      else { qrAmt=(+r.amt||0)-(+r.paidAmt||0); hasWht=(+r.wht||0)>0; }
+      qrAmt=Math.round(qrAmt*100)/100;
+      if(qrAmt>0.01){
+        if(hasWht) dynamic=false; // มีหัก ณ ที่จ่าย → ไม่ล็อกยอด ให้ลูกค้ากรอกยอดสุทธิ
+        const payload=promptPayPayload(PROMPTPAY_ID, dynamic?qrAmt:0);
+        const amtLine = dynamic
+          ? `<div style="font-size:16px;font-weight:800;color:#0A6EBD;margin-top:2px">฿${fmt(qrAmt)}</div>`
+          : `<div style="font-size:12px;color:#c0392b;margin-top:2px">กรอกยอดสุทธิหลังหัก ณ ที่จ่าย ${r.wht}%</div><div style="font-size:12.5px;color:#52606d">(ยอดบิล ฿${fmt(qrAmt)})</div>`;
+        qrHtml=`<div style="display:flex;align-items:center;gap:14px;border:1px solid #d7dee5;border-radius:10px;padding:12px 16px;margin-top:14px;background:#fbfdff;width:fit-content;max-width:430px">
+          <div style="width:118px;height:118px;flex:none">${qrSVG(payload,118)}</div>
+          <div style="font-size:12px;line-height:1.55">
+            <div style="font-weight:800;color:#003D6A;font-size:14px;letter-spacing:.5px">PromptPay</div>
+            <div style="color:#52606d">สแกน QR นี้เพื่อชำระเงิน</div>
+            <div>พร้อมเพย์: <b>${PROMPTPAY_ID}</b></div>
+            ${amtLine}
+            <div style="color:#7a868f;font-size:11px;margin-top:2px">ในนาม ${CO.shortName||CO.name}</div>
+          </div>
+        </div>`;
+      }
+    }
+  }catch(e){ qrHtml=''; }
+
   // สีธีมตามหัวบิลที่เลือก: เสนอราคา=ส้ม, เสร็จ/เงินสด=เขียว, อื่นๆ=ม่วง
   const dt=docTypeName;
   const theme = type==='expense' ? '#E53E3E' : dt.includes('เสนอราคา') ? '#F5821F' : (dt.includes('เสร็จ')||dt.includes('เงินสด')||dt.includes('มัดจำ')) ? '#0F9D58' : '#6B2FA6';
@@ -7386,6 +7546,7 @@ function printDoc(type,id,opts){
       </div>
       ${body}
       ${r.note?`<div class="note">หมายเหตุ: ${nlbr(r.note)}</div>`:''}
+      ${qrHtml}
       <div class="ft">
         <div class="ft-col"><div class="ft-name">ในนาม ${custName}</div><div class="sig-zone"></div><div class="sig-name">&nbsp;</div><div class="sig-row"><span>${sigLeft}</span><span>วันที่ ____/____/____</span></div></div>
         <div class="ft-col"><div class="ft-name">ในนาม ${CO.shortName}</div><div class="sig-zone">${(CO.showSig!==false&&CO.sigImg)?`<img src="${CO.sigImg}">`:''}</div><div class="sig-name">${(CO.showSig!==false&&!CO.sigImg)?'('+CO.seller+')':'&nbsp;'}</div><div class="sig-row"><span>${sigRight}</span><span>วันที่ ${docDate}</span></div></div>
@@ -7432,6 +7593,14 @@ function printDoc(type,id,opts){
   .sumt .grand td{font-weight:800;padding:10px 12px;font-size:14px;background:#f4f6f8;color:#1f2937;border-top:1.5px solid #cfd6dd}
   .sumt .grand td:first-child{color:#1f2937}
   .baht{text-align:left;font-size:12px;color:#5b6770;margin-top:12px;font-style:italic}
+  .ppqr{display:flex;gap:14px;align-items:center;border:1.5px solid #0A6EBD;border-radius:10px;padding:12px 14px;margin-top:16px;background:#F5FAFF;max-width:400px}
+  .ppqr-q{flex:none;width:120px;height:120px;background:#fff;padding:5px;border-radius:6px;box-sizing:border-box}
+  .ppqr-q svg{width:100%;height:100%;display:block}
+  .ppqr-i{font-size:12px;line-height:1.55;color:#1f2937}
+  .ppqr-h{font-weight:700;color:#0A6EBD;font-size:13px;margin-bottom:3px}
+  .ppqr-r{color:#52606d;font-size:11.5px}
+  .ppqr-amt{font-size:19px;font-weight:800;color:#0A6EBD;margin-top:5px;line-height:1.1}
+  .ppqr-n{font-size:9.5px;color:#9ca3af;margin-top:5px}
   .note{font-size:11px;color:#5b6770;margin:16px 0 0;padding:11px 14px;background:#f6f8fa;border-radius:8px;border-left:3px solid ${theme};}
   .ft{margin-top:auto;padding-top:34px;display:flex;justify-content:space-between;gap:60px;flex-shrink:0}
   .ft-col{flex:1;text-align:center}
@@ -8626,6 +8795,63 @@ function renderCashflow(){
     grp.append(w,lb); area.appendChild(grp);
     setTimeout(()=>{ b1.style.transition=b2.style.transition='height .6s'; b1.style.height=Math.round(g.in/mx*170)+'px'; b2.style.height=Math.round(g.out/mx*170)+'px'; },200);
   });
+  try{ renderCashflowForecast(); }catch(e){}
+}
+// ── พยากรณ์กระแสเงินสด 6 เดือนข้างหน้า ──
+function cashflowForecast(){
+  const months=6;
+  const base=new Date(); base.setDate(1); base.setHours(0,0,0,0);
+  const ymKey=d=>{ const dt=(typeof d==='string')?new Date(d):d; return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); };
+  const curYm=ymKey(base);
+  const TH=['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  const buckets=[];
+  for(let i=0;i<months;i++){ const dt=new Date(base.getFullYear(),base.getMonth()+i,1); const beShort=(dt.getFullYear()+543)%100; buckets.push({ym:ymKey(dt),short:TH[dt.getMonth()],label:TH[dt.getMonth()]+' '+beShort,inAR:0,inInst:0,outPay:0,outPO:0}); }
+  const idxOf=ym=>buckets.findIndex(b=>b.ym===ym);
+  const put=(ym,field,amt)=>{ let i=idxOf(ym); if(i<0){ i=(ym<curYm)?0:-1; } if(i<0)return; buckets[i][field]+=amt; };
+  // เงินเข้า: บิลค้างชำระ (ตามกำหนดชำระ; เกินกำหนด→เดือนแรก)
+  (DB.invoices||[]).forEach(inv=>{ if(inv.status==='ชำระแล้ว')return; const paid=inv.paidAmt!=null?inv.paidAmt:0; const bal=r2((+inv.amt||0)-paid); if(bal<=0.01)return; put(ymKey(inv.due||inv.date),'inAR',bal); });
+  // เงินเข้า: งวดใบแบ่งจ่ายที่ยังไม่ชำระ
+  (DB.installments||[]).forEach(r=>{ (r.rows||[]).forEach(row=>{ if(row.paid)return; const amt=+row.amt||0; if(amt<=0)return; put(ymKey(row.due||r.date),'inInst',amt); }); });
+  // เงินออก: เงินเดือนประจำ (พนักงานรายเดือน) — เกิดทุกเดือน
+  const monthlyPay=(DB.employees||[]).filter(e=>e.active&&e.payType==='monthly').reduce((s,e)=>s+(+e.rate||0),0);
+  buckets.forEach(b=>{ b.outPay=monthlyPay; });
+  // เงินออก: ใบสั่งซื้อค้างจ่าย → เดือนแรก
+  const openPO=(DB.po||[]).filter(p=>p.status==='รอรับของ').reduce((s,p)=>s+(+p.amt||0),0);
+  if(buckets[0]) buckets[0].outPO=openPO;
+  // ยอดเงินสดเริ่มต้น = เงินสด(1010)+ธนาคาร(1020)
+  let startBal=0;
+  try{ if(typeof acctInit==='function')acctInit(); const b=acctBalances(); const net=c=>{ const x=b[c]||{debit:0,credit:0}; return x.debit-x.credit; }; startBal=net('1010')+net('1020'); }catch(e){}
+  let run=r2(startBal);
+  buckets.forEach(b=>{ b.in=r2(b.inAR+b.inInst); b.out=r2(b.outPay+b.outPO); b.net=r2(b.in-b.out); run=r2(run+b.net); b.bal=run; });
+  return {startBal:r2(startBal),buckets,totalIn:r2(buckets.reduce((s,b)=>s+b.in,0)),totalOut:r2(buckets.reduce((s,b)=>s+b.out,0)),endBal:run,monthlyPay:r2(monthlyPay),openPO:r2(openPO)};
+}
+function renderCashflowForecast(){
+  const host=document.getElementById('cf-forecast'); if(!host) return;
+  const f=cashflowForecast();
+  const neg=f.buckets.some(b=>b.bal<0);
+  const kk=n=>{ n=+n||0; const a=Math.abs(n),s=n<0?'-':''; return a>=1e6?s+(a/1e6).toFixed(1)+'M':a>=1e3?s+Math.round(a/1e3)+'K':s+Math.round(a); };
+  const maxAbs=Math.max(1,...f.buckets.map(b=>Math.abs(b.bal)));
+  const bars=f.buckets.map(b=>{ const h=Math.max(4,Math.round(Math.abs(b.bal)/maxAbs*150)); const col=b.bal>=0?'#0F9D58':'#E53E3E';
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:185px">
+      <div style="font-size:9.5px;color:${col};font-weight:700;margin-bottom:4px">฿${kk(b.bal)}</div>
+      <div style="width:58%;height:${h}px;background:${col};border-radius:5px 5px 0 0"></div>
+      <div style="font-size:10px;color:var(--mu);margin-top:4px">${b.short}</div>
+    </div>`; }).join('');
+  const rows=f.buckets.map(b=>`<tr><td>${b.label}</td><td style="text-align:right;color:#0F9D58">${b.in>0?'฿'+fmt(b.in):'-'}</td><td style="text-align:right;color:#c0392b">${b.out>0?'฿'+fmt(b.out):'-'}</td><td style="text-align:right;font-weight:600;color:${b.net>=0?'#0F9D58':'#c0392b'}">${b.net>=0?'+':''}฿${fmt(b.net)}</td><td style="text-align:right;font-weight:700;color:${b.bal>=0?'var(--tx)':'#c0392b'}">฿${fmt(b.bal)}</td></tr>`).join('');
+  host.innerHTML=`
+    <div class="card-t" style="margin-bottom:6px">🔮 พยากรณ์กระแสเงินสด (6 เดือนข้างหน้า)</div>
+    <div style="font-size:11.5px;color:var(--mu);margin-bottom:14px">ประมาณการจาก บิลค้างชำระ + งวดใบแบ่งจ่าย (เงินเข้า) และ เงินเดือนประจำ + ใบสั่งซื้อค้างรับ (เงินออก) · เริ่มจากเงินสด+ธนาคารปัจจุบัน</div>
+    ${neg?`<div style="background:#FFF0F0;border:1px solid #f5c2c2;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-size:12.5px;color:#c0392b;font-weight:600">⚠️ เตือน: คาดว่าเงินสดจะติดลบในบางเดือน — ควรเร่งเก็บหนี้หรือเลื่อนรายจ่าย</div>`:''}
+    <div class="kpi-g" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+      <div class="kpi bl"><div class="kpi-ic bl">💰</div><div class="kpi-lb">เงินสดปัจจุบัน</div><div class="kpi-vl"><small>฿</small>${fmt(f.startBal)}</div></div>
+      <div class="kpi gn"><div class="kpi-ic gn">⬆️</div><div class="kpi-lb">เงินเข้าคาด (6 ด.)</div><div class="kpi-vl"><small>฿</small>${fmt(f.totalIn)}</div></div>
+      <div class="kpi rd"><div class="kpi-ic rd">⬇️</div><div class="kpi-lb">เงินออกคาด (6 ด.)</div><div class="kpi-vl"><small>฿</small>${fmt(f.totalOut)}</div></div>
+      <div class="kpi ${f.endBal>=0?'or':'rd'}"><div class="kpi-ic ${f.endBal>=0?'or':'rd'}">🏁</div><div class="kpi-lb">เงินสดสิ้นงวด (คาด)</div><div class="kpi-vl" style="${f.endBal<0?'color:#c0392b':''}"><small>฿</small>${fmt(f.endBal)}</div></div>
+    </div>
+    <div class="card" style="margin-bottom:16px"><div class="card-t" style="margin-bottom:10px">เงินสดคงเหลือคาดการณ์ (สิ้นเดือน)</div><div style="display:flex;align-items:flex-end;gap:6px;height:200px">${bars}</div></div>
+    <div class="tc"><div class="tc-hd"><div class="card-t">ตารางพยากรณ์รายเดือน</div><span style="font-size:11px;color:var(--mu)">เงินเดือนประจำ ฿${fmt(f.monthlyPay)}/ด. · PO ค้าง ฿${fmt(f.openPO)}</span></div>
+      <table><thead><tr><th>เดือน</th><th style="text-align:right">เงินเข้า</th><th style="text-align:right">เงินออก</th><th style="text-align:right">สุทธิ</th><th style="text-align:right">คงเหลือ (คาด)</th></tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
 }
 function exportCashflowCSV(){ if(!cfRows.length){toast('ไม่มีข้อมูล');return;} const csv='\uFEFFงบกระแสเงินสด\n\nงวด,เงินสดรับ,เงินสดจ่าย,สุทธิ,สะสม\n'+cfRows.map(r=>`"${r[0]}",${r[1]},${r[2]},${r[3]},${r[4]}`).join('\n'); dlCSV(csv,'งบกระแสเงินสด.csv'); }
 
@@ -8819,6 +9045,48 @@ function doClosePeriod(){
 
 // helper ดาวน์โหลด CSV ใช้ร่วม
 function dlCSV(csv,name){ const blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=name; a.click(); toast('📥 ส่งออกแล้ว'); }
+// ── ส่งออก Excel ทั้งระบบ (หลายชีต .xlsx) ──
+let _xlsxLoaded=false;
+function loadXLSX(){
+  if(_xlsxLoaded&&window.XLSX) return Promise.resolve();
+  return new Promise((res,rej)=>{
+    if(window.XLSX){ _xlsxLoaded=true; return res(); }
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload=()=>{ _xlsxLoaded=true; res(); };
+    s.onerror=()=>rej(new Error('โหลดไลบรารี Excel ไม่ได้ (เน็ต?)'));
+    document.head.appendChild(s);
+  });
+}
+async function exportAllExcel(){
+  toast('⏳ กำลังสร้างไฟล์ Excel...');
+  try{ await loadXLSX(); }catch(e){ toast('⚠️ '+(e.message||'โหลดไลบรารีไม่สำเร็จ')); return; }
+  try{
+    const XL=window.XLSX;
+    const wb=XL.utils.book_new();
+    const cn=id=>{ try{ return getCust(id).name||id||''; }catch(e){ return id||''; } };
+    const add=(name,rows)=>{ if(!rows||!rows.length) return; const ws=XL.utils.json_to_sheet(rows); XL.utils.book_append_sheet(wb,ws,String(name).slice(0,31)); };
+    const docRows=arr=>(arr||[]).map(r=>({'เลขที่':r.id,'วันที่':r.date,'ครบกำหนด':r.due||'','ลูกค้า':cn(r.cust),'ยอดเงิน':r.amt||0,'สถานะ':r.status||'','จำนวนรายการ':(r.items||[]).length}));
+    add('ใบเสนอราคา',docRows(DB.quotes));
+    add('ใบวางบิล-ใบแจ้งหนี้',docRows(DB.invoices));
+    add('ขายเงินสด',docRows(DB.cashsale));
+    add('ใบส่งสินค้า',docRows(DB.delivery));
+    add('ใบแบ่งจ่าย',(DB.installments||[]).map(r=>({'เลขที่':r.id,'วันที่':r.date,'ลูกค้า':cn(r.cust),'ยอดรวม':r.amt||(r.rows||[]).reduce((s,x)=>s+(+x.amt||0),0),'จำนวนงวด':(r.rows||[]).length,'ชำระแล้ว(งวด)':(r.rows||[]).filter(x=>x.paid).length})));
+    add('ใบสั่งซื้อ',(DB.po||[]).map(r=>({'เลขที่':r.id,'วันที่':r.date,'ผู้ขาย':cn(r.supp),'ยอดเงิน':r.amt||0,'สถานะ':r.status||''})));
+    add('รับสินค้า',(DB.receive||[]).map(r=>({'เลขที่':r.id,'วันที่':r.date,'ผู้ขาย':cn(r.supp),'ยอดเงิน':r.amt||0,'สถานะ':r.status||''})));
+    add('ค่าใช้จ่าย',(DB.expense||[]).map(r=>({'เลขที่':r.id,'วันที่':r.date,'รายการ':r.desc||'','หมวด':r.cat||'','จำนวนเงิน':r.amt||0,'สถานะ':r.status||''})));
+    add('เงินสดย่อย',(DB.pettycash||[]).map(r=>({'วันที่':r.date,'ประเภท':r.type==='in'?'รับเข้า':'จ่ายออก','รายการ':r.desc||'','หมวด':r.cat||'','จำนวนเงิน':r.amount||0})));
+    add('สมุดรายวัน',(DB.journal||[]).map(e=>({'เลขที่':e.id,'วันที่':e.date,'คำอธิบาย':e.desc||'','เดบิต':(e.lines||[]).reduce((s,l)=>s+(+l.debit||0),0),'เครดิต':(e.lines||[]).reduce((s,l)=>s+(+l.credit||0),0)})));
+    add('ภาษีหัก ณ ที่จ่าย',(DB.wht||[]).map(w=>({'วันที่':w.date,'ผู้ถูกหัก':w.payee,'เลขภาษี':w.payeeTax||'','ประเภท':w.type,'อัตรา(%)':w.rate,'ฐานภาษี':w.base,'ภาษีหัก':w.tax,'แบบ':'ภงด.'+w.form})));
+    add('สินค้า',(DB.products||[]).map(p=>({'รหัส':p.id,'ชื่อ':p.name,'รหัสสินค้า':p.code||'','หมวด':p.cat||'','ราคาทุน':p.buyPrice||0,'ราคาขาย':p.price||0,'คงเหลือ':p.track?(p.stock||0):'','หน่วย':p.unit||'','บาร์โค้ด':p.barcode||''})));
+    add('งาน',(DB.jobs||[]).map(j=>{ let cost=0,profit=0; try{cost=jobCostTotal(j);profit=jobProfit(j);}catch(e){} return {'รหัส':j.id,'งาน':j.title,'ลูกค้า':cn(j.cust),'มูลค่างาน':j.value||0,'งบประมาณ':j.budget||0,'ต้นทุนจริง':cost,'กำไร':profit}; }));
+    add('พนักงาน',(DB.employees||[]).map(e=>({'รหัส':e.id,'ชื่อ':e.name,'ตำแหน่ง':e.role||'','โทร':e.phone||'','ประเภทจ้าง':e.payType==='monthly'?'รายเดือน':'รายวัน','อัตรา':e.rate||0,'สถานะ':e.active?'ทำงาน':'พ้นสภาพ'})));
+    add('ลูกค้า-ผู้ขาย',(DB.contacts||[]).map(c=>({'รหัส':c.id,'ชื่อ':c.name,'ประเภท':c.type||'','โทร':c.phone||'','อีเมล':c.email||'','เลขภาษี':c.tax||'','ที่อยู่':c.addr||''})));
+    if(!wb.SheetNames||!wb.SheetNames.length){ toast('⚠️ ไม่มีข้อมูลให้ส่งออก'); return; }
+    XL.writeFile(wb,'FlowBiz-ข้อมูลทั้งระบบ-'+new Date().toISOString().slice(0,10)+'.xlsx');
+    toast('✅ ส่งออก Excel แล้ว ('+wb.SheetNames.length+' ชีต)');
+  }catch(e){ toast('⚠️ ส่งออกไม่สำเร็จ: '+(e.message||'ลองใหม่')); }
+}
 
 // ══════════════════════════════════════════════════════════
 // สรุปบัญชี (Summary) — กรองตามช่วงวันที่
