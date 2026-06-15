@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16i · 🛡️ ใบรับประกันงาน</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16o · 👷 ต้นทุนแรงงานต่อโปรเจกต์</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -407,6 +407,7 @@ tbody tr:hover td{background:#FAFBFD}
     <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="เมนู">☰</button>
     <div class="tb-title" id="tbTitle">🏠 ภาพรวมบริษัท</div>
     <div class="tb-act" id="tbAct">
+      <button class="nt" onclick="paymentQRTool()" aria-label="QR รับเงิน" title="QR รับเงิน">💸</button>
       <button class="nt" onclick="openSearch()" aria-label="ค้นหา">🔍</button>
       <button class="nt" onclick="openNotifications()">🔔<div class="nt-dot" id="nt-dot" style="display:none"></div></button>
       <div style="position:relative">
@@ -799,9 +800,12 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="kpi or"><div class="kpi-ic or">📆</div><div class="kpi-lb">รายวัน</div><div class="kpi-vl"><span id="emp-k3">0</span></div></div>
       <div class="kpi rd"><div class="kpi-ic rd">⏰</div><div class="kpi-lb">เข้างานวันนี้</div><div class="kpi-vl"><span id="emp-k4">0</span></div></div>
     </div>
+    <div id="hr-analytics" style="margin-bottom:14px"></div>
     <div class="fb" style="gap:8px;flex-wrap:wrap">
       <input class="fi" placeholder="🔍 ค้นหาพนักงาน..." id="emp-search" oninput="renderEmployees()" style="min-width:160px">
-      <button class="btn bo" style="margin-left:auto" onclick="openApplicationsList()">📨 ใบสมัคร</button>
+      <button class="btn bo" style="margin-left:auto" onclick="openAttendanceAnalytics()">📊 ลา/ขาด/สาย</button>
+      <button class="btn bo" onclick="openOrgChart()">🏢 ผังองค์กร</button>
+      <button class="btn bo" onclick="openApplicationsList()">📨 ใบสมัคร</button>
       <button class="btn bp" onclick="openEmployeeForm()">+ เพิ่มพนักงาน</button>
     </div>
     <div id="empGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:14px"></div>
@@ -946,7 +950,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="kpi or"><div class="kpi-ic or">🎯</div><div class="kpi-lb">เทียบงบ (ประหยัด/เกิน)</div><div class="kpi-vl"><small>฿</small><span id="jc-k-var">0</span></div></div>
     </div>
     <div class="tc">
-      <div class="tc-hd"><div class="card-t">กำไร-ขาดทุนรายงาน</div><div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--mu)">แตะงานเพื่อใส่ต้นทุน</span><button class="btn bo" style="font-size:12px;padding:6px 11px" onclick="printJobCostReport()">🖨️ พิมพ์รายงาน</button></div></div>
+      <div class="tc-hd"><div class="card-t">กำไร-ขาดทุนรายงาน</div><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:11px;color:var(--mu)">แตะงานเพื่อใส่ต้นทุน</span><button class="btn bo" style="font-size:12px;padding:6px 11px" onclick="openLaborCostReport()">👷 ค่าแรง/งาน</button><button class="btn bo" style="font-size:12px;padding:6px 11px" onclick="printJobCostReport()">🖨️ พิมพ์รายงาน</button></div></div>
       <table><thead><tr><th>งาน</th><th style="text-align:right">รายรับ</th><th style="text-align:right">ประมาณการ</th><th style="text-align:right">ต้นทุนจริง</th><th style="text-align:right">ผลต่างงบ</th><th style="text-align:right">กำไร</th><th style="text-align:right">%</th></tr></thead>
       <tbody id="jc-tbl"></tbody></table>
     </div>
@@ -1769,6 +1773,19 @@ function collectNotifications(){
   (DB.employees||[]).filter(e=>e.active&&e.payType==='monthly'&&e.payDay).forEach(e=>{
     const diff=e.payDay-dnow;
     if(diff>=0&&diff<=3) list.push({ic:'💵',t:'ใกล้วันจ่ายเงินเดือน',s:e.name+' · จ่ายวันที่ '+e.payDay+(diff===0?' (วันนี้)':' (อีก '+diff+' วัน)'),act:`closeModal();nav('payroll')`,pri:1});
+  });
+  (DB.employees||[]).filter(e=>e.active!==false&&e.startDate).forEach(e=>{
+    const s=new Date(e.startDate+'T00:00:00'); if(isNaN(s.getTime())) return;
+    const now=new Date();
+    let anniv=new Date(now.getFullYear(),s.getMonth(),s.getDate());
+    if(anniv<new Date(today+'T00:00:00')) anniv=new Date(now.getFullYear()+1,s.getMonth(),s.getDate());
+    const annivStr=`${anniv.getFullYear()}-${String(anniv.getMonth()+1).padStart(2,'0')}-${String(anniv.getDate()).padStart(2,'0')}`;
+    const yrs=anniv.getFullYear()-s.getFullYear();
+    if(yrs>=1&&annivStr<=in7) list.push({ic:'🎉',t:'ครบรอบการทำงาน',s:e.name+' · ครบ '+yrs+' ปี '+(annivStr===today?'(วันนี้)':'วันที่ '+fmtD(annivStr)),act:`closeModal();nav('employees')`,pri:2});
+  });
+  (DB.employees||[]).filter(e=>e.active!==false).forEach(e=>{
+    const p=(typeof empProbation==='function')?empProbation(e):null;
+    if(p&&p.inProbation&&p.daysLeft<=14&&p.daysLeft>=0) list.push({ic:'🧪',t:'ใกล้ครบทดลองงาน',s:e.name+' · เหลือ '+p.daysLeft+' วัน (ครบ '+fmtD(p.endStr)+')',act:`closeModal();nav('employees')`,pri:1});
   });
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
@@ -2731,6 +2748,73 @@ function updateQR(){
   const payload=promptPayPayload(PROMPTPAY_ID,amt);
   box.innerHTML=qrSVG(payload,180);
   const al=document.getElementById('pay-qr-amt'); if(al) al.textContent='฿'+fmt(amt);
+}
+// ── QR รับเงิน (พร้อมเพย์) สร้างเอง ระบุจำนวนเงิน + พิมพ์/แชร์ ──
+function paymentQRTool(){
+  const coName=(companyInfo&&companyInfo.name)||'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด';
+  const esc=s=>String(s||'').replace(/[<>]/g,'');
+  document.getElementById('ml-t').textContent='💸 QR รับเงิน (พร้อมเพย์)';
+  document.getElementById('ml-s').textContent='ให้ลูกค้าสแกนเพื่อโอนเงิน';
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fl2" style="margin-bottom:14px">
+      <div class="fg"><label class="flb">จำนวนเงิน (บาท)</label><input class="fi" type="number" inputmode="decimal" id="pqr-amt" placeholder="เว้นว่าง = ลูกค้าระบุเอง" oninput="pqrUpdate()"></div>
+      <div class="fg"><label class="flb">หมายเหตุ / อ้างอิง (ไม่บังคับ)</label><input class="fi" id="pqr-note" placeholder="เช่น มัดจำงาน JOB-001" oninput="pqrUpdate()"></div>
+    </div>
+    <div style="text-align:center;background:#fff;border:1px solid var(--bd);border-radius:14px;padding:18px">
+      <div style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:8px">📲 สแกนเพื่อจ่ายเงิน</div>
+      <div id="pqr-box" style="width:220px;height:220px;margin:0 auto"></div>
+      <div id="pqr-amt-lb" style="font-size:22px;font-weight:800;margin-top:10px"></div>
+      <div id="pqr-note-lb" style="font-size:12px;color:var(--mu)"></div>
+      <div style="font-size:12px;color:var(--tx);margin-top:8px;border-top:1px dashed var(--bd);padding-top:8px">พร้อมเพย์ <b>${PROMPTPAY_ID}</b><br><span style="font-size:11px;color:var(--mu)">${esc(coName)}</span></div>
+    </div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="printPaymentQR()">🖨️ พิมพ์ / แชร์ QR</button>`;
+  document.getElementById('ml').classList.add('op');
+  pqrUpdate();
+}
+function pqrUpdate(){
+  const amt=parseFloat(document.getElementById('pqr-amt')?.value)||0;
+  const note=(document.getElementById('pqr-note')?.value||'').trim();
+  const box=document.getElementById('pqr-box');
+  if(box&&typeof qrSVG==='function'&&typeof promptPayPayload==='function') box.innerHTML=qrSVG(promptPayPayload(PROMPTPAY_ID,amt),220);
+  const al=document.getElementById('pqr-amt-lb'); if(al){ al.textContent=amt>0?('฿'+fmt(amt)):'ระบุจำนวนเงินเอง'; al.style.color=amt>0?'var(--tx)':'var(--mu)'; al.style.fontSize=amt>0?'22px':'15px'; }
+  const nl=document.getElementById('pqr-note-lb'); if(nl) nl.textContent=note||'';
+}
+function printPaymentQR(){
+  const amt=parseFloat(document.getElementById('pqr-amt')?.value)||0;
+  const note=(document.getElementById('pqr-note')?.value||'').trim();
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',tel:'074896293',mobile:'0813062293'},companyInfo||{});
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const qr=(typeof qrSVG==='function'&&typeof promptPayPayload==='function')?qrSVG(promptPayPayload(PROMPTPAY_ID,amt),320):'';
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:18mm}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;background:#fff;text-align:center}
+.wrap{max-width:150mm;margin:0 auto;border:2px solid #0A6EBD;border-radius:14px;padding:26px 24px}
+.co{font-weight:700;font-size:16px;color:#0A6EBD}
+.sub{font-size:12px;color:#6b7280;margin-top:3px}
+.pp{display:inline-block;background:linear-gradient(120deg,#0A6EBD,#00C9A7);color:#fff;font-weight:700;font-size:13px;padding:6px 18px;border-radius:20px;margin:18px 0 8px;letter-spacing:1px}
+.qr{width:300px;height:300px;margin:8px auto}
+.qr svg{width:100%;height:100%;display:block}
+.amt{font-size:30px;font-weight:800;margin-top:12px}
+.amt.any{font-size:18px;color:#6b7280;font-weight:600}
+.note{font-size:13px;color:#52606d;margin-top:4px}
+.id{font-size:14px;margin-top:14px;border-top:1px dashed #cbd5e1;padding-top:12px}
+.foot{font-size:11px;color:#9ca3af;margin-top:18px}
+</style></head><body>
+  <div class="wrap">
+    <div class="co">${esc(CO.name)}</div>
+    <div class="sub">โทร. ${esc(CO.tel||'')}${CO.mobile?' · '+esc(CO.mobile):''}</div>
+    <div class="pp">พร้อมเพย์ · PromptPay</div>
+    <div style="font-size:14px;font-weight:600;color:#1f2937">สแกน QR เพื่อชำระเงิน</div>
+    <div class="qr">${qr}</div>
+    ${amt>0?`<div class="amt">฿${fmt(amt)}</div>`:`<div class="amt any">ผู้โอนระบุจำนวนเงินเอง</div>`}
+    ${note?`<div class="note">${esc(note)}</div>`:''}
+    <div class="id">พร้อมเพย์: <b>${esc(PROMPTPAY_ID)}</b><br><span style="font-size:12px;color:#6b7280">รองรับทุกแอปธนาคาร สแกนแล้วตรวจสอบชื่อบัญชีก่อนโอนทุกครั้ง</span></div>
+    <div class="foot">ออกโดยระบบ FlowBiz · ${new Date().toLocaleDateString('th-TH')}</div>
+  </div>
+</body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'QR รับเงิน'+(amt>0?' ฿'+fmt(amt):''),{});
+  else { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); } }
 }
 function confirmPayment(){
   const amt=parseFloat(document.getElementById('pay-amt')?.value)||0;
@@ -3920,6 +4004,49 @@ function renderJobCost(){
   }).join('')||'<tr><td colspan="7" style="text-align:center;color:var(--mu);padding:24px">ยังไม่มีงาน</td></tr>';
 }
 // ── รายงานกำไร-ขาดทุนรายโปรเจกต์ (A4 พิมพ์/PDF) ──
+// ── สรุปต้นทุนแรงงานต่อโปรเจกต์ (ค่าแรง + เหมาช่วง แยกตามทีม) ──
+function openLaborCostReport(){
+  const jobs=(DB.jobs||[]);
+  const rows=jobs.map(j=>{ const bt=(typeof jobCostByType==='function')?jobCostByType(j):{}; const labor=bt.labor||0; const subcon=bt.subcon||0; const total=jobCostTotal(j); const rev=j.value||0; return {j,labor,subcon,total,rev}; }).filter(r=>r.total>0||r.rev>0).sort((a,b)=>(b.labor+b.subcon)-(a.labor+a.subcon));
+  if(!rows.length){ toast('ยังไม่มีต้นทุนงาน'); return; }
+  const totLabor=rows.reduce((s,r)=>s+r.labor,0);
+  const totSubcon=rows.reduce((s,r)=>s+r.subcon,0);
+  const totCost=rows.reduce((s,r)=>s+r.total,0);
+  const totRev=rows.reduce((s,r)=>s+r.rev,0);
+  const laborPctCost=totCost>0?(totLabor/totCost*100):0;
+  const allLabor=totLabor+totSubcon;
+  const laborPctRev=totRev>0?(allLabor/totRev*100):0;
+  // แยกตามทีม/ผู้รับผิดชอบ (ค่าแรง+เหมาช่วง)
+  const byTeam={};
+  rows.forEach(r=>{ const lab=r.labor+r.subcon; if(lab>0){ const a=r.j.assignee||'ไม่ระบุทีม'; byTeam[a]=(byTeam[a]||0)+lab; } });
+  const teams=Object.entries(byTeam).sort((a,b)=>b[1]-a[1]);
+  const maxTeam=Math.max(1,...teams.map(t=>t[1]));
+  const teamBars=teams.map(([name,v])=>`<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span style="font-weight:500">${name}</span><span style="color:var(--mu)">฿${fmt(v)}</span></div><div style="height:7px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(v/maxTeam*100)}%;background:linear-gradient(90deg,#0A6EBD,#00C9A7);border-radius:4px"></div></div></div>`).join('')||'<div style="font-size:11.5px;color:var(--mu)">ยังไม่มีค่าแรงในงาน</div>';
+  const empRows=rows.map(r=>{ const lab=r.labor+r.subcon; const pct=r.total>0?(lab/r.total*100):0; const cn=getCust(r.j.cust).name;
+    return `<tr onclick="closeModal();setTimeout(()=>openJobDrawer('${r.j.id}'),120)" style="cursor:pointer">
+      <td style="font-weight:500">${r.j.title||r.j.id}<div style="font-size:10px;color:var(--mu)">${r.j.assignee||'-'}${cn?' · '+cn:''}</div></td>
+      <td style="text-align:right;color:#0A6EBD;font-weight:600">${r.labor>0?'฿'+fmt(r.labor):'-'}</td>
+      <td style="text-align:right;color:#8b5cf6">${r.subcon>0?'฿'+fmt(r.subcon):'-'}</td>
+      <td style="text-align:right">${r.total>0?'฿'+fmt(r.total):'-'}</td>
+      <td style="text-align:center;${pct>60?'color:var(--dg);font-weight:700':'font-weight:600'}">${r.total>0?pct.toFixed(0)+'%':'-'}</td>
+    </tr>`; }).join('');
+  document.getElementById('ml-t').textContent='👷 สรุปต้นทุนแรงงานต่อโปรเจกต์';
+  document.getElementById('ml-s').textContent=rows.length+' โปรเจกต์';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:#eef4ff;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#0A6EBD;font-weight:600">👷 ค่าแรงรวม (ของบริษัท)</div><div style="font-size:19px;font-weight:800;color:#0A6EBD;margin-top:2px">฿${fmt(totLabor)}</div><div style="font-size:10px;color:var(--mu)">${laborPctCost.toFixed(0)}% ของต้นทุนงานทั้งหมด</div></div>
+      <div style="background:#faf5ff;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#8b5cf6;font-weight:600">🔧 ผู้รับเหมาช่วงรวม</div><div style="font-size:19px;font-weight:800;color:#8b5cf6;margin-top:2px">฿${fmt(totSubcon)}</div><div style="font-size:10px;color:var(--mu)">จ้างภายนอก</div></div>
+      <div style="background:#f6fdf9;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#0F9D58;font-weight:600">💰 ต้นทุนแรงงานรวม</div><div style="font-size:19px;font-weight:800;color:#0F9D58;margin-top:2px">฿${fmt(allLabor)}</div><div style="font-size:10px;color:var(--mu)">ค่าแรง + เหมาช่วง</div></div>
+      <div style="background:#fff8ec;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#b8860b;font-weight:600">📊 % ของรายได้</div><div style="font-size:19px;font-weight:800;color:#b8860b;margin-top:2px">${laborPctRev.toFixed(1)}%</div><div style="font-size:10px;color:var(--mu)">แรงงาน ฿${fmt(allLabor)} / รายได้ ฿${fmt(totRev)}</div></div>
+    </div>
+    <div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">🧑‍🔧 แยกตามทีม/ผู้รับผิดชอบ</div>${teamBars}</div>
+    <div class="tc"><div class="tc-hd"><div class="card-t">รายโปรเจกต์</div><span style="font-size:10.5px;color:var(--mu)">เรียงจากค่าแรงมากสุด · แตะเปิดงาน</span></div>
+      <table><thead><tr><th>งาน</th><th style="text-align:right">ค่าแรง</th><th style="text-align:right">เหมาช่วง</th><th style="text-align:right">ต้นทุนรวม</th><th style="text-align:center">%แรงงาน</th></tr></thead><tbody>${empRows}</tbody></table>
+    </div>
+    <div style="font-size:10.5px;color:var(--mu);margin-top:10px">* ดึงจากต้นทุนที่บันทึกในแต่ละงาน (ประเภท 👷 ค่าแรง และ 🔧 ผู้รับเหมาช่วง) · %แรงงาน = แรงงาน ÷ ต้นทุนรวมของงาน</div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
 function printJobCostReport(){
   const jobs=[...(DB.jobs||[])].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
   if(!jobs.length){ toast('ยังไม่มีงาน'); return; }
@@ -5976,6 +6103,181 @@ function attToday(empId){ const d=new Date().toISOString().slice(0,10); return (
 function fmtTime(iso){ if(!iso) return '-'; const d=new Date(iso); if(isNaN(d)) return '-'; return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); }
 
 // ── จัดการพนักงาน ──
+// ── วิเคราะห์การลา/ขาด/มาสาย รายเดือน ──
+function workdaysInPeriod(offDays,startStr,endStr){
+  const off=Array.isArray(offDays)?offDays:[];
+  const s=new Date(startStr+'T00:00:00'), e=new Date(endStr+'T00:00:00');
+  if(isNaN(s.getTime())||isNaN(e.getTime())||s>e) return 0;
+  let n=0; for(let d=new Date(s); d<=e; d.setDate(d.getDate()+1)){ if(!off.includes(d.getDay())) n++; }
+  return n;
+}
+let attAnalyticsMonth=null;
+function attAnalyticsNav(delta){ const p=(attAnalyticsMonth||new Date().toISOString().slice(0,7)).split('-').map(Number); const d=new Date(p[0],p[1]-1+delta,1); openAttendanceAnalytics(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
+function openAttendanceAnalytics(month){
+  attAnalyticsMonth=month||attAnalyticsMonth||new Date().toISOString().slice(0,7);
+  const ym=attAnalyticsMonth;
+  const [yy,mm]=ym.split('-').map(Number);
+  const monthEndStr=`${ym}-${String(new Date(yy,mm,0).getDate()).padStart(2,'0')}`;
+  const todayStr=new Date().toISOString().slice(0,10);
+  const periodEnd=(monthEndStr<todayStr)?monthEndStr:todayStr; // อนาคตไม่นับ
+  const emps=(DB.employees||[]).filter(e=>e.active!==false);
+  const toMin=t=>{ const m=String(t||'').match(/(\d+):(\d+)/); return m?(+m[1]*60+ +m[2]):null; };
+  const mLabel=(typeof pcMonthLabel==='function')?pcMonthLabel(ym):ym;
+  // ลาแยกตามประเภท + ต่อคน (วันทับซ้อนในเดือน)
+  const ds=new Date(ym+'-01T00:00:00'), de=new Date(monthEndStr+'T00:00:00');
+  const leaveByType={}, leaveByEmp={};
+  (DB.leaves||[]).filter(l=>l.status==='approved').forEach(l=>{
+    const lf=new Date(String(l.from||'')+'T00:00:00'), lt=new Date(String(l.to||l.from||'')+'T00:00:00');
+    if(isNaN(lf.getTime())||isNaN(lt.getTime())) return;
+    const a=lf>ds?lf:ds, b=lt<de?lt:de; if(a>b) return;
+    const od=Math.round((b-a)/86400000)+1;
+    leaveByType[l.type]=(leaveByType[l.type]||0)+od; leaveByEmp[l.empId]=(leaveByEmp[l.empId]||0)+od;
+  });
+  const rows=emps.map(e=>{
+    const recs=(DB.attendance||[]).filter(a=>a.empId===e.id&&String(a.date).startsWith(ym)&&a.inTime);
+    const present=recs.length;
+    const wsMin=(toMin(e.workStart||'08:00')||480)+(e.lateGrace!=null?+e.lateGrace:0);
+    let lateCount=0, lateMin=0;
+    recs.forEach(a=>{ const im=toMin(a.inTime); if(im!=null&&im>wsMin){ lateCount++; lateMin+=(im-wsMin); } });
+    const leaveDays=leaveByEmp[e.id]||0;
+    const expected=workdaysInPeriod(e.offDays,ym+'-01',periodEnd);
+    const absent=Math.max(0,expected-present-leaveDays);
+    return {e,present,lateCount,lateMin,leaveDays,absent};
+  }).sort((a,b)=>(b.lateCount+b.absent+b.leaveDays)-(a.lateCount+a.absent+a.leaveDays));
+  const totLeave=rows.reduce((s,r)=>s+r.leaveDays,0);
+  const totLateCount=rows.reduce((s,r)=>s+r.lateCount,0);
+  const totLateMin=rows.reduce((s,r)=>s+r.lateMin,0);
+  const totAbsent=rows.reduce((s,r)=>s+r.absent,0);
+  const ltLabel=t=>(typeof leaveTypeLabel==='function')?leaveTypeLabel(t):t;
+  const leaveTypeRows=Object.entries(leaveByType).sort((a,b)=>b[1]-a[1]).map(([t,n])=>`<span style="display:inline-block;background:#faf5ff;color:#8b5cf6;border-radius:20px;padding:3px 11px;font-size:11.5px;margin:2px 3px 2px 0">${ltLabel(t)} ${n} วัน</span>`).join('')||'<span style="font-size:11.5px;color:var(--mu)">ไม่มีการลาในเดือนนี้</span>';
+  const empRows=rows.map(r=>`<tr>
+    <td style="font-weight:500">${r.e.name}<div style="font-size:10px;color:var(--mu)">${r.e.role||''}</div></td>
+    <td style="text-align:center">${r.present}</td>
+    <td style="text-align:center;${r.lateCount>0?'color:#d97706;font-weight:600':''}">${r.lateCount?r.lateCount+' ครั้ง':'-'}${r.lateMin>0?`<div style="font-size:10px;color:var(--mu)">${r.lateMin} นาที</div>`:''}</td>
+    <td style="text-align:center;${r.leaveDays>0?'color:#8b5cf6;font-weight:600':''}">${r.leaveDays||'-'}</td>
+    <td style="text-align:center;${r.absent>0?'color:var(--dg);font-weight:700':''}">${r.absent||'-'}</td>
+  </tr>`).join('')||'<tr><td colspan="5" style="text-align:center;color:var(--mu);padding:18px">ไม่มีพนักงาน</td></tr>';
+  document.getElementById('ml-t').textContent='📊 วิเคราะห์ลา / ขาด / มาสาย';
+  document.getElementById('ml-s').textContent=mLabel;
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:14px">
+      <button class="btn bo" style="padding:6px 12px" onclick="attAnalyticsNav(-1)">‹ ก่อนหน้า</button>
+      <div style="font-weight:700;font-size:14px;min-width:120px;text-align:center">${mLabel}</div>
+      <button class="btn bo" style="padding:6px 12px" onclick="attAnalyticsNav(1)">ถัดไป ›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:#faf5ff;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#8b5cf6">${totLeave}</div><div style="font-size:10px;color:var(--mu)">วันลารวม</div></div>
+      <div style="background:#fff7ed;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#d97706">${totLateCount}</div><div style="font-size:10px;color:var(--mu)">มาสาย (ครั้ง)</div></div>
+      <div style="background:#fff7ed;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#d97706">${totLateMin}</div><div style="font-size:10px;color:var(--mu)">นาทีสายรวม</div></div>
+      <div style="background:#fef2f2;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:var(--dg)">${totAbsent}</div><div style="font-size:10px;color:var(--mu)">ขาดงาน (ประมาณ)</div></div>
+    </div>
+    <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">🏖️ การลาแยกตามประเภท</div>${leaveTypeRows}</div>
+    <div class="tc"><div class="tc-hd"><div class="card-t">รายคน</div><span style="font-size:10.5px;color:var(--mu)">เรียงจากที่ต้องดูแลมากสุด</span></div>
+      <table><thead><tr><th>พนักงาน</th><th style="text-align:center">มาทำงาน</th><th style="text-align:center">มาสาย</th><th style="text-align:center">ลา(วัน)</th><th style="text-align:center">ขาด</th></tr></thead><tbody>${empRows}</tbody></table>
+    </div>
+    <div style="font-size:10.5px;color:var(--mu);margin-top:10px">* "ขาดงาน" ประมาณจาก วันทำงานที่ควรเข้า (ตามวันหยุดประจำ ถึงวันนี้) − วันมาทำงาน − วันลา · มาสายนับเมื่อเข้างานเกินเวลา+ผ่อนผัน</div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+// ── ผังองค์กร (Org Chart): บริษัท → ผู้บริหาร → แผนก → พนักงาน ──
+function openOrgChart(){
+  const emps=(DB.employees||[]).filter(e=>e.active!==false);
+  if(!emps.length){ toast('ยังไม่มีพนักงาน'); return; }
+  const isHead=e=>e.accessLevel==='full'||e.accessLevel==='manager'||e.isAdmin||/หัวหน้า|ผู้จัดการ|ผู้บริหาร|เจ้าของ|ผู้อำนวยการ|กรรมการ/.test(e.role||'');
+  const owner=emps.find(e=>e.accessLevel==='full'||e.isAdmin)||emps.find(e=>/เจ้าของ|กรรมการ|ผู้บริหาร|ผู้อำนวยการ/.test(e.role||''));
+  const rest=emps.filter(e=>e!==owner);
+  const deptMap={};
+  rest.forEach(e=>{ const d=e.dept||'ไม่ระบุแผนก'; (deptMap[d]=deptMap[d]||[]).push(e); });
+  const depts=Object.entries(deptMap).sort((a,b)=>b[1].length-a[1].length);
+  depts.forEach(([,arr])=>arr.sort((a,b)=>(isHead(b)?1:0)-(isHead(a)?1:0)||(a.name||'').localeCompare(b.name||'')));
+  const coName=(companyInfo&&companyInfo.name)||'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด';
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const avatar=(e,size)=>e.photo?`<img src="${e.photo}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;flex:none">`:`<div style="width:${size}px;height:${size}px;border-radius:50%;background:linear-gradient(135deg,#0A6EBD,#00C9A7);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:${Math.round(size*0.36)}px;flex:none">${esc(initials(e.name))}</div>`;
+  const empNode=(e,head)=>`<div onclick="closeModal();setTimeout(()=>openEmpDrawer('${e.id}'),120)" style="display:flex;align-items:center;gap:8px;background:${head?'#EAF4FF':'#fff'};border:1px solid ${head?'#b9dcff':'var(--bd)'};border-radius:10px;padding:7px 9px;cursor:pointer;min-width:148px">${avatar(e,30)}<div style="min-width:0"><div style="font-size:12px;font-weight:${head?700:600};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</div><div style="font-size:10.5px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px">${esc(e.role||'พนักงาน')}</div></div></div>`;
+  const deptCol=([name,arr])=>`<div style="flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 4px">
+    <div style="background:#0D1B2A;color:#fff;border-radius:9px;padding:6px 14px;font-size:12px;font-weight:700;white-space:nowrap">${esc(name)} <span style="opacity:.7;font-weight:400">(${arr.length})</span></div>
+    <div style="width:2px;height:12px;background:#cbd5e1"></div>
+    <div style="display:flex;flex-direction:column;gap:7px">${arr.map(e=>empNode(e,isHead(e))).join('')}</div>
+  </div>`;
+  document.getElementById('ml-t').textContent='🏢 ผังองค์กร';
+  document.getElementById('ml-s').textContent=emps.length+' คน · '+depts.length+' แผนก';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="text-align:center;margin-bottom:4px">
+      <div style="display:inline-block;background:linear-gradient(120deg,#0A6EBD,#00C9A7);color:#fff;border-radius:12px;padding:10px 22px;font-weight:700;font-size:13.5px;max-width:100%">${esc(coName)}</div>
+      ${owner?`<div style="width:2px;height:12px;background:#cbd5e1;margin:4px auto"></div><div style="display:flex;justify-content:center">${empNode(owner,true)}</div>`:''}
+    </div>
+    <div style="width:2px;height:12px;background:#cbd5e1;margin:4px auto"></div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px"><div style="display:flex;gap:6px;justify-content:flex-start;min-width:min-content;padding:4px;align-items:flex-start">${depts.map(deptCol).join('')}</div></div>
+    <div style="font-size:11px;color:var(--mu);text-align:center;margin-top:10px">แตะชื่อเพื่อดูรายละเอียด · กล่องฟ้า 🔵 = หัวหน้า/ผู้บังคับบัญชา</div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+// ── HR: อายุงาน + วิเคราะห์ทรัพยากรบุคคล ──
+function empTenure(e){
+  if(!e||!e.startDate) return null;
+  const s=new Date(e.startDate+'T00:00:00'); if(isNaN(s.getTime())) return null;
+  const now=new Date();
+  let months=(now.getFullYear()-s.getFullYear())*12+(now.getMonth()-s.getMonth());
+  if(now.getDate()<s.getDate()) months--;
+  if(months<0) months=0;
+  const y=Math.floor(months/12), m=months%12;
+  let label; if(y>0&&m>0) label=y+' ปี '+m+' เดือน'; else if(y>0) label=y+' ปี'; else if(m>0) label=m+' เดือน'; else label='< 1 เดือน';
+  return {months,years:y,remMonths:m,label};
+}
+function empAnnivThisMonth(e){
+  if(!e||!e.startDate) return null;
+  const s=new Date(e.startDate+'T00:00:00'); if(isNaN(s.getTime())) return null;
+  const now=new Date(); if(s.getMonth()!==now.getMonth()) return null;
+  const yrs=now.getFullYear()-s.getFullYear(); return yrs>=1?yrs:null;
+}
+function empProbation(e){
+  if(!e||!e.startDate) return null;
+  const days=(e.probDays!=null)?e.probDays:119;
+  if(days<=0) return null;
+  const s=new Date(e.startDate+'T00:00:00'); if(isNaN(s.getTime())) return null;
+  const end=new Date(s.getTime()); end.setDate(end.getDate()+days);
+  const now=new Date(); now.setHours(0,0,0,0);
+  const daysLeft=Math.ceil((end-now)/86400000);
+  return {days,end,endStr:iso(end),inProbation:now<end,daysLeft};
+}
+function renderHRAnalytics(){
+  const host=document.getElementById('hr-analytics'); if(!host) return;
+  const emps=(DB.employees||[]);
+  const active=emps.filter(e=>e.active!==false);
+  if(!active.length){ host.innerHTML=''; return; }
+  const monthlyEmps=active.filter(e=>e.payType==='monthly');
+  const dailyEmps=active.filter(e=>e.payType!=='monthly');
+  const monthlyPayroll=monthlyEmps.reduce((s,e)=>s+(+e.rate||0),0);
+  const dailyPerDay=dailyEmps.reduce((s,e)=>s+(+e.rate||0),0);
+  const deptMap={};
+  active.forEach(e=>{ const d=e.dept||'ไม่ระบุแผนก'; if(!deptMap[d]) deptMap[d]={n:0,pay:0}; deptMap[d].n++; deptMap[d].pay+=(e.payType==='monthly'?(+e.rate||0):0); });
+  const depts=Object.entries(deptMap).sort((a,b)=>b[1].n-a[1].n);
+  const maxN=Math.max(1,...depts.map(d=>d[1].n));
+  const tenures=active.map(e=>empTenure(e)).filter(Boolean);
+  const avgMonths=tenures.length?Math.round(tenures.reduce((s,t)=>s+t.months,0)/tenures.length):0;
+  const avgLabel=avgMonths>=12?(Math.floor(avgMonths/12)+' ปี '+(avgMonths%12)+' เดือน'):(avgMonths+' เดือน');
+  let longest=null; active.forEach(e=>{ const t=empTenure(e); if(t&&(!longest||t.months>longest.months)) longest={e:e,months:t.months,label:t.label}; });
+  const annivs=active.map(e=>{ const y=empAnnivThisMonth(e); return y?{e:e,y:y}:null; }).filter(Boolean).sort((a,b)=>b.y-a.y);
+  const deptBars=depts.map(([name,d])=>`<div style="margin-bottom:7px"><div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:3px"><span style="font-weight:500">${name}</span><span style="color:var(--mu)">${d.n} คน${d.pay>0?' · ฿'+fmt(d.pay)+'/ด.':''}</span></div><div style="height:7px;background:var(--bg);border-radius:4px;overflow:hidden"><div style="height:100%;width:${Math.round(d.n/maxN*100)}%;background:linear-gradient(90deg,#0A6EBD,#00C9A7);border-radius:4px"></div></div></div>`).join('');
+  const probList=active.map(e=>{ const p=(typeof empProbation==='function')?empProbation(e):null; return (p&&p.inProbation)?{e:e,p:p}:null; }).filter(Boolean).sort((a,b)=>a.p.daysLeft-b.p.daysLeft);
+  const probSoon=probList.filter(x=>x.p.daysLeft<=14);
+  host.innerHTML=`<div class="card">
+    <div class="card-t" style="margin-bottom:12px">📊 ภาพรวมทรัพยากรบุคคล</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px">
+      <div style="background:#f6fdf9;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#0F9D58;font-weight:600">💵 ค่าจ้างประจำ/เดือน</div><div style="font-size:18px;font-weight:800;color:#0F9D58;margin-top:2px">฿${fmt(monthlyPayroll)}</div><div style="font-size:10px;color:var(--mu)">${monthlyEmps.length} คน รายเดือน</div></div>
+      <div style="background:#fff8ec;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#b8860b;font-weight:600">📆 ค่าแรงรายวันรวม</div><div style="font-size:18px;font-weight:800;color:#b8860b;margin-top:2px">฿${fmt(dailyPerDay)}<span style="font-size:11px">/วัน</span></div><div style="font-size:10px;color:var(--mu)">${dailyEmps.length} คน รายวัน</div></div>
+      <div style="background:#eef4ff;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:var(--p);font-weight:600">⏳ อายุงานเฉลี่ย</div><div style="font-size:18px;font-weight:800;color:var(--p);margin-top:2px">${avgLabel}</div><div style="font-size:10px;color:var(--mu)">${active.length} คนทำงานอยู่</div></div>
+      <div style="background:#fff7ed;border-radius:11px;padding:11px 13px"><div style="font-size:10.5px;color:#d97706;font-weight:600">🧪 อยู่ระหว่างทดลองงาน</div><div style="font-size:18px;font-weight:800;color:#d97706;margin-top:2px">${probList.length} คน</div><div style="font-size:10px;color:var(--mu)">${probSoon.length?probSoon.length+' คนใกล้ครบ (≤14 วัน)':'—'}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <div><div style="font-size:12px;font-weight:700;margin-bottom:8px">🏢 แยกตามแผนก</div>${deptBars||'<div style="font-size:11px;color:var(--mu)">—</div>'}</div>
+      <div>
+        ${annivs.length?`<div style="font-size:12px;font-weight:700;margin-bottom:8px">🎉 ครบรอบทำงานเดือนนี้</div>${annivs.slice(0,5).map(a=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12px"><span style="font-weight:500">${a.e.name}</span><span style="color:#b8860b;font-weight:700">ครบ ${a.y} ปี</span></div>`).join('')}`:`<div style="font-size:12px;font-weight:700;margin-bottom:8px">⭐ พนักงานอาวุโสสุด</div>${longest?`<div style="background:var(--bg);border-radius:10px;padding:10px;font-size:12px"><div style="font-weight:600">${longest.e.name}</div><div style="color:var(--mu);font-size:11px">${longest.e.role||''} · อายุงาน ${longest.label}</div></div>`:'<div style="font-size:11px;color:var(--mu)">—</div>'}`}
+      </div>
+    </div>
+    ${probSoon.length?`<div style="margin-top:14px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;padding:10px 13px"><div style="font-size:12px;font-weight:700;color:#d97706;margin-bottom:6px">⏳ ใกล้ครบทดลองงาน — ควรตัดสินใจก่อนกำหนด</div>${probSoon.map(x=>`<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="font-weight:500">${x.e.name}</span><span style="color:#d97706;font-weight:600">เหลือ ${x.p.daysLeft} วัน · ${fmtD(x.p.endStr)}</span></div>`).join('')}</div>`:''}
+  </div>`;
+}
 function renderEmployees(){
   const emps=DB.employees||[];
   const q=(document.getElementById('emp-search')?.value||'').toLowerCase();
@@ -5990,19 +6292,22 @@ function renderEmployees(){
   grid.innerHTML=list.map(e=>{
     const att=attToday(e.id);
     const statusDot=att&&att.inTime&&!att.outTime?'<span style="color:var(--ok);font-weight:600">🟢 อยู่ในงาน</span>':att&&att.outTime?'<span style="color:var(--mu)">⚪ ออกงานแล้ว</span>':'<span style="color:var(--mu)">⚪ ยังไม่เข้างาน</span>';
+    const tn=(typeof empTenure==='function')?empTenure(e):null; const annivYr=(typeof empAnnivThisMonth==='function')?empAnnivThisMonth(e):null; const prob=(typeof empProbation==='function')?empProbation(e):null;
     return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openEmpDrawer('${e.id}')">
       <div style="background:linear-gradient(135deg,#0A6EBD,#00C9A7);padding:14px;color:#fff;display:flex;align-items:center;gap:12px">
         ${e.photo?`<img src="${e.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.5)">`:`<div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initials(e.name)}</div>`}
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div><div style="font-size:12px;opacity:.9">${e.role||'-'}</div></div>
-        ${!e.active?'<span class="badge" style="background:#fff;color:var(--dg)">พักงาน</span>':''}
+        ${prob&&prob.inProbation?`<span class="badge" style="background:#fff;color:#d97706" title="ทดลองงาน เหลือ ${prob.daysLeft} วัน">⏳ ทดลองงาน</span>`:''}${annivYr?`<span class="badge" style="background:#fff;color:#b8860b" title="ครบรอบทำงาน">🎉 ${annivYr} ปี</span>`:''}${!e.active?'<span class="badge" style="background:#fff;color:var(--dg)">พักงาน</span>':''}
       </div>
       <div style="padding:12px;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px">
         <span style="color:var(--mu)">รหัส</span><span style="font-weight:500">${e.id}</span>
         <span style="color:var(--mu)">โทร</span><span>${e.phone||'-'}</span>
         <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+'/เดือน':'฿'+fmt(e.rate)+'/วัน'}</span>
+        ${tn?`<span style="color:var(--mu)">อายุงาน</span><span style="font-weight:500">${tn.label}</span>`:''}
         <span style="color:var(--mu)">สถานะวันนี้</span><span>${statusDot}</span>
       </div></div>`;
   }).join('');
+  try{ renderHRAnalytics(); }catch(err){}
 }
 function openEmployeeForm(id){
   const e=id?empById(id):null;
@@ -6031,6 +6336,7 @@ function openEmployeeForm(id){
        <div class="fg"><label class="flb">แผนก</label><input class="fi" id="ef-dept" value="${v('dept')}" placeholder="ช่าง / ออฟฟิศ"></div>
        <div class="fg"><label class="flb">เบอร์โทร</label><input class="fi" id="ef-phone" value="${v('phone')}" placeholder="08x-xxx-xxxx"></div>
        <div class="fg"><label class="flb">วันที่เริ่มงาน</label><input class="fi" type="date" id="ef-start" value="${v('startDate')}"></div>
+       <div class="fg"><label class="flb">ทดลองงาน (วัน)</label><input class="fi" type="number" id="ef-prob" value="${v('probDays')||'119'}" placeholder="119" min="0"></div>
      </div>
      <div class="fg" style="margin-top:8px"><label class="flb">เลขบัตรประชาชน</label><input class="fi" id="ef-idcard" value="${v('idCard')}" placeholder="x-xxxx-xxxxx-xx-x"></div>
      <div class="fg" style="margin-top:8px"><label class="flb">ที่อยู่</label><input class="fi" id="ef-addr" value="${v('addr')}" placeholder="ที่อยู่พนักงาน"></div>
@@ -6140,7 +6446,7 @@ function saveEmployee(){
   const rec={
     id: empEditId||nextId('employees'),
     name, role:g('ef-role').value.trim(), dept:g('ef-dept').value.trim(),
-    phone:g('ef-phone').value.trim(), startDate:g('ef-start').value, idCard:g('ef-idcard').value.trim(),
+    phone:g('ef-phone').value.trim(), startDate:g('ef-start').value, probDays:parseInt(g('ef-prob')?g('ef-prob').value:'')||119, idCard:g('ef-idcard').value.trim(),
     addr:g('ef-addr').value.trim(), emgName:g('ef-emg').value.trim(), emgPhone:g('ef-emgphone').value.trim(),
     bankName:g('ef-bank').value.trim(), bankAcc:g('ef-bankacc').value.trim(), bankAccName:g('ef-bankname').value.trim(),
     payType:g('ef-paytype').value, payCycle:g('ef-paycycle')?g('ef-paycycle').value:'', rate:num('ef-rate'), normalHours:num('ef-normalhours')||8, payDay:num('ef-payday')||30,
@@ -6168,6 +6474,67 @@ function hrPrint(html,title){ if(typeof showPrintPreview==='function') showPrint
 function empAvgEval(e){ const ev=(e&&e.evals)||[]; if(!ev.length) return null; return ev.reduce((s,x)=>s+(x.avg||0),0)/ev.length; }
 
 // เมนูเอกสารของพนักงาน (พิมพ์ + แนบไฟล์)
+// ── บัตรพนักงาน (Employee ID Card) ขนาด CR80 หน้า+หลัง + QR ──
+function printEmpIdCard(id){
+  const e=empById(id); if(!e){ toast('ไม่พบพนักงาน'); return; }
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293'},companyInfo||{});
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const photo=e.photo?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0A6EBD,#00C9A7);color:#fff;font-size:7mm;font-weight:800">${esc(initials(e.name))}</div>`;
+  const qr=(typeof qrSVG==='function')?qrSVG(String(e.id),60):'';
+  const coShort=String(CO.name||'').replace(/^บริษัท\s*/,'').replace(/\s*\(.*\)\s*$/,'').replace(/\s*จำกัด.*$/,'จำกัด');
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:16mm}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{background:#fff;display:flex;flex-direction:column;align-items:center;gap:5mm;padding-top:6mm}
+.lbl{font-size:9px;color:#9ca3af;letter-spacing:.5px}
+.card{width:85.6mm;height:54mm;border-radius:3.5mm;overflow:hidden;box-shadow:0 1px 6px rgba(0,0,0,.18);border:1px solid #e5e7eb;position:relative;background:#fff;color:#1f2937}
+.f-hd{height:13mm;background:linear-gradient(120deg,#0A6EBD,#00C9A7);color:#fff;display:flex;align-items:center;padding:0 4mm;gap:2.2mm}
+.f-hd .logo{width:7.5mm;height:7.5mm;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:3.4mm;font-weight:800;flex:none}
+.f-hd .nm{font-size:2.7mm;font-weight:700;line-height:1.15}
+.f-body{display:flex;padding:3mm 4mm;gap:3.5mm}
+.f-photo{width:20mm;height:25mm;border-radius:2mm;overflow:hidden;border:1px solid #e5e7eb;flex:none}
+.f-info{flex:1;min-width:0;padding-top:0.5mm}
+.f-info .name{font-size:4mm;font-weight:800;line-height:1.2}
+.f-info .role{font-size:2.7mm;color:#52606d;margin-top:0.6mm}
+.f-info .id{font-size:2.9mm;font-weight:700;color:#0A6EBD;margin-top:1.6mm;letter-spacing:.3px}
+.f-info .meta{font-size:2.3mm;color:#6b7280;margin-top:0.8mm}
+.f-qr{position:absolute;right:4mm;bottom:7mm;width:15mm;height:15mm}
+.f-qr svg{width:100%;height:100%;display:block}
+.f-foot{position:absolute;left:0;bottom:0;width:100%;height:5mm;background:#0D1B2A;color:#fff;font-size:2mm;display:flex;align-items:center;justify-content:center;letter-spacing:.5px}
+.b{padding:4mm 5mm;font-size:2.6mm;line-height:1.5;color:#374151;height:100%;display:flex;flex-direction:column}
+.b .t{font-size:2.7mm;font-weight:700;color:#0A6EBD;margin-bottom:1.2mm}
+.b .row{margin-bottom:1.4mm}
+.b .foot{margin-top:auto;font-size:2.2mm;color:#6b7280;border-top:1px solid #e5e7eb;padding-top:1.4mm;line-height:1.45}
+</style></head><body>
+  <div class="lbl">— ด้านหน้า (FRONT) —</div>
+  <div class="card">
+    <div class="f-hd"><div class="logo">WK</div><div class="nm">${esc(coShort)}<br><span style="font-size:1.9mm;opacity:.92;font-weight:400">บัตรประจำตัวพนักงาน · EMPLOYEE ID</span></div></div>
+    <div class="f-body">
+      <div class="f-photo">${photo}</div>
+      <div class="f-info">
+        <div class="name">${esc(e.name)}</div>
+        <div class="role">${esc(e.role||'พนักงาน')}${e.dept?' · '+esc(e.dept):''}</div>
+        <div class="id">รหัส ${esc(e.id)}</div>
+        ${e.phone?`<div class="meta">📞 ${esc(e.phone)}</div>`:''}
+        ${e.startDate?`<div class="meta">เริ่มงาน ${fmtD(e.startDate)}</div>`:''}
+      </div>
+    </div>
+    <div class="f-qr">${qr}</div>
+    <div class="f-foot">โทร. ${esc(CO.tel||'')}${CO.mobile?'  ·  '+esc(CO.mobile):''}</div>
+  </div>
+  <div class="lbl">— ด้านหลัง (BACK) —</div>
+  <div class="card">
+    <div class="b">
+      <div class="t">${esc(CO.name)}</div>
+      <div class="row" style="font-size:2.4mm;color:#52606d">ผู้ถือบัตรนี้เป็นพนักงานของบริษัทฯ บัตรนี้ใช้แสดงตนภายในบริษัทเท่านั้น ห้ามผู้อื่นนำไปใช้</div>
+      ${(e.emgName||e.emgPhone)?`<div class="row"><b>ติดต่อฉุกเฉิน:</b> ${esc(e.emgName||'')} ${esc(e.emgPhone||'')}</div>`:''}
+      <div class="foot">หากพบบัตรนี้ กรุณาส่งคืน:<br>${esc(CO.addr)}<br>โทร. ${esc(CO.tel||'')}${CO.mobile?' , '+esc(CO.mobile):''}</div>
+    </div>
+  </div>
+</body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'บัตรพนักงาน '+e.name,{});
+  else { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); } }
+}
 function empDocsMenu(id){
   const e=empById(id); if(!e) return;
   document.getElementById('ml-t').textContent='📄 เอกสารพนักงาน';
@@ -6180,6 +6547,7 @@ function empDocsMenu(id){
       <button class="btn bo" style="justify-content:flex-start" onclick="printContract('${id}')">📑 สัญญาจ้างงาน</button>
       <button class="btn bo" style="justify-content:flex-start" onclick="printSalaryCert('${id}')">💵 หนังสือรับรองเงินเดือน</button>
       <button class="btn bo" style="justify-content:flex-start" onclick="printJobAppForm('${id}')">📋 ใบสมัครงาน (กรอกจากข้อมูลแล้ว)</button>
+      <button class="btn bo" style="justify-content:flex-start" onclick="printEmpIdCard('${id}')">🪪 บัตรพนักงาน (ID Card)</button>
     </div>
     <div style="font-size:12px;font-weight:700;color:var(--mu);margin:16px 0 8px">📎 เอกสารแนบ (แตะรูปเพื่อดู)</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
@@ -6397,7 +6765,7 @@ function openEmpDrawer(id){
   </div>
   ${myJobs.length?`<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px"><div style="font-weight:700;font-size:12px;margin-bottom:6px">🛠️ งานที่รับผิดชอบ (${myJobs.length})</div>${myJobs.slice(0,5).map(j=>`<div onclick="closeDrawer();setTimeout(()=>openJobDrawer('${j.id}'),100)" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bd);cursor:pointer;font-size:12px"><span>${j.title}</span><span>${jobStatusBadge?jobStatusBadge(j.status):j.status}</span></div>`).join('')}</div>`:''}
   <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px;display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:12px">
-    ${row('เบอร์โทร',e.phone)}${row('เริ่มงาน',e.startDate?fmtD(e.startDate):'')}${row('บัตร ปชช.',e.idCard)}
+    ${row('เบอร์โทร',e.phone)}${row('เริ่มงาน',e.startDate?fmtD(e.startDate):'')}${(()=>{const t=(typeof empTenure==='function')?empTenure(e):null;return t?row('อายุงาน',t.label):'';})()}${(()=>{const p=(typeof empProbation==='function')?empProbation(e):null;return p?row('ทดลองงาน',p.inProbation?('ถึง '+fmtD(p.endStr)+' · เหลือ '+p.daysLeft+' วัน'):('✓ ผ่านทดลองงานแล้ว ('+fmtD(p.endStr)+')')):'';})()}${row('บัตร ปชช.',e.idCard)}
     ${e.addr?`<span style="color:var(--mu)">ที่อยู่</span><span>${e.addr}</span>`:''}
     ${(e.emgName||e.emgPhone)?`<span style="color:var(--mu)">ฉุกเฉิน</span><span>${e.emgName||''} ${e.emgPhone||''}</span>`:''}
     <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+' /เดือน':'฿'+fmt(e.rate)+' /วัน'} · ${e.normalHours||8} ชม./วัน${e.payCycle?' · จ่าย'+e.payCycle:''}</span>
