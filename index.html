@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16h · 📊 ส่งออก Excel ทั้งระบบ (.xlsx)</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16i · 🛡️ ใบรับประกันงาน</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -4187,6 +4187,7 @@ function openJobDrawer(id){
   else if(j.status==='อนุมัติแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:#00897B" onclick="jobDeliver('${id}')">📦 ทำใบส่งมอบงาน</button>`;
   else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
   else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
+  if(j.status==='ส่งมอบแล้ว'||j.status==='อนุมัติแล้ว') actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();setTimeout(()=>warrantyForm('${id}'),120)">🛡️ ใบรับประกัน</button>`;
   const inspectBox=j.inspectNote?`<div style="background:${j.approved?'#E8F8F0':'#FEE'};border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="font-weight:700;color:${j.approved?'var(--ok)':'var(--dg)'};margin-bottom:4px">${j.approved?'✅ ผลการตรวจ: อนุมัติ':'❌ ผลการตรวจ: ไม่อนุมัติ'}</div>${j.inspectNote}</div>`:'';
   const gLink=g=>g?` · <a href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank" style="color:var(--p);font-weight:600">📍 ดูตำแหน่ง</a>`:' · <span style="color:var(--mu)">ไม่มี GPS</span>';
   const timeBox=(j.startedAt||j.finishedAt)?`<div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px">
@@ -4204,6 +4205,112 @@ function openJobDrawer(id){
     +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
     +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไข</button><button class="btn" style="flex:1;justify-content:center;background:#ECFDF5;color:#059669" onclick="openSignPad('${id}')">✍️ ${j.customerSig?'แก้ลายเซ็น':'ลายเซ็นรับงาน'}</button><button class="btn bo" style="flex:1;justify-content:center" onclick="jobNotifyLine('${id}')">📲 LINE</button></div>`;
   openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra,'job');
+}
+// ── ใบรับประกันงาน (Warranty Certificate) ──
+const DEFAULT_WARRANTY_TERMS=`บริษัทขอรับประกันคุณภาพงานติดตั้งและวัสดุอุปกรณ์ที่ติดตั้งโดยบริษัท ภายใต้เงื่อนไขดังนี้
+1. รับประกันความชำรุดบกพร่องอันเกิดจากการติดตั้งและคุณภาพวัสดุที่บริษัทเป็นผู้จัดหา
+2. บริษัทจะเข้าตรวจสอบและแก้ไขโดยไม่คิดค่าใช้จ่าย ภายใน 7 วันทำการหลังได้รับแจ้ง
+3. ไม่รวมความเสียหายจากการใช้งานผิดวิธี ภัยธรรมชาติ ไฟตก-ไฟเกินจากการไฟฟ้า สัตว์/แมลงรบกวน หรือเหตุสุดวิสัย
+4. การรับประกันสิ้นสุดทันที หากมีการแก้ไข ดัดแปลง หรือซ่อมโดยช่าง/บุคคลอื่นที่มิได้รับมอบหมายจากบริษัท
+5. กรุณาแสดงใบรับประกันนี้ทุกครั้งเมื่อขอรับบริการตามเงื่อนไขการรับประกัน`;
+function warrantyForm(id){
+  const j=DB.jobs.find(x=>x.id===id); if(!j){ toast('ไม่พบงาน'); return; }
+  const w=j.warranty||{};
+  const defDate=w.date||(j.finishedAt?String(j.finishedAt).slice(0,10):(j.due||j.date||iso(new Date())));
+  const defNo=w.no||('WR-'+String(j.id||'').replace(/[^0-9]/g,'').slice(-7));
+  const defMonths=w.months||12;
+  const defTerms=w.terms||DEFAULT_WARRANTY_TERMS;
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  document.getElementById('ml-t').textContent='🛡️ ออกใบรับประกันงาน';
+  document.getElementById('ml-s').textContent=j.title||j.id;
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="wr-job" value="${qa(j.id)}">
+    <div class="fl2">
+      <div class="fg"><label class="flb">เลขที่ใบรับประกัน</label><input class="fi" id="wr-no" value="${qa(defNo)}"></div>
+      <div class="fg"><label class="flb">วันที่ส่งมอบ / เริ่มประกัน</label><input class="fi" type="date" id="wr-date" value="${defDate}" onchange="wrEndHint()"></div>
+      <div class="fg full"><label class="flb">ระยะเวลารับประกัน (เดือน)</label><input class="fi" type="number" id="wr-months" value="${defMonths}" min="1" max="120" oninput="wrEndHint()"></div>
+    </div>
+    <div id="wr-end-hint" style="font-size:12.5px;color:var(--p);font-weight:600;margin:2px 0 12px"></div>
+    <div class="fg full"><label class="flb">ขอบเขต / เงื่อนไขการรับประกัน</label><textarea class="fi" id="wr-terms" rows="7" style="line-height:1.65;resize:vertical">${escHtml(defTerms)}</textarea></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="doPrintWarranty()">🖨️ พิมพ์ใบรับประกัน</button>`;
+  document.getElementById('ml').classList.add('op');
+  wrEndHint();
+}
+function wrEndHint(){
+  const d=document.getElementById('wr-date')?.value; const m=+(document.getElementById('wr-months')?.value)||0;
+  const el=document.getElementById('wr-end-hint'); if(!el) return;
+  if(d&&m>0){ const end=new Date(d); end.setMonth(end.getMonth()+m); el.innerHTML='ครบกำหนดรับประกัน: '+fmtD(iso(end))+' ('+(m%12===0?(m/12)+' ปี':m+' เดือน')+')'; }
+  else el.textContent='';
+}
+function doPrintWarranty(){
+  const id=document.getElementById('wr-job').value; const j=DB.jobs.find(x=>x.id===id); if(!j){ toast('ไม่พบงาน'); return; }
+  const no=(document.getElementById('wr-no').value||'').trim()||('WR-'+id);
+  const date=document.getElementById('wr-date').value||iso(new Date());
+  const months=+document.getElementById('wr-months').value||12;
+  const terms=document.getElementById('wr-terms').value||'';
+  j.warranty={no,date,months,terms}; if(typeof saveData==='function') saveData();
+  const end=new Date(date); end.setMonth(end.getMonth()+months); const endStr=iso(end);
+  const periodLabel=months%12===0?(months/12)+' ปี':months+' เดือน';
+  const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const br=s=>esc(s).replace(/\n/g,'<br>');
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.55;background:#fff}
+.frame{border:3px double #0A6EBD;border-radius:10px;padding:22px 26px;min-height:1040px;position:relative}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:8px}
+.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:18px 0 6px}
+.title h1{font-size:26px;color:#0A6EBD;letter-spacing:1px;font-weight:800}
+.title .en{font-size:13px;color:#94a3b8;letter-spacing:3px;text-transform:uppercase;margin-top:2px}
+.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:16px}
+.badge{position:absolute;top:96px;right:30px;width:96px;height:96px;border:2px solid #00897B;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#00897B;transform:rotate(-12deg)}
+.badge .p{font-size:22px;font-weight:800;line-height:1}.badge .t{font-size:9px;margin-top:2px}
+.party{display:flex;gap:16px;margin:8px 0 14px}
+.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:11px 13px}
+.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600}
+.row{display:flex;font-size:12.5px;padding:2px 0}.row .k{color:#6b7280;width:104px;flex:none}.row .v{font-weight:600}
+.work{border:1px solid #cfe4fa;background:#f5faff;border-radius:9px;padding:13px;margin-bottom:14px}
+.work .t{font-size:11px;color:#0A6EBD;font-weight:700;margin-bottom:5px}
+.terms{margin-top:6px}.terms .t{font-size:13px;font-weight:700;margin-bottom:6px;color:#1f2937}
+.terms .body{font-size:12px;color:#374151;line-height:1.8;background:#fafbfc;border-left:3px solid #0A6EBD;border-radius:6px;padding:11px 14px}
+.sig{display:flex;justify-content:flex-end;margin-top:40px}
+.sig .col{width:240px;text-align:center}
+.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:6px;font-size:12px}
+.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:20px;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body>
+  <div class="frame">
+    <div class="badge"><div class="p">${esc(periodLabel.split(' ')[0])}</div><div class="t">${esc(periodLabel.split(' ')[1]||'')}<br>รับประกัน</div></div>
+    <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</div></div>
+    <div class="title"><h1>ใบรับประกันงาน</h1><div class="en">Warranty Certificate</div></div>
+    <div class="no">เลขที่ ${esc(no)}</div>
+    <div class="party">
+      <div class="box"><div class="t">มอบให้แก่ (ลูกค้า)</div>
+        <div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>
+        ${cust&&cust.addr?`<div class="row"><span class="k">ที่อยู่</span><span class="v">${esc(cust.addr)}</span></div>`:''}
+        ${j.location?`<div class="row"><span class="k">สถานที่ติดตั้ง</span><span class="v">${esc(j.location)}</span></div>`:''}
+      </div>
+      <div class="box"><div class="t">รายละเอียดการรับประกัน</div>
+        <div class="row"><span class="k">วันที่ส่งมอบ</span><span class="v">${fmtD(date)}</span></div>
+        <div class="row"><span class="k">ระยะเวลา</span><span class="v">${esc(periodLabel)}</span></div>
+        <div class="row"><span class="k">ครบกำหนด</span><span class="v" style="color:#c0392b">${fmtD(endStr)}</span></div>
+      </div>
+    </div>
+    <div class="work"><div class="t">รายละเอียดงานที่รับประกัน</div>
+      <div style="font-weight:700;font-size:13.5px">${esc(j.title||'')}</div>
+      ${j.desc?`<div style="font-size:12px;color:#52606d;margin-top:3px">${br(j.desc)}</div>`:''}
+      <div style="font-size:11.5px;color:#6b7280;margin-top:5px">อ้างอิงงานเลขที่ ${esc(j.id)}${j.value?' · มูลค่างาน ฿'+fmt(j.value):''}</div>
+    </div>
+    <div class="terms"><div class="t">ขอบเขตและเงื่อนไขการรับประกัน</div><div class="body">${br(terms)}</div></div>
+    <div class="sig"><div class="col"><div class="ln">ผู้มีอำนาจลงนาม<br>(${esc(CO.seller||'____________________')})<br>${esc(CO.name)}<br>วันที่ ${fmtD(date)}</div></div></div>
+    <div class="foot">ออกโดยระบบ FlowBiz · เอกสารนี้เป็นหลักฐานการรับประกันงานตามเงื่อนไขที่ระบุ · ${esc(no)}</div>
+  </div>
+</body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบรับประกัน '+no,{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
 }
 // ── บันทึกเวลา+ตำแหน่ง เริ่มงาน/เสร็จงาน (เหมือนตอกบัตรหน้างาน) ──
 function captureGpsNow(){
