@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16t · 🤖 อ่านสลิปอัตโนมัติ (ยืนยันชำระ)</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16u · 🔄 สัญญาบริการ MA</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -786,7 +786,8 @@ tbody tr:hover td{background:#FAFBFD}
       <select class="fi" style="flex:0 0 150px" id="job-status-f" onchange="renderJobs()">
         <option value="">สถานะทั้งหมด</option><option>สำรวจ</option><option>รอทำ</option><option>กำลังทำ</option><option>ตรวจงาน</option><option>อนุมัติแล้ว</option><option>ไม่อนุมัติ</option><option>ส่งมอบแล้ว</option>
       </select>
-      <button class="btn bo" style="margin-left:auto" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
+      <button class="btn bo" style="margin-left:auto" onclick="openMAContracts()">🔄 สัญญา MA</button>
+      <button class="btn bo" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
       <button class="btn bo" onclick="openJobCalendar()">📅 ปฏิทิน</button>
       <button class="btn bp" onclick="openJobForm()">+ สร้างงานใหม่</button>
     </div>
@@ -1430,9 +1431,10 @@ let docNumbering={
   jobs:{prefix:'JOB',year:2026,next:4,digits:4},
   employees:{prefix:'EMP',year:2026,next:4,digits:3},
   receipts:{prefix:'REC',year:2026,next:1,digits:4},
+  contracts:{prefix:'MA',year:2026,next:1,digits:4},
 };
-const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน'};
-const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs',jobcost:'jobs'};
+const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน',contracts:'สัญญาบริการ MA'};
+const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs',jobcost:'jobs',contracts:'contracts'};
 const DATE_NUM_TYPES=['quotes','invoices','delivery','cashsale','po','receive','expense','installments','receipts','jobs'];
 
 // ตรวจว่าเลขนี้มีอยู่แล้วหรือไม่ (กันซ้ำ)
@@ -1791,6 +1793,7 @@ function collectNotifications(){
     if(p&&p.inProbation&&p.daysLeft<=14&&p.daysLeft>=0) list.push({ic:'🧪',t:'ใกล้ครบทดลองงาน',s:e.name+' · เหลือ '+p.daysLeft+' วัน (ครบ '+fmtD(p.endStr)+')',act:`closeModal();nav('employees')`,pri:1});
   });
   (DB.jobs||[]).forEach(j=>{ const w=(typeof warrantyStatus==='function')?warrantyStatus(j):null; if(w&&w.status==='expiring') list.push({ic:'🛡️',t:'ประกันใกล้หมดอายุ',s:(j.title||j.id)+' · เหลือ '+w.daysLeft+' วัน (ถึง '+fmtD(w.endStr)+')',act:`closeModal();nav('jobs')`,pri:2}); });
+  (DB.contracts||[]).forEach(c=>{ const info=(typeof maInfo==='function')?maInfo(c):null; if(info&&info.status==='active'&&info.due&&info.nextStr) list.push({ic:'🔄',t:info.overdue?'เลยกำหนดเข้าบริการ MA':'ถึงกำหนดเข้าบริการ MA',s:(c.title||c.id)+' · '+(getCust(c.cust).name||'')+' · '+fmtD(info.nextStr),act:'closeModal();openMAContracts()',pri:info.overdue?1:2}); });
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -4589,6 +4592,215 @@ body{color:#1f2937;font-size:13px;line-height:1.55;background:#fff}
 </body></html>`;
   closeModal();
   if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบรับประกัน '+no,{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
+}
+// ══════════════════════════════════
+// สัญญาบริการบำรุงรักษาต่อเนื่อง (MA Contracts)
+// ══════════════════════════════════
+const MA_INTERVALS=[[1,'ทุกเดือน'],[2,'ทุก 2 เดือน'],[3,'ทุก 3 เดือน (ไตรมาส)'],[6,'ทุก 6 เดือน'],[12,'ปีละครั้ง']];
+const MA_BILLCYCLES=[['visit','เก็บค่าบริการต่อครั้งที่เข้าบริการ'],['monthly','เก็บค่าบริการรายเดือน'],['once','เหมาจ่ายทั้งสัญญา']];
+const DEFAULT_MA_SCOPE=`ขอบเขตการให้บริการบำรุงรักษา
+1. ตรวจเช็คและบำรุงรักษาระบบตามรอบที่กำหนดในสัญญา
+2. ทำความสะอาด ปรับตั้ง และทดสอบการทำงานของอุปกรณ์ให้อยู่ในสภาพพร้อมใช้งาน
+3. รายงานผลการตรวจเช็คและข้อเสนอแนะหลังเข้าบริการทุกครั้ง
+4. กรณีพบความผิดปกติ บริษัทจะแจ้งลูกค้าเพื่อเสนอราคาซ่อม/เปลี่ยนอะไหล่ (ไม่รวมในค่าบริการ)
+5. ตอบสนองการแจ้งเหตุฉุกเฉินภายใน 24 ชั่วโมง
+
+หมายเหตุ: ค่าบริการนี้ไม่รวมค่าอะไหล่/อุปกรณ์ที่ต้องเปลี่ยน เว้นแต่จะระบุไว้เป็นอย่างอื่น`;
+function maBillLabel(v){ const f=MA_BILLCYCLES.find(x=>x[0]===v); return f?f[1]:'ต่อครั้ง'; }
+function maBillUnit(v){ return v==='monthly'?'เดือน':v==='once'?'สัญญา':'ครั้ง'; }
+function maEndDate(c){ if(!c||!c.startDate) return null; const d=new Date(c.startDate+'T00:00:00'); if(isNaN(d.getTime())) return null; d.setMonth(d.getMonth()+(+c.months||12)); return d; }
+function maLastService(c){ const s=(c&&c.services)||[]; const ds=s.map(x=>x.date).filter(Boolean).sort(); return ds.length?ds[ds.length-1]:null; }
+function maNextService(c){
+  if(!c||!c.startDate) return null;
+  const iv=+c.intervalMonths||0; if(iv<=0) return null;
+  const base=maLastService(c)||c.startDate;
+  const d=new Date(base+'T00:00:00'); if(isNaN(d.getTime())) return null;
+  d.setMonth(d.getMonth()+iv);
+  const end=maEndDate(c); if(end && d>end) return null;
+  return iso(d);
+}
+function maInfo(c){
+  const end=maEndDate(c); const endStr=end?iso(end):null;
+  const now=new Date(); now.setHours(0,0,0,0);
+  const expired=end?(now>end):false;
+  const nextStr=expired?null:maNextService(c);
+  let daysToNext=null; if(nextStr){ daysToNext=Math.ceil((new Date(nextStr+'T00:00:00')-now)/86400000); }
+  const overdue=!expired && nextStr!=null && daysToNext<0;
+  const due=!expired && nextStr!=null && daysToNext<=14;
+  const status=c.status==='paused'?'paused':(expired?'expired':'active');
+  return {endStr,nextStr,daysToNext,due,overdue,expired,status};
+}
+function maStatusBadge(info){
+  if(info.status==='paused') return '<span style="background:#eef0f3;color:#64748b;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">พักสัญญา</span>';
+  if(info.status==='expired') return '<span style="background:#FEE;color:#E53E3E;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">หมดอายุ</span>';
+  if(info.overdue) return '<span style="background:#FEE2E2;color:#DC2626;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">เลยกำหนดบริการ</span>';
+  if(info.due) return '<span style="background:#FEF3C7;color:#D97706;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">ถึงกำหนดบริการ</span>';
+  return '<span style="background:#E8F8F0;color:#0F9D58;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">ปกติ</span>';
+}
+function openMAContracts(){
+  const arr=(DB.contracts||[]).map(c=>({c,info:maInfo(c)}));
+  const active=arr.filter(x=>x.info.status==='active').length;
+  const dueSoon=arr.filter(x=>x.info.status==='active'&&x.info.due).length;
+  const expired=arr.filter(x=>x.info.status==='expired').length;
+  const rank=x=> x.info.status==='expired'?3 : x.info.status==='paused'?2 : (x.info.due?0:1);
+  arr.sort((a,b)=> (rank(a)-rank(b)) || ((a.info.daysToNext==null?9e9:a.info.daysToNext)-(b.info.daysToNext==null?9e9:b.info.daysToNext)));
+  const rows = arr.length ? arr.map(({c,info})=>{ const cn=getCust(c.cust).name||c.cust||'-';
+    const nextLine = info.expired?'หมดอายุสัญญาแล้ว' : info.nextStr?('เข้าบริการครั้งถัดไป '+fmtD(info.nextStr)+(info.daysToNext!=null?(info.daysToNext<0?(' · เลย '+(-info.daysToNext)+' วัน'):(' · อีก '+info.daysToNext+' วัน')):'')) : 'ครบรอบบริการตามสัญญาแล้ว';
+    const period=(c.months%12===0?(c.months/12)+' ปี':c.months+' เดือน');
+    const ivLabel=MA_INTERVALS.find(i=>i[0]===+c.intervalMonths)?.[1]||(c.intervalMonths+' เดือน/ครั้ง');
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:9px">
+      <div onclick="maContractForm('${c.id}')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${escHtml(c.title||c.id)}</div>${maStatusBadge(info)}</div>
+        <div style="font-size:11.5px;color:var(--mu);margin-top:3px">${escHtml(cn)} · ${c.id}</div>
+        <div style="font-size:11.5px;margin-top:4px;color:var(--tx)">${ivLabel} · ${period} · ฿${fmt(c.fee||0)}/${maBillUnit(c.billCycle)}</div>
+        <div style="font-size:11.5px;margin-top:3px;font-weight:600;color:${info.overdue?'#DC2626':info.due?'#D97706':info.expired?'#E53E3E':'#0F9D58'}">${nextLine}</div>
+        ${(c.services&&c.services.length)?`<div style="font-size:11px;color:var(--mu);margin-top:2px">เข้าบริการแล้ว ${c.services.length} ครั้ง · ล่าสุด ${fmtD(maLastService(c))}</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+        <button class="btn bp" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="maLogService('${c.id}')">✅ ลงบันทึกเข้าบริการ</button>
+        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="printMAContract('${c.id}')">🖨️ สัญญา</button>
+        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="maDelete('${c.id}')">🗑️</button>
+      </div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:24px;font-size:13px">ยังไม่มีสัญญาบริการ — กด “+ สร้างสัญญา MA”</div>';
+  document.getElementById('ml-t').textContent='🔄 สัญญาบริการบำรุงรักษา (MA)';
+  document.getElementById('ml-s').textContent=arr.length+' สัญญา';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+      <div style="background:#E8F8F0;border-radius:11px;padding:11px;text-align:center"><div style="font-size:21px;font-weight:800;color:#0F9D58">${active}</div><div style="font-size:10.5px;color:var(--mu)">ใช้งานอยู่</div></div>
+      <div style="background:#FEF3C7;border-radius:11px;padding:11px;text-align:center"><div style="font-size:21px;font-weight:800;color:#D97706">${dueSoon}</div><div style="font-size:10.5px;color:var(--mu)">ถึงกำหนดบริการ</div></div>
+      <div style="background:#FEE;border-radius:11px;padding:11px;text-align:center"><div style="font-size:21px;font-weight:800;color:#E53E3E">${expired}</div><div style="font-size:10.5px;color:var(--mu)">หมดอายุ</div></div>
+    </div>
+    <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="maContractForm('')">+ สร้างสัญญา MA</button>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function maContractForm(id){
+  const c=id?(DB.contracts||[]).find(x=>x.id===id):null;
+  const v=c||{};
+  const custs=DB.contacts.filter(x=>x.type==='ลูกค้า');
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const custOpts='<option value="">— เลือกลูกค้า —</option>'+custs.map(x=>`<option value="${x.id}"${x.id===v.cust?' selected':''}>${escHtml(x.name)}</option>`).join('');
+  const ivOpts=MA_INTERVALS.map(i=>`<option value="${i[0]}"${(+v.intervalMonths||3)===i[0]?' selected':''}>${i[1]}</option>`).join('');
+  const bcOpts=MA_BILLCYCLES.map(b=>`<option value="${b[0]}"${(v.billCycle||'visit')===b[0]?' selected':''}>${b[1]}</option>`).join('');
+  document.getElementById('ml-t').textContent=c?'✏️ แก้ไขสัญญา MA':'➕ สร้างสัญญาบริการ MA';
+  document.getElementById('ml-s').textContent=c?c.id:'สัญญาซ่อมบำรุง / บริการต่อเนื่อง';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="ma-id" value="${qa(id||'')}">
+    <div class="fg" style="margin-bottom:10px"><label class="flb">ลูกค้า</label><select class="fi" id="ma-cust">${custOpts}</select></div>
+    <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อสัญญา / รายละเอียดบริการ</label><input class="fi" id="ma-title" value="${qa(v.title)}" placeholder="เช่น สัญญาบำรุงรักษาระบบไฟฟ้า อาคาร A"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">วันเริ่มสัญญา</label><input class="fi" type="date" id="ma-start" value="${v.startDate||iso(new Date())}" onchange="maFormHint()"></div>
+      <div class="fg"><label class="flb">ระยะเวลา (เดือน)</label><input class="fi" type="number" id="ma-months" value="${v.months||12}" min="1" max="120" oninput="maFormHint()"></div>
+      <div class="fg"><label class="flb">ความถี่เข้าบริการ</label><select class="fi" id="ma-interval" onchange="maFormHint()">${ivOpts}</select></div>
+      <div class="fg"><label class="flb">ค่าบริการ (฿)</label><input class="fi" type="number" id="ma-fee" value="${v.fee||0}" step="0.01"></div>
+      <div class="fg full"><label class="flb">รอบเรียกเก็บค่าบริการ</label><select class="fi" id="ma-billcycle">${bcOpts}</select></div>
+    </div>
+    <div id="ma-hint" style="font-size:12.5px;color:var(--p);font-weight:600;margin:4px 0 12px"></div>
+    <div class="fg full"><label class="flb">ขอบเขตงาน / เงื่อนไขบริการ</label><textarea class="fi" id="ma-scope" rows="6" style="line-height:1.6;resize:vertical">${escHtml(v.scope||DEFAULT_MA_SCOPE)}</textarea></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openMAContracts()">← กลับ</button><button class="btn bp" onclick="maSaveContract()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  maFormHint();
+}
+function maFormHint(){
+  const s=document.getElementById('ma-start')?.value; const m=+(document.getElementById('ma-months')?.value)||0; const iv=+(document.getElementById('ma-interval')?.value)||0;
+  const el=document.getElementById('ma-hint'); if(!el) return;
+  if(s&&m>0){ const end=new Date(s+'T00:00:00'); end.setMonth(end.getMonth()+m); const visits=iv>0?Math.floor(m/iv):0; el.innerHTML='สิ้นสุดสัญญา: '+fmtD(iso(end))+(iv>0?(' · เข้าบริการประมาณ '+visits+' ครั้งตลอดสัญญา'):''); }
+  else el.textContent='';
+}
+function maSaveContract(){
+  const id=document.getElementById('ma-id').value;
+  const cust=document.getElementById('ma-cust').value;
+  const title=document.getElementById('ma-title').value.trim();
+  const startDate=document.getElementById('ma-start').value;
+  const months=+document.getElementById('ma-months').value||12;
+  const intervalMonths=+document.getElementById('ma-interval').value||3;
+  const fee=+document.getElementById('ma-fee').value||0;
+  const billCycle=document.getElementById('ma-billcycle').value||'visit';
+  const scope=document.getElementById('ma-scope').value||'';
+  if(!cust){ toast('⚠️ เลือกลูกค้าก่อน'); return; }
+  if(!title){ toast('⚠️ ใส่ชื่อสัญญา'); return; }
+  if(!startDate){ toast('⚠️ ใส่วันเริ่มสัญญา'); return; }
+  if(!DB.contracts) DB.contracts=[];
+  if(id){ const c=DB.contracts.find(x=>x.id===id); if(c) Object.assign(c,{cust,title,startDate,months,intervalMonths,fee,billCycle,scope}); }
+  else { DB.contracts.unshift({id:nextId('contracts'),cust,title,startDate,months,intervalMonths,fee,billCycle,scope,services:[],status:'active'}); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกสัญญาแล้ว');
+  openMAContracts();
+}
+function maLogService(id){
+  const c=(DB.contracts||[]).find(x=>x.id===id); if(!c){ toast('ไม่พบสัญญา'); return; }
+  const note=prompt('บันทึกการเข้าบริการ (รายละเอียด/หมายเหตุ):\n(วันที่บันทึก = วันนี้)','');
+  if(note===null) return;
+  if(!c.services) c.services=[];
+  c.services.push({date:iso(new Date()),note:String(note||'').trim()});
+  if(typeof saveData==='function') saveData();
+  const nx=maNextService(c);
+  toast('✅ บันทึกการเข้าบริการแล้ว'+(nx?(' · ครั้งถัดไป '+fmtD(nx)):' · ครบรอบสัญญาแล้ว'));
+  openMAContracts();
+}
+function maDelete(id){
+  const c=(DB.contracts||[]).find(x=>x.id===id); if(!c) return;
+  if(!confirm('ลบสัญญา “'+(c.title||id)+'” ?\nรวมประวัติการเข้าบริการทั้งหมด')) return;
+  DB.contracts=DB.contracts.filter(x=>x.id!==id);
+  if(typeof saveData==='function') saveData();
+  toast('🗑️ ลบสัญญาแล้ว');
+  openMAContracts();
+}
+function printMAContract(id){
+  const c=(DB.contracts||[]).find(x=>x.id===id); if(!c){ toast('ไม่พบสัญญา'); return; }
+  const end=maEndDate(c); const endStr=end?iso(end):'';
+  const period=(c.months%12===0?(c.months/12)+' ปี':c.months+' เดือน');
+  const ivLabel=MA_INTERVALS.find(i=>i[0]===+c.intervalMonths)?.[1]||(c.intervalMonths+' เดือน/ครั้ง');
+  const cust=getCust(c.cust); const cn=(cust&&cust.name)||c.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const br=s=>esc(s).replace(/\n/g,'<br>');
+  let sched=[]; if(+c.intervalMonths>0&&c.startDate){ let d=new Date(c.startDate+'T00:00:00'),guard=0; while(guard<300){ d=new Date(d); d.setMonth(d.getMonth()+(+c.intervalMonths)); if(end&&d>end) break; sched.push(iso(d)); guard++; } }
+  const done=new Set(((c.services)||[]).map(x=>x.date));
+  const schedRows=sched.length?sched.map((dt,i)=>`<tr><td style="text-align:center">${i+1}</td><td style="text-align:center">${fmtD(dt)}</td><td style="text-align:center">${done.has(dt)?'✓ เข้าบริการแล้ว':''}</td></tr>`).join(''):`<tr><td colspan="3" style="text-align:center;color:#94a3b8">— ไม่มีรอบเข้าบริการ —</td></tr>`;
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.55;background:#fff}
+.frame{border:3px double #0A6EBD;border-radius:10px;padding:22px 26px;min-height:1040px;position:relative}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:8px}
+.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:16px 0 6px}.title h1{font-size:24px;color:#0A6EBD;letter-spacing:1px;font-weight:800}.title .en{font-size:12px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase;margin-top:2px}
+.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:14px}
+.party{display:flex;gap:16px;margin:8px 0 14px}.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:11px 13px}.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600}
+.row{display:flex;font-size:12.5px;padding:2px 0}.row .k{color:#6b7280;width:120px;flex:none}.row .v{font-weight:600}
+.sec{border:1px solid #cfe4fa;background:#f5faff;border-radius:9px;padding:12px;margin-bottom:12px}.sec .t{font-size:11px;color:#0A6EBD;font-weight:700;margin-bottom:6px}
+table.sc{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}table.sc th{background:#0A6EBD;color:#fff;padding:5px;font-weight:600}table.sc td{border:1px solid #e5e7eb;padding:4px 6px}
+.scope{font-size:12px;color:#374151;line-height:1.8;background:#fafbfc;border-left:3px solid #0A6EBD;border-radius:6px;padding:11px 14px}
+.sig{display:flex;justify-content:space-between;margin-top:34px;gap:30px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:6px;font-size:12px}
+.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:18px;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</div></div>
+  <div class="title"><h1>สัญญาบริการบำรุงรักษา</h1><div class="en">Maintenance Service Agreement</div></div>
+  <div class="no">เลขที่สัญญา ${esc(c.id)}</div>
+  <div class="party">
+    <div class="box"><div class="t">ผู้ให้บริการ</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(CO.name)}</span></div><div class="row"><span class="k">โทร</span><span class="v">${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</span></div></div>
+    <div class="box"><div class="t">ผู้รับบริการ (ลูกค้า)</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>${cust&&cust.phone?`<div class="row"><span class="k">โทร</span><span class="v">${esc(cust.phone)}</span></div>`:''}${cust&&cust.tax?`<div class="row"><span class="k">เลขผู้เสียภาษี</span><span class="v">${esc(cust.tax)}</span></div>`:''}</div>
+  </div>
+  <div class="sec"><div class="t">รายละเอียดสัญญา</div>
+    <div class="row"><span class="k">ชื่อสัญญา</span><span class="v">${esc(c.title)}</span></div>
+    <div class="row"><span class="k">เริ่มสัญญา</span><span class="v">${fmtD(c.startDate)}</span></div>
+    <div class="row"><span class="k">สิ้นสุดสัญญา</span><span class="v" style="color:#c0392b">${fmtD(endStr)}</span></div>
+    <div class="row"><span class="k">ระยะเวลา</span><span class="v">${esc(period)}</span></div>
+    <div class="row"><span class="k">ความถี่เข้าบริการ</span><span class="v">${esc(ivLabel)}</span></div>
+    <div class="row"><span class="k">ค่าบริการ</span><span class="v">฿${fmt(c.fee||0)} (${esc(maBillLabel(c.billCycle))})</span></div>
+  </div>
+  <div class="sec" style="background:#fff"><div class="t" style="color:#1f2937">ตารางเข้าบริการตามสัญญา</div>
+    <table class="sc"><thead><tr><th style="width:48px">ครั้งที่</th><th>กำหนดเข้าบริการ</th><th style="width:150px">สถานะ</th></tr></thead><tbody>${schedRows}</tbody></table>
+  </div>
+  <div class="sec" style="background:#fff;border-color:#e5e7eb"><div class="t" style="color:#1f2937">ขอบเขตงาน / เงื่อนไขการให้บริการ</div><div class="scope">${br(c.scope||'')}</div></div>
+  <div class="sig"><div class="col"><div class="ln">ผู้ให้บริการ<br>(${esc(CO.seller||'____________________')})<br>วันที่ ____/____/____</div></div><div class="col"><div class="ln">ผู้รับบริการ<br>(${esc(cn)})<br>วันที่ ____/____/____</div></div></div>
+  <div class="foot">ออกโดยระบบ FlowBiz · สัญญาบริการบำรุงรักษาเลขที่ ${esc(c.id)}</div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'สัญญา MA '+c.id,{});
   else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
 }
 // ── บันทึกเวลา+ตำแหน่ง เริ่มงาน/เสร็จงาน (เหมือนตอกบัตรหน้างาน) ──
