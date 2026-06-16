@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16o · 👷 ต้นทุนแรงงานต่อโปรเจกต์</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16t · 🤖 อ่านสลิปอัตโนมัติ (ยืนยันชำระ)</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -786,7 +786,9 @@ tbody tr:hover td{background:#FAFBFD}
       <select class="fi" style="flex:0 0 150px" id="job-status-f" onchange="renderJobs()">
         <option value="">สถานะทั้งหมด</option><option>สำรวจ</option><option>รอทำ</option><option>กำลังทำ</option><option>ตรวจงาน</option><option>อนุมัติแล้ว</option><option>ไม่อนุมัติ</option><option>ส่งมอบแล้ว</option>
       </select>
-      <button class="btn bp" style="margin-left:auto" onclick="openJobForm()">+ สร้างงานใหม่</button>
+      <button class="btn bo" style="margin-left:auto" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
+      <button class="btn bo" onclick="openJobCalendar()">📅 ปฏิทิน</button>
+      <button class="btn bp" onclick="openJobForm()">+ สร้างงานใหม่</button>
     </div>
     <!-- Job cards grid -->
     <div id="jobsGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;margin-top:14px"></div>
@@ -1301,6 +1303,7 @@ tbody tr:hover td{background:#FAFBFD}
 // DATA STORE
 // ══════════════════════════════════
 const DB = {
+  contracts:[],
   pettycash:[],
   pcClosings:[],
   stockMoves:[],
@@ -1787,6 +1790,7 @@ function collectNotifications(){
     const p=(typeof empProbation==='function')?empProbation(e):null;
     if(p&&p.inProbation&&p.daysLeft<=14&&p.daysLeft>=0) list.push({ic:'🧪',t:'ใกล้ครบทดลองงาน',s:e.name+' · เหลือ '+p.daysLeft+' วัน (ครบ '+fmtD(p.endStr)+')',act:`closeModal();nav('employees')`,pri:1});
   });
+  (DB.jobs||[]).forEach(j=>{ const w=(typeof warrantyStatus==='function')?warrantyStatus(j):null; if(w&&w.status==='expiring') list.push({ic:'🛡️',t:'ประกันใกล้หมดอายุ',s:(j.title||j.id)+' · เหลือ '+w.daysLeft+' วัน (ถึง '+fmtD(w.endStr)+')',act:`closeModal();nav('jobs')`,pri:2}); });
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -2683,7 +2687,8 @@ function openInvDrawer(id){
 // ══════════════════════════════════
 // ระบบชำระเงิน (หลายช่องทาง + QR พร้อมเพย์)
 // ══════════════════════════════════
-const PROMPTPAY_ID='0813062293'; // เบอร์พร้อมเพย์บริษัท (หรือใช้เลขผู้เสียภาษี)
+let PROMPTPAY_ID='0813062293'; // พร้อมเพย์บริษัท (อ่านจากตั้งค่า companyInfo.promptpayId)
+function syncPromptPay(){ try{ const id=(companyInfo&&companyInfo.promptpayId)?String(companyInfo.promptpayId).replace(/[^0-9]/g,''):''; PROMPTPAY_ID=id||'0813062293'; }catch(e){} }
 let payCtx={kind:null,id:null,idx:null,amount:0,label:''};
 
 function openPayModal(kind,id,idx){
@@ -2706,7 +2711,10 @@ function openPayModal(kind,id,idx){
       <div class="fg"><label class="flb">จำนวนเงินที่ชำระ (฿)</label><input class="fi" type="number" id="pay-amt" value="${amount}" step="0.01" oninput="updateQR()"></div>
       <div class="fg"><label class="flb">วันที่ชำระ</label><input class="fi" type="date" id="pay-date" value="${iso(new Date())}"></div>
       <div class="fg full" id="pay-ref-wrap"><label class="flb">เลขอ้างอิง / หมายเหตุ</label><input class="fi" id="pay-ref" placeholder="เลขที่สลิป / ธนาคาร / เลขเช็ค"></div>
-      <div class="fg full"><label class="flb">แนบสลิป / หลักฐานการจ่าย</label><div id="pay-slip-box"><button type="button" class="btn bo" style="width:100%;justify-content:center;padding:10px" onclick="paySlipPick()">📎 แนบรูปสลิป / ถ่ายรูป</button></div></div>
+      <div class="fg full"><label class="flb">แนบสลิป / หลักฐานการจ่าย</label><div id="pay-slip-box"><button type="button" class="btn bo" style="width:100%;justify-content:center;padding:10px" onclick="paySlipPick()">📎 แนบรูปสลิป / ถ่ายรูป</button></div>
+        <button type="button" class="btn bo" style="width:100%;justify-content:center;padding:9px;margin-top:8px;font-size:13px" onclick="payOcrSlip()">🤖 อ่านสลิปอัตโนมัติ (AI) — กรอกยอด/วันที่ให้</button>
+        <div id="pay-ai-status" style="display:none;font-size:11.5px;margin-top:6px;line-height:1.5"></div>
+      </div>
     </div>
     <div id="pay-qr-box" style="display:none;text-align:center;margin-top:8px;padding:16px;background:var(--bg);border-radius:12px">
       <div style="font-size:13px;font-weight:700;color:#003D6A;margin-bottom:4px">PromptPay</div>
@@ -2730,6 +2738,32 @@ function paySlipPick(){
   pickPhotos(false, imgs=>{ if(imgs&&imgs[0]){ _paySlip=imgs[0]; const b=document.getElementById('pay-slip-box'); if(b) b.innerHTML=`<div style="display:flex;align-items:center;gap:8px"><img src="${_paySlip}" onclick="photoView('${_paySlip}')" style="height:72px;border-radius:8px;border:1px solid var(--bd);cursor:pointer"><button type="button" class="btn bo" style="font-size:12px" onclick="paySlipPick()">เปลี่ยน</button><button type="button" class="btn bo" style="font-size:12px" onclick="paySlipClear()">ลบ</button></div>`; } });
 }
 function paySlipClear(){ _paySlip=null; const b=document.getElementById('pay-slip-box'); if(b) b.innerHTML=`<button type="button" class="btn bo" style="width:100%;justify-content:center;padding:10px" onclick="paySlipPick()">📎 แนบรูปสลิป / ถ่ายรูป</button>`; }
+// อ่านสลิปโอนเงินด้วย AI (Claude API) — เติมยอด/วันที่/อ้างอิงให้
+async function payOcrSlip(){
+  if(!_paySlip){ toast('⚠️ แนบรูปสลิปก่อน แล้วค่อยให้ AI อ่าน'); return; }
+  const st=document.getElementById('pay-ai-status');
+  if(st){ st.style.display='block'; st.textContent='🤖 AI กำลังอ่านสลิป... (สักครู่)'; st.style.color='var(--p)'; }
+  if(!aiReady()){ if(st){ st.style.display='block'; st.textContent=aiErrMsg({code:'NO_KEY'}); st.style.color='var(--dg)'; } toast(aiErrMsg({code:'NO_KEY'})); return; }
+  const prompt='คุณคือผู้ช่วยอ่านสลิปโอนเงิน/หลักฐานการชำระเงินของไทย วิเคราะห์รูปสลิปนี้แล้วตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown โครงสร้าง: {"amount":จำนวนเงินที่โอนเป็นตัวเลข,"date":"YYYY-MM-DD หรือ null","ref":"เลขที่รายการ/รหัสอ้างอิงของสลิป หรือ null","sender":"ชื่อผู้โอน หรือ null","receiver":"ชื่อผู้รับเงิน หรือ null","bank":"ธนาคารผู้โอน หรือ null"} ถ้าอ่านยอดเงินไม่ได้ให้ amount เป็น 0';
+  try{
+    const parsed=await aiVisionJSON(_paySlip, prompt, 600);
+    const ok=applyPaySlipData(parsed);
+    if(st){ if(ok){ st.textContent='✅ AI อ่านสำเร็จ — ตรวจสอบยอด/วันที่ก่อนยืนยัน'; st.style.color='var(--ok)'; } else { st.textContent='⚠️ AI อ่านยอดไม่ได้ — กรอกเอง'; st.style.color='var(--dg)'; } }
+  }catch(e){ if(st){ st.textContent=aiErrMsg(e); st.style.color='var(--dg)'; } if(e&&e.code==='NO_KEY') toast(aiErrMsg(e)); }
+}
+function applyPaySlipData(d){
+  if(!d||typeof d!=='object') return false;
+  const amt=parseFloat(d.amount)||0;
+  if(amt>0){ const a=document.getElementById('pay-amt'); if(a){ a.value=amt; if(typeof updateQR==='function') updateQR(); } }
+  if(d.date&&/^\d{4}-\d{2}-\d{2}$/.test(d.date)){ const dt=document.getElementById('pay-date'); if(dt) dt.value=d.date; }
+  const refEl=document.getElementById('pay-ref');
+  if(refEl&&!refEl.value){ const parts=[]; if(d.ref) parts.push(String(d.ref)); if(d.bank) parts.push(String(d.bank)); if(d.sender) parts.push('จาก '+d.sender); refEl.value=parts.join(' · '); }
+  if(amt<=0) return false;
+  const want=payCtx&&payCtx.amount;
+  if(want&&Math.abs(amt-want)>1) toast('⚠️ ยอดในสลิป ฿'+fmt(amt)+' ไม่ตรงยอดบิล ฿'+fmt(want)+' — โปรดตรวจสอบ');
+  else toast('✅ AI กรอกยอด ฿'+fmt(amt)+' ให้แล้ว');
+  return true;
+}
 const CO_NAME_SHORT='บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง';
 let payMethod='cash';
 function pickPayMethod(m){
@@ -2751,7 +2785,7 @@ function updateQR(){
 }
 // ── QR รับเงิน (พร้อมเพย์) สร้างเอง ระบุจำนวนเงิน + พิมพ์/แชร์ ──
 function paymentQRTool(){
-  const coName=(companyInfo&&companyInfo.name)||'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด';
+  const coName=(companyInfo&&(companyInfo.promptpayName||companyInfo.name))||'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด';
   const esc=s=>String(s||'').replace(/[<>]/g,'');
   document.getElementById('ml-t').textContent='💸 QR รับเงิน (พร้อมเพย์)';
   document.getElementById('ml-s').textContent='ให้ลูกค้าสแกนเพื่อโอนเงิน';
@@ -2765,7 +2799,7 @@ function paymentQRTool(){
       <div id="pqr-box" style="width:220px;height:220px;margin:0 auto"></div>
       <div id="pqr-amt-lb" style="font-size:22px;font-weight:800;margin-top:10px"></div>
       <div id="pqr-note-lb" style="font-size:12px;color:var(--mu)"></div>
-      <div style="font-size:12px;color:var(--tx);margin-top:8px;border-top:1px dashed var(--bd);padding-top:8px">พร้อมเพย์ <b>${PROMPTPAY_ID}</b><br><span style="font-size:11px;color:var(--mu)">${esc(coName)}</span></div>
+      <div style="font-size:12px;color:var(--tx);margin-top:8px;border-top:1px dashed var(--bd);padding-top:8px">พร้อมเพย์ <b>${PROMPTPAY_ID}</b><br><span style="font-size:11px;color:var(--mu)">${esc(coName)}</span>${(companyInfo&&(companyInfo.bankName||companyInfo.bankAcc))?`<br><span style="font-size:11px;color:var(--mu)">${esc((companyInfo.bankName||'')+' '+(companyInfo.bankAcc||''))}</span>`:''}</div>
     </div>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="printPaymentQR()">🖨️ พิมพ์ / แชร์ QR</button>`;
   document.getElementById('ml').classList.add('op');
@@ -2809,7 +2843,7 @@ body{color:#1f2937;background:#fff;text-align:center}
     <div class="qr">${qr}</div>
     ${amt>0?`<div class="amt">฿${fmt(amt)}</div>`:`<div class="amt any">ผู้โอนระบุจำนวนเงินเอง</div>`}
     ${note?`<div class="note">${esc(note)}</div>`:''}
-    <div class="id">พร้อมเพย์: <b>${esc(PROMPTPAY_ID)}</b><br><span style="font-size:12px;color:#6b7280">รองรับทุกแอปธนาคาร สแกนแล้วตรวจสอบชื่อบัญชีก่อนโอนทุกครั้ง</span></div>
+    <div class="id">พร้อมเพย์: <b>${esc(PROMPTPAY_ID)}</b>${CO.promptpayName?'<br>ชื่อบัญชี '+esc(CO.promptpayName):''}${(CO.bankName||CO.bankAcc)?'<br>'+esc((CO.bankName||'')+' '+(CO.bankAcc||'')):''}<br><span style="font-size:12px;color:#6b7280">รองรับทุกแอปธนาคาร สแกนแล้วตรวจสอบชื่อบัญชีก่อนโอนทุกครั้ง</span></div>
     <div class="foot">ออกโดยระบบ FlowBiz · ${new Date().toLocaleDateString('th-TH')}</div>
   </div>
 </body></html>`;
@@ -3506,13 +3540,13 @@ function renderPO(){
   const tb=document.getElementById('poTbl'); tb.innerHTML='';
   DB.po.filter(r=>{ const c=getCust(r.supp).name; return !q||(c+r.id).toLowerCase().includes(q); }).forEach(r=>{
     const c=getCust(r.supp);
-    tb.innerHTML+=`<tr onclick="openPODrawer('${r.id}')"><td><div class="dn">${r.id}</div></td><td><div class="cnm">${c.name}</div></td><td>${fmtD(r.date)}</td><td>${statusBadge(r.status)}</td><td style="text-align:right;font-weight:700">฿${fmt(r.amt)}</td><td></td></tr>`;
+    tb.innerHTML+=`<tr onclick="openPODrawer('${r.id}')" style="cursor:pointer"><td><div class="dn">${r.id}</div></td><td><div class="cnm">${c.name}</div></td><td>${fmtD(r.date)}</td><td>${statusBadge(r.status)}</td><td style="text-align:right;font-weight:700">฿${fmt(r.amt)}</td><td><button class="btn bo" style="font-size:11px;padding:4px 10px" onclick="event.stopPropagation();printDoc('po','${r.id}')">🖨️</button></td></tr>`;
   });
 }
 function openPODrawer(id){ const r=DB.po.find(x=>x.id===id); if(!r) return; const c=getCust(r.supp);
   openDrawer(r.id,r.supp,[['ผู้จัดจำหน่าย',c.name],['วันที่',fmtD(r.date)],['สถานะ',r.status],['ยอด','฿'+fmt(r.amt)]],
     ((r.items&&r.items.length)?`<div><div style="font-size:13px;font-weight:700;margin-bottom:8px">รายการสินค้า</div>${r.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><div>${it.name} <span style="color:var(--mu)">×${it.qty}</span></div><div style="font-weight:600">฿${fmt(it.price*it.qty)}</div></div>`).join('')}</div>`:'')
-    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('po','${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','receive')">→ รับสินค้า</button><button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','expense')">→ ค่าใช้จ่าย</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('po','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('po','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('po',r.id));
+    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('po','${r.id}')">🖨️ พิมพ์</button><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('po','${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','receive')">→ รับสินค้า</button><button class="btn bo" style="flex:1;justify-content:center" onclick="convertDoc('po','${r.id}','expense')">→ ค่าใช้จ่าย</button><button class="btn bo" style="flex:1;justify-content:center" onclick="duplicateDoc('po','${r.id}')">📑 สำเนา</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('po','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('po',r.id));
 }
 
 // ══════════════════════════════════
@@ -3530,7 +3564,7 @@ function openReceiveDrawer(id){
   const r=DB.receive.find(x=>x.id===id); if(!r) return; const c=getCust(r.supp);
   openDrawer(r.id,r.supp,[['ผู้จัดจำหน่าย',c.name],['วันที่',fmtD(r.date)],['อ้างอิง',r.ref||'—'],['สถานะ',r.status],['ยอด','฿'+fmt(r.amt)]],
     ((r.items&&r.items.length)?`<div><div style="font-size:13px;font-weight:700;margin-bottom:8px">รายการสินค้า</div>${r.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><div>${it.name} <span style="color:var(--mu)">×${it.qty}</span></div><div style="font-weight:600">฿${fmt(it.price*it.qty)}</div></div>`).join('')}</div>`:'')
-    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('receive','${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('receive','${r.id}','expense')">→ บันทึกค่าใช้จ่าย</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('receive','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('receive',r.id));
+    +`<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('receive','${r.id}')">🖨️ พิมพ์</button><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openDocForm('receive','${r.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="convertDoc('receive','${r.id}','expense')">→ บันทึกค่าใช้จ่าย</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('receive','${r.id}')">🗑️ ลบ</button></div>`+relatedDocsBlock('receive',r.id));
 }
 
 // ══════════════════════════════════
@@ -3809,39 +3843,64 @@ function compressReceiptImage(file,maxDim,quality){
   });
 }
 function renderSlipPreview(){} // legacy stub — ใช้ expRenderSlips แทน
+// ── AI (Claude API) — ใช้ key ของผู้ใช้ + header สำหรับเรียกตรงจากเบราว์เซอร์ ──
+function aiKey(){ return (companyInfo&&companyInfo.aiKey)?String(companyInfo.aiKey).trim():''; }
+function aiModel(){ return (companyInfo&&companyInfo.aiModel&&String(companyInfo.aiModel).trim())||'claude-sonnet-4-6'; }
+function aiReady(){ return !!aiKey(); }
+async function aiVisionJSON(dataUrl, prompt, maxTokens){
+  const key=aiKey();
+  if(!key){ const e=new Error('NO_KEY'); e.code='NO_KEY'; throw e; }
+  const m=String(dataUrl||'').match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
+  if(!m){ const e=new Error('BAD_IMAGE'); e.code='BAD_IMAGE'; throw e; }
+  const res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify({ model:aiModel(), max_tokens:maxTokens||800, messages:[{role:'user',content:[
+      {type:'image',source:{type:'base64',media_type:m[1],data:m[2]}},
+      {type:'text',text:prompt}
+    ]}] })
+  });
+  if(!res.ok){ let t=''; try{ t=await res.text(); }catch(_){}; const e=new Error('HTTP '+res.status); e.code='HTTP'; e.status=res.status; e.detail=t.slice(0,300); throw e; }
+  const data=await res.json();
+  let txt=(data.content||[]).map(c=>c.type==='text'?c.text:'').join('').trim().replace(/```json|```/g,'').trim();
+  return JSON.parse(txt);
+}
+function aiErrMsg(e){
+  if(!e) return 'AI อ่านไม่สำเร็จ';
+  if(e.code==='NO_KEY') return '⚠️ ยังไม่ได้ตั้งค่า API key — ไปที่ ⚙️ ตั้งค่า → ข้อมูลบริษัท → AI';
+  if(e.code==='BAD_IMAGE') return '⚠️ รูปไม่ถูกต้อง — ลองแนบใหม่';
+  if(e.code==='HTTP'){ if(e.status===401) return '⚠️ API key ไม่ถูกต้อง/หมดอายุ'; if(e.status===429) return '⚠️ เรียกถี่เกินไป/เครดิตหมด ลองใหม่อีกครั้ง'; return '⚠️ เซิร์ฟเวอร์ AI ตอบกลับผิดพลาด ('+e.status+')'; }
+  return '⚠️ AI อ่านไม่สำเร็จ — กรอกเองได้';
+}
+// ทดสอบการเชื่อมต่อ AI จากค่าในฟอร์ม (ก่อนบันทึก)
+async function aiTestKey(){
+  const st=document.getElementById('co-ai-test');
+  const setS=(t,c)=>{ if(st){ st.style.display='block'; st.textContent=t; st.style.color=c; } };
+  const keyEl=document.getElementById('co-aikey'); const key=keyEl?keyEl.value.trim():'';
+  const modelEl=document.getElementById('co-aimodel'); const model=(modelEl&&modelEl.value.trim())||'claude-sonnet-4-6';
+  if(!key){ setS('⚠️ ใส่ API Key ก่อนทดสอบ','var(--dg)'); return; }
+  setS('🔌 กำลังทดสอบการเชื่อมต่อ...','var(--p)');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{ method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}, body:JSON.stringify({ model, max_tokens:16, messages:[{role:'user',content:'ตอบกลับว่า OK'}] }) });
+    if(!res.ok){ let t=''; try{ t=await res.text(); }catch(_){}; if(res.status===401) setS('❌ API Key ไม่ถูกต้อง/หมดอายุ (401)','var(--dg)'); else if(res.status===404||/model/i.test(t)) setS('❌ ชื่อโมเดลไม่ถูกต้อง — ลองเว้นช่องโมเดลให้ว่าง','var(--dg)'); else setS('❌ เชื่อมต่อไม่สำเร็จ ('+res.status+')','var(--dg)'); return; }
+    setS('✅ เชื่อมต่อ AI สำเร็จ! กด "บันทึกข้อมูลบริษัท" เพื่อใช้งาน','var(--ok)');
+  }catch(e){ setS('❌ เชื่อมต่อไม่ได้ — อาจถูกเบราว์เซอร์บล็อก (CORS) หรือไม่มีเน็ต','var(--dg)'); }
+}
 // ดึงข้อมูลจากรูปใบเสร็จด้วย AI (Claude API)
 async function extractAmountFromImage(){
   const img=expSlips[expAiIdx]; if(!img){ toast('⚠️ เลือกรูปที่ต้องการให้ AI อ่านก่อน (แตะที่รูป)'); return; }
   toast('🤖 AI กำลังอ่านใบเสร็จ...');
   const statusEl=document.getElementById('ex-ai-status');
   if(statusEl){ statusEl.style.display='block'; statusEl.textContent='🤖 AI กำลังอ่านใบเสร็จ... (อาจใช้เวลาสักครู่)'; statusEl.style.color='var(--p)'; }
-  const m=String(img).match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.*)$/);
-  if(!m){ if(statusEl){statusEl.textContent='⚠️ รูปไม่ถูกต้อง';statusEl.style.color='var(--dg)';} aiManualFallback(); return; }
-  const mediaType=m[1], b64=m[2];
+  if(!aiReady()){ if(statusEl){ statusEl.textContent=aiErrMsg({code:'NO_KEY'}); statusEl.style.color='var(--dg)'; } toast(aiErrMsg({code:'NO_KEY'})); return; }
   const prompt='คุณคือผู้ช่วยอ่านใบเสร็จ/ใบกำกับภาษีของไทย วิเคราะห์รูปนี้แล้วตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown โครงสร้าง: {"vendor":"ชื่อร้าน/ผู้ขาย","date":"YYYY-MM-DD หรือ null","total":ยอดรวมทั้งสิ้นที่ต้องจ่ายเป็นตัวเลข,"vat":จำนวนภาษีมูลค่าเพิ่มเป็นตัวเลขหรือ 0,"hasVat":true หรือ false,"category":"หนึ่งใน วัสดุ/อุปกรณ์ หรือ ค่าจ้าง หรือ ค่าขนส่ง หรือ อื่นๆ","items":[{"desc":"ชื่อรายการ","amt":จำนวนเงินก่อนรวม}]} ถ้าอ่านยอดไม่ได้ให้ total เป็น 0 ถ้าใบเสร็จมี VAT ให้ vat เป็นจำนวนภาษีและ hasVat เป็น true; total ต้องเป็นยอดสุทธิที่จ่ายจริงรวม VAT แล้ว';
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:mediaType,data:b64}},
-          {type:'text',text:prompt}
-        ]}]
-      })
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    let txt=(data.content||[]).map(c=>c.type==='text'?c.text:'').join('').trim();
-    txt=txt.replace(/```json|```/g,'').trim();
-    const parsed=JSON.parse(txt);
+    const parsed=await aiVisionJSON(img, prompt, 1000);
     applyReceiptData(parsed);
     if(statusEl){ statusEl.textContent='✅ AI อ่านสำเร็จ — ตรวจสอบความถูกต้องก่อนบันทึก'; statusEl.style.color='var(--ok)'; }
   }catch(e){
-    if(statusEl){ statusEl.textContent='⚠️ AI อ่านไม่สำเร็จ — กรอกยอดเองได้'; statusEl.style.color='var(--dg)'; }
-    aiManualFallback();
+    if(statusEl){ statusEl.textContent=aiErrMsg(e); statusEl.style.color='var(--dg)'; }
+    if(e&&e.code==='NO_KEY') toast(aiErrMsg(e)); else aiManualFallback();
   }
 }
 // เติมข้อมูลที่ AI อ่านได้ลงฟอร์ม
@@ -4098,6 +4157,99 @@ tfoot td{font-weight:700;border-top:2px solid #d1d5db;background:#f4f6f8;padding
 </body></html>`;
   if(typeof showPrintPreview==='function') showPrintPreview(html,'รายงานกำไร-ขาดทุนรายโปรเจกต์',{});
   else { const w=window.open('','_blank'); if(w){ w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); } }
+}
+// ── ศูนย์ติดตามการรับประกัน (Warranty Center) ──
+function warrantyStatus(j){
+  if(!j||!j.warranty||!j.warranty.date) return null;
+  const months=j.warranty.months||12;
+  const start=new Date(j.warranty.date+'T00:00:00'); if(isNaN(start.getTime())) return null;
+  const end=new Date(start.getTime()); end.setMonth(end.getMonth()+months);
+  const now=new Date(); now.setHours(0,0,0,0);
+  const daysLeft=Math.ceil((end-now)/86400000);
+  const status=daysLeft<0?'expired':(daysLeft<=30?'expiring':'active');
+  return {no:j.warranty.no||'', startStr:iso(start), endStr:iso(end), months, daysLeft, status};
+}
+function openWarrantyCenter(){
+  const list=(DB.jobs||[]).map(j=>{ const w=warrantyStatus(j); return w?{j,w}:null; }).filter(Boolean);
+  if(!list.length){ toast('ยังไม่มีงานที่ออกใบรับประกัน — ออกใบได้จากรายละเอียดงาน'); return; }
+  const active=list.filter(x=>x.w.status==='active').length;
+  const expiring=list.filter(x=>x.w.status==='expiring').length;
+  const expired=list.filter(x=>x.w.status==='expired').length;
+  const order={expiring:0,active:1,expired:2};
+  list.sort((a,b)=>(order[a.w.status]-order[b.w.status])||(a.w.daysLeft-b.w.daysLeft));
+  const badge=w=>w.status==='expired'?'<span style="background:#FEE;color:#E53E3E;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">หมดประกัน</span>':w.status==='expiring'?'<span style="background:#FEF3C7;color:#D97706;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">ใกล้หมด</span>':'<span style="background:#E8F8F0;color:#0F9D58;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px">ในประกัน</span>';
+  const rows=list.map(({j,w})=>{ const cn=getCust(j.cust).name; const left=w.daysLeft<0?('หมดแล้ว '+(-w.daysLeft)+' วัน'):('เหลือ '+w.daysLeft+' วัน');
+    return `<div onclick="closeModal();setTimeout(()=>{nav('jobs');setTimeout(()=>openJobDrawer('${j.id}'),150)},60)" style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:11px 13px;margin-bottom:8px;cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${j.title||j.id}</div>${badge(w)}</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">${cn?cn+' · ':''}${w.no?'เลขที่ '+w.no:''}</div>
+      <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:4px"><span style="color:var(--mu)">${w.months%12===0?(w.months/12)+' ปี':w.months+' เดือน'} · ถึง ${fmtD(w.endStr)}</span><span style="font-weight:600;color:${w.status==='expired'?'#E53E3E':w.status==='expiring'?'#D97706':'#0F9D58'}">${left}</span></div>
+    </div>`; }).join('');
+  document.getElementById('ml-t').textContent='🛡️ ศูนย์ติดตามการรับประกัน';
+  document.getElementById('ml-s').textContent=list.length+' รายการ';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+      <div style="background:#E8F8F0;border-radius:11px;padding:11px;text-align:center"><div style="font-size:21px;font-weight:800;color:#0F9D58">${active}</div><div style="font-size:10.5px;color:var(--mu)">ในประกัน</div></div>
+      <div style="background:#FEF3C7;border-radius:11px;padding:11px;text-align:center"><div style="font-size:21px;font-weight:800;color:#D97706">${expiring}</div><div style="font-size:10.5px;color:var(--mu)">ใกล้หมด (≤30 วัน)</div></div>
+      <div style="background:#FEE;border-radius:11px;padding:11px;text-align:center"><div style="font-size:21px;font-weight:800;color:#E53E3E">${expired}</div><div style="font-size:10.5px;color:var(--mu)">หมดประกันแล้ว</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--mu);margin-bottom:10px">เรียงจากใกล้หมดก่อน · แตะเพื่อเปิดงาน/ออกใบรับประกันซ้ำ</div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+// ── ปฏิทิน/ตารางงาน (Job Calendar) ──
+let jobCalMonth=null, jobCalDay=null;
+function jobCalNav(delta){ const p=(jobCalMonth||new Date().toISOString().slice(0,7)).split('-').map(Number); const d=new Date(p[0],p[1]-1+delta,1); jobCalMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; jobCalDay=null; openJobCalendar(); }
+function jobCalSelectDay(ds){ jobCalDay=ds; openJobCalendar(); }
+function openJobCalendar(){
+  jobCalMonth=jobCalMonth||new Date().toISOString().slice(0,7);
+  const ym=jobCalMonth; const [yy,mm]=ym.split('-').map(Number);
+  const todayStr=new Date().toISOString().slice(0,10);
+  const jobDate=j=>j.due||j.date;
+  const byDay={};
+  (DB.jobs||[]).forEach(j=>{ const d=jobDate(j); if(d&&String(d).slice(0,7)===ym){ (byDay[String(d).slice(0,10)]=byDay[String(d).slice(0,10)]||[]).push(j); } });
+  let selDay=jobCalDay;
+  if(!selDay||selDay.slice(0,7)!==ym){ if(todayStr.slice(0,7)===ym) selDay=todayStr; else { const dk=Object.keys(byDay).sort(); selDay=dk[0]||`${ym}-01`; } }
+  jobCalDay=selDay;
+  const first=new Date(yy,mm-1,1); const startDow=first.getDay(); const daysInMonth=new Date(yy,mm,0).getDate();
+  const dow=['อา','จ','อ','พ','พฤ','ศ','ส'];
+  const head=dow.map((d,i)=>`<div style="text-align:center;font-size:10.5px;font-weight:600;color:${i===0?'#E53E3E':(i===6?'#0A6EBD':'var(--mu)')};padding:2px 0">${d}</div>`).join('');
+  let cells='';
+  for(let i=0;i<startDow;i++) cells+='<div></div>';
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=`${ym}-${String(d).padStart(2,'0')}`;
+    const jl=byDay[ds]||[]; const isToday=ds===todayStr; const isSel=ds===selDay;
+    const dots=jl.slice(0,3).map(j=>{ const st=JOB_STATUS_STYLE[j.status]||JOB_STATUS_STYLE['รอทำ']; return `<span style="width:6px;height:6px;border-radius:50%;background:${st.c};display:inline-block"></span>`; }).join('');
+    const more=jl.length>3?`<span style="font-size:8px;color:var(--mu);line-height:1">+${jl.length-3}</span>`:'';
+    cells+=`<div onclick="jobCalSelectDay('${ds}')" style="min-height:42px;border-radius:8px;padding:3px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;border:1.5px solid ${isSel?'#0A6EBD':'transparent'};background:${isSel?'#EAF4FF':(isToday?'#FFF7ED':(jl.length?'#f8fafc':'transparent'))}">
+      <div style="font-size:12px;font-weight:${isToday||isSel?700:500};color:${isToday?'#D97706':'var(--tx)'}">${d}</div>
+      <div style="display:flex;gap:2px;align-items:center;flex-wrap:wrap;justify-content:center;min-height:6px">${dots}${more}</div>
+    </div>`;
+  }
+  const selJobs=(byDay[selDay]||[]).slice().sort((a,b)=>(a.title||'').localeCompare(b.title||''));
+  const fmtSel=(()=>{ const p=selDay.split('-'); return `${(+p[2])} ${['ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'][(+p[1])-1]} ${(+p[0])+543}`; })();
+  const dayList=selJobs.length?selJobs.map(j=>{ const cn=getCust(j.cust).name; return `<div onclick="closeModal();setTimeout(()=>{nav('jobs');setTimeout(()=>openJobDrawer('${j.id}'),150)},60)" style="background:#fff;border:1px solid var(--bd);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${j.title||j.id}</div>${jobStatusBadge(j.status)}</div>
+    <div style="font-size:11.5px;color:var(--mu);margin-top:3px">${j.assignee?'👷 '+j.assignee:''}${cn?(j.assignee?' · ':'')+cn:''}${j.value?' · ฿'+fmt(j.value):''}</div>
+    ${j.location?`<div style="font-size:11px;color:var(--mu);margin-top:1px">📍 ${j.location}</div>`:''}
+    <div style="font-size:10.5px;color:var(--mu);margin-top:2px">${j.date?'เริ่ม '+fmtD(j.date):''}${j.due?' · กำหนดส่ง '+fmtD(j.due):''}</div>
+  </div>`; }).join(''):'<div style="text-align:center;color:var(--mu);padding:24px;font-size:12.5px">ไม่มีงานในวันนี้</div>';
+  const mLabel=(typeof pcMonthLabel==='function')?pcMonthLabel(ym):ym;
+  const totMonth=Object.values(byDay).reduce((s,a)=>s+a.length,0);
+  document.getElementById('ml-t').textContent='📅 ปฏิทินงาน';
+  document.getElementById('ml-s').textContent=mLabel+' · '+totMonth+' งาน';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:10px">
+      <button class="btn bo" style="padding:6px 12px" onclick="jobCalNav(-1)">‹</button>
+      <div style="font-weight:700;font-size:14px;min-width:130px;text-align:center">${mLabel}</div>
+      <button class="btn bo" style="padding:6px 12px" onclick="jobCalNav(1)">›</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">${head}</div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:3px">${cells}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0;font-size:10px;color:var(--mu);justify-content:center">${Object.entries(JOB_STATUS_STYLE).map(([s,st])=>`<span style="display:inline-flex;align-items:center;gap:3px"><span style="width:7px;height:7px;border-radius:50%;background:${st.c};display:inline-block"></span>${s}</span>`).join('')}</div>
+    <div style="border-top:1px solid var(--bd);padding-top:12px"><div style="font-weight:700;font-size:13px;margin-bottom:10px">📌 งานวันที่ ${fmtSel} <span style="color:var(--mu);font-weight:400">(${selJobs.length})</span></div>${dayList}</div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
 }
 function renderJobs(){
   const jobs=DB.jobs||[];
@@ -5366,6 +5518,27 @@ function openCompanyForm(){
       <div class="fg"><label class="flb">มือถือ</label><input class="fi" id="co-mobile" value="${v.mobile.replace(/"/g,'&quot;')}"></div>
       <div class="fg"><label class="flb">ผู้ขาย / ผู้มีอำนาจลงนาม</label><input class="fi" id="co-seller" value="${v.seller.replace(/"/g,'&quot;')}"></div>
     </div>
+    <div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:10px">💸 พร้อมเพย์ / QR รับเงิน</div>
+      <div class="fg" style="margin-bottom:12px"><label class="flb">แสดงบนใบวางบิล / ใบแจ้งหนี้</label>
+        <select class="fi" id="co-paydisplay">${[['qr','📱 QR พร้อมเพย์'],['bank','🏦 เลขบัญชีธนาคาร'],['both','📱 + 🏦 ทั้ง QR และเลขบัญชี'],['none','🚫 ไม่แสดง']].map(([val,lb])=>`<option value="${val}" ${((v.payDisplay||(v.qrOnBills===false?'none':'qr'))===val)?'selected':''}>${lb}</option>`).join('')}</select>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">พร้อมเพย์ ID — <b>ตัวที่สแกนจ่ายได้จริง</b> (เบอร์มือถือ / เลขบัตรปชช. / เลขนิติบุคคล)</label><input class="fi" id="co-promptpay" inputmode="numeric" value="${(v.promptpayId||'').replace(/"/g,'&quot;')}" placeholder="0813062293"></div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อบัญชี (แสดงใต้ QR)</label><input class="fi" id="co-promptpay-name" value="${(v.promptpayName||'').replace(/"/g,'&quot;')}" placeholder="เว้นว่าง = ใช้ชื่อบริษัท"></div>
+      <div class="fl2">
+        <div class="fg"><label class="flb">ธนาคาร (แสดงไว้ให้โอนเอง)</label><input class="fi" id="co-bankname" value="${(v.bankName||'').replace(/"/g,'&quot;')}" placeholder="เช่น ธ.กสิกรไทย"></div>
+        <div class="fg"><label class="flb">เลขที่บัญชี (แสดงไว้ให้โอนเอง)</label><input class="fi" id="co-bankacc" value="${(v.bankAcc||'').replace(/"/g,'&quot;')}" placeholder="xxx-x-xxxxx-x"></div>
+      </div>
+      <div style="font-size:11px;color:var(--mu);margin-top:8px;line-height:1.6">📲 QR นี้เป็น <b>พร้อมเพย์มาตรฐาน</b> สแกนจ่ายได้จากทุกแอปธนาคาร (K PLUS, SCB EASY, กรุงไทย NEXT, Bualuang, KMA, ทรูมันนี่ ฯลฯ)<br>⚠️ พร้อมเพย์ ID ต้อง<b>ผูกพร้อมเพย์กับบัญชีธนาคารแล้ว</b>จึงจะรับเงินได้ · เลขบัญชี/ธนาคารเป็นข้อมูลให้ลูกค้าโอนเอง (ตัว QR ใช้พร้อมเพย์ ID)</div>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">🤖 AI (อ่านใบเสร็จ / สลิปอัตโนมัติ)</div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">Anthropic API Key</label><input class="fi" id="co-aikey" type="password" value="${(v.aiKey||'').replace(/"/g,'&quot;')}" placeholder="sk-ant-... (เก็บในเครื่องนี้เท่านั้น)" autocomplete="off"></div>
+      <div class="fg" style="margin-bottom:8px"><label class="flb">โมเดล (ไม่บังคับ)</label><input class="fi" id="co-aimodel" value="${(v.aiModel||'').replace(/"/g,'&quot;')}" placeholder="claude-sonnet-4-6"></div>
+      <div style="font-size:11px;color:var(--mu);line-height:1.6">ใช้สำหรับ <b>อ่านใบเสร็จ/สลิปอัตโนมัติ</b> · ขอคีย์ได้ที่ console.anthropic.com<br>⚠️ คีย์เก็บในเบราว์เซอร์นี้ (ไม่ฝังในซอร์สโค้ด GitHub) แต่เห็นได้ใน Network ของเครื่องนี้ — แนะนำใช้คีย์ที่ตั้งวงเงินจำกัด และอย่าใส่ในเครื่องสาธารณะ</div>
+      <button type="button" class="btn bo" style="width:100%;justify-content:center;padding:9px;margin-top:10px;font-size:13px" onclick="aiTestKey()">🔌 ทดสอบการเชื่อมต่อ AI</button>
+      <div id="co-ai-test" style="display:none;font-size:12px;margin-top:7px;font-weight:600;line-height:1.5"></div>
+    </div>
     <div style="border-top:1px solid var(--bd);margin-top:14px;padding-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><label class="flb" style="margin:0">โลโก้บริษัท (หัวเอกสาร)</label>
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;font-weight:600"><input type="checkbox" id="co-showlogo" ${v.showLogo!==false?'checked':''} style="width:16px;height:16px">แสดงโลโก้บนเอกสาร</label>
@@ -5402,8 +5575,8 @@ function handleLogoImg(e){
   compressReceiptImage(file,400,0.85).then(d=>maybeStorage(d,'logo')).then(data=>{ coLogoData=data; const box=document.getElementById('co-logo-box'); if(box) box.innerHTML=`<img src="${data}" style="max-width:100%;max-height:100%;object-fit:contain">`; toast('🏢 เพิ่มโลโก้แล้ว'); });
 }
 function saveCompany(){
-  companyInfo={name:document.getElementById('co-name').value,shortName:document.getElementById('co-short').value,addr:document.getElementById('co-addr').value,tax:document.getElementById('co-tax').value,tel:document.getElementById('co-tel').value,mobile:document.getElementById('co-mobile').value,seller:document.getElementById('co-seller').value,sigImg:coSigData||null,logo:coLogoData||null,showLogo:document.getElementById('co-showlogo')?document.getElementById('co-showlogo').checked:true};
-  saveData(); closeModal(); toast('✅ บันทึกข้อมูลบริษัทแล้ว');
+  companyInfo={name:document.getElementById('co-name').value,shortName:document.getElementById('co-short').value,addr:document.getElementById('co-addr').value,tax:document.getElementById('co-tax').value,tel:document.getElementById('co-tel').value,mobile:document.getElementById('co-mobile').value,seller:document.getElementById('co-seller').value,promptpayId:document.getElementById('co-promptpay')?document.getElementById('co-promptpay').value.replace(/[^0-9]/g,''):'',promptpayName:document.getElementById('co-promptpay-name')?document.getElementById('co-promptpay-name').value.trim():'',bankName:document.getElementById('co-bankname')?document.getElementById('co-bankname').value.trim():'',bankAcc:document.getElementById('co-bankacc')?document.getElementById('co-bankacc').value.trim():'',qrOnBills:document.getElementById('co-paydisplay')?['qr','both'].includes(document.getElementById('co-paydisplay').value):true,payDisplay:document.getElementById('co-paydisplay')?document.getElementById('co-paydisplay').value:'qr',aiKey:document.getElementById('co-aikey')?document.getElementById('co-aikey').value.trim():'',aiModel:document.getElementById('co-aimodel')?document.getElementById('co-aimodel').value.trim():'',sigImg:coSigData||null,logo:coLogoData||null,showLogo:document.getElementById('co-showlogo')?document.getElementById('co-showlogo').checked:true};
+  syncPromptPay(); saveData(); closeModal(); toast('✅ บันทึกข้อมูลบริษัทแล้ว');
 }
 function resetCompany(){ companyInfo={}; coSigData=undefined; coLogoData=undefined; saveData(); closeModal(); toast('↩️ คืนค่าข้อมูลบริษัทเริ่มต้น'); }
 
@@ -5661,6 +5834,7 @@ function loadData(){
       if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
       if(d.settingsState) Object.assign(settingsState,d.settingsState);
       if(d.companyInfo) Object.assign(companyInfo,d.companyInfo);
+      syncPromptPay();
       return true;
     }
   }catch(e){}
@@ -6051,6 +6225,7 @@ function importBackup(){
       if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
       if(d.settingsState) Object.assign(settingsState,d.settingsState);
       if(d.companyInfo) companyInfo=Object.assign({},d.companyInfo);
+      syncPromptPay();
       try{ DB._acctBuilt=false; }catch(e){}
       saveData(); closeModal();
       try{ renderPage(curPage); renderDashboard(); updateNavBadges(); updateNotifDot(); }catch(e){}
@@ -7877,18 +8052,21 @@ function printDoc(type,id,opts){
   else if(type==='cashsale'){ r=DB.cashsale.find(x=>x.id===id); }
   else if(type==='delivery'){ r=DB.delivery.find(x=>x.id===id); }
   else if(type==='expense'){ r=DB.expense.find(x=>x.id===id); }
+  else if(type==='po'){ r=DB.po.find(x=>x.id===id); }
+  else if(type==='receive'){ r=DB.receive.find(x=>x.id===id); }
   if(!r) return;
   // ถ้าเอกสารตั้งค่าไม่แสดงลายเซ็นไว้ (และผู้ใช้ไม่ได้สั่งแสดงเองในพรีวิว) ให้ซ่อน
   if(opts.showSig===undefined && r.noSig) CO.showSig=false;
-  const defaultByType=(type==='quotes'?'ใบเสนอราคา':type==='installments'?'ใบแบ่งจ่าย':type==='cashsale'?'บิลเงินสด / ใบเสร็จรับเงิน':type==='delivery'?'ใบส่งสินค้า / ใบกำกับภาษี':type==='expense'?'ใบสำคัญจ่าย':'ใบวางบิล / ใบแจ้งหนี้');
+  const defaultByType=(type==='quotes'?'ใบเสนอราคา':type==='installments'?'ใบแบ่งจ่าย':type==='cashsale'?'บิลเงินสด / ใบเสร็จรับเงิน':type==='delivery'?'ใบส่งสินค้า / ใบกำกับภาษี':type==='expense'?'ใบสำคัญจ่าย':type==='po'?'ใบสั่งซื้อ':type==='receive'?'ใบรับสินค้า / ใบตรวจรับ':'ใบวางบิล / ใบแจ้งหนี้');
   const docTypeName = opts.docType || r.docHeader || defaultByType;
   // บันทึกหัวบิลที่เลือกไว้กับเอกสาร (เพื่อให้ครั้งต่อไปเปิดมาเป็นหัวเดิม)
   if(opts.docType && r.docHeader!==opts.docType){ r.docHeader=opts.docType; try{ saveData(); }catch(e){} }
   title = docTypeName;
-  const cust=getCust(r.cust);
+  const partyId = (type==='po'||type==='receive') ? r.supp : r.cust;
+  const cust=getCust(partyId);
   const custName = type==='expense'
     ? (r.desc||'ผู้รับเงิน')
-    : (r.cust && cust && cust.name) ? cust.name : (r.cust||'ลูกค้าทั่วไป');
+    : (partyId && cust && cust.name) ? cust.name : (partyId||((type==='po'||type==='receive')?'ผู้จำหน่าย':'ลูกค้าทั่วไป'));
   const _lt=it=>{ const g=(it.price||0)*(it.qty||0); return g-(g*(it.disc||0)/100); };
   const itemsSub=(r.items&&r.items.length)?r.items.reduce((a,b)=>a+_lt(b),0):(((r.amt||0)/(r.vat?1.07:1)));
   const discMode=r.discMode||'baht';
@@ -7958,31 +8136,32 @@ function printDoc(type,id,opts){
   }
   const body=buildBody();
 
-  // ── PromptPay QR สำหรับเอกสารที่รอชำระ (ใบวางบิล/ใบแจ้งหนี้/ใบแบ่งจ่าย) ──
+  // ── วิธีรับชำระบนเอกสาร: QR พร้อมเพย์ / เลขบัญชี / ทั้งคู่ / ไม่แสดง ──
   let qrHtml='';
   try{
-    const showQR=(type==='invoices'||type==='installments');
-    if(showQR && typeof promptPayPayload==='function' && typeof qrSVG==='function' && typeof PROMPTPAY_ID!=='undefined'){
-      let qrAmt, dynamic=true, hasWht=false;
-      if(type==='installments' && r.rows){ qrAmt=r.rows.filter(x=>!x.paid).reduce((s,x)=>s+(+x.amt||0),0); }
-      else { qrAmt=(+r.amt||0)-(+r.paidAmt||0); hasWht=(+r.wht||0)>0; }
-      qrAmt=Math.round(qrAmt*100)/100;
-      if(qrAmt>0.01){
-        if(hasWht) dynamic=false; // มีหัก ณ ที่จ่าย → ไม่ล็อกยอด ให้ลูกค้ากรอกยอดสุทธิ
-        const payload=promptPayPayload(PROMPTPAY_ID, dynamic?qrAmt:0);
-        const amtLine = dynamic
-          ? `<div style="font-size:16px;font-weight:800;color:#0A6EBD;margin-top:2px">฿${fmt(qrAmt)}</div>`
-          : `<div style="font-size:12px;color:#c0392b;margin-top:2px">กรอกยอดสุทธิหลังหัก ณ ที่จ่าย ${r.wht}%</div><div style="font-size:12.5px;color:#52606d">(ยอดบิล ฿${fmt(qrAmt)})</div>`;
-        qrHtml=`<div style="display:flex;align-items:center;gap:14px;border:1px solid #d7dee5;border-radius:10px;padding:12px 16px;margin-top:14px;background:#fbfdff;width:fit-content;max-width:430px">
-          <div style="width:118px;height:118px;flex:none">${qrSVG(payload,118)}</div>
-          <div style="font-size:12px;line-height:1.55">
-            <div style="font-weight:800;color:#003D6A;font-size:14px;letter-spacing:.5px">PromptPay</div>
-            <div style="color:#52606d">สแกน QR นี้เพื่อชำระเงิน</div>
-            <div>พร้อมเพย์: <b>${PROMPTPAY_ID}</b></div>
-            ${amtLine}
-            <div style="color:#7a868f;font-size:11px;margin-top:2px">ในนาม ${CO.shortName||CO.name}</div>
-          </div>
-        </div>`;
+    const payMode=(companyInfo&&companyInfo.payDisplay)||(companyInfo&&companyInfo.qrOnBills===false?'none':'qr');
+    const isBill=(type==='invoices'||type==='installments');
+    if(isBill && payMode!=='none'){
+      let payAmt=0;
+      if(type==='installments' && r.rows){ payAmt=r.rows.filter(x=>!x.paid).reduce((s,x)=>s+(+x.amt||0),0); }
+      else { payAmt=(+r.amt||0)-(+r.paidAmt||0); }
+      payAmt=Math.round(payAmt*100)/100;
+      if(payAmt>0.01){
+        const acctName=(companyInfo&&companyInfo.promptpayName)||CO.shortName||CO.name;
+        const hasBank=!!(companyInfo&&(companyInfo.bankName||companyInfo.bankAcc));
+        let qrBox='';
+        if((payMode==='qr'||payMode==='both') && typeof promptPayPayload==='function' && typeof qrSVG==='function' && typeof PROMPTPAY_ID!=='undefined'){
+          const hasWht=(type!=='installments')&&((+r.wht||0)>0);
+          const dynamic=!hasWht;
+          const payload=promptPayPayload(PROMPTPAY_ID, dynamic?payAmt:0);
+          const amtLine=dynamic?`<div style="font-size:16px;font-weight:800;color:#0A6EBD;margin-top:2px">฿${fmt(payAmt)}</div>`:`<div style="font-size:12px;color:#c0392b;margin-top:2px">กรอกยอดสุทธิหลังหัก ณ ที่จ่าย ${r.wht}%</div><div style="font-size:12.5px;color:#52606d">(ยอดบิล ฿${fmt(payAmt)})</div>`;
+          qrBox=`<div style="display:flex;align-items:center;gap:14px;border:1px solid #d7dee5;border-radius:10px;padding:12px 16px;margin-top:14px;background:#fbfdff;width:fit-content;max-width:430px"><div style="width:118px;height:118px;flex:none">${qrSVG(payload,118)}</div><div style="font-size:12px;line-height:1.55"><div style="font-weight:800;color:#003D6A;font-size:14px;letter-spacing:.5px">PromptPay</div><div style="color:#52606d">สแกน QR นี้เพื่อชำระเงิน</div><div>พร้อมเพย์: <b>${PROMPTPAY_ID}</b></div>${amtLine}<div style="color:#7a868f;font-size:11px;margin-top:2px">ในนาม ${acctName}</div>${(payMode==='both'&&hasBank)?`<div style="color:#7a868f;font-size:11px;margin-top:1px">${companyInfo.bankName||''} ${companyInfo.bankAcc||''}</div>`:''}</div></div>`;
+        }
+        let bankBox='';
+        if(payMode==='bank' && hasBank){
+          bankBox=`<div style="border:1px solid #d7dee5;border-radius:10px;padding:12px 16px;margin-top:14px;background:#fbfdff;width:fit-content;max-width:430px"><div style="font-weight:800;color:#003D6A;font-size:14px">โอนเข้าบัญชีธนาคาร</div>${companyInfo.bankName?`<div style="font-size:12.5px;margin-top:4px">ธนาคาร: <b>${companyInfo.bankName}</b></div>`:''}${companyInfo.bankAcc?`<div style="font-size:12.5px">เลขที่บัญชี: <b>${companyInfo.bankAcc}</b></div>`:''}<div style="font-size:12px;color:#52606d;margin-top:2px">ชื่อบัญชี: ${acctName}</div><div style="font-size:15px;font-weight:800;color:#0A6EBD;margin-top:4px">฿${fmt(payAmt)}</div></div>`;
+        }
+        qrHtml=qrBox||bankBox;
       }
     }
   }catch(e){ qrHtml=''; }
@@ -8006,7 +8185,7 @@ function printDoc(type,id,opts){
           ${(CO.logo&&CO.showLogo!==false)?`<img src="${CO.logo}" style="max-height:64px;max-width:200px;object-fit:contain;margin-bottom:8px;display:block">`:''}
           <div class="co-name">${CO.name}</div>
           <div class="co-addr">${CO.addr}<br>${CO.tax}<br>${CO.tel}<br>${CO.mobile}</div>
-          <div class="cust-sec"><div class="cust-lb">${type==='expense'?'รายการ':'ลูกค้า'}</div><div class="cust-nm">${custName}</div></div>
+          <div class="cust-sec"><div class="cust-lb">${type==='expense'?'รายการ':(type==='po'||type==='receive')?'ผู้จำหน่าย / ผู้ขาย':'ลูกค้า'}</div><div class="cust-nm">${custName}</div></div>
           ${r.ship?`<div class="cust-sec" style="margin-top:6px"><div class="cust-lb">📍 ที่อยู่จัดส่ง / สถานที่ติดตั้ง</div><div style="font-size:12px;white-space:pre-line">${r.ship}</div></div>`:''}
         </div>
         <div class="docmeta">
@@ -8890,32 +9069,16 @@ async function pcReadReceipt(){
   if(!m){ setS('⚠️ รูปไม่ถูกต้อง','var(--dg)'); return; }
   setS('🤖 AI กำลังอ่านบิล... (อาจใช้เวลาสักครู่)','var(--p)');
   const prompt='คุณคือผู้ช่วยอ่านใบเสร็จ/บิลของไทย วิเคราะห์รูปนี้แล้วตอบกลับเป็น JSON เท่านั้น ห้ามมีข้อความอื่นหรือ markdown โครงสร้าง: {"vendor":"ชื่อร้าน/ผู้ขาย หรือ null","date":"YYYY-MM-DD หรือ null","total":ยอดเงินรวมที่จ่ายจริงเป็นตัวเลข,"category":"เลือกหนึ่งหมวดที่ใกล้เคียงที่สุดจาก: ค่าเดินทาง, ค่าอาหาร/รับรอง, เครื่องเขียน/สำนักงาน, ค่าน้ำมัน, ค่าไปรษณีย์/ขนส่ง, ค่าซ่อมแซม, ค่าสาธารณูปโภค, เบ็ดเตล็ด/อื่นๆ"} ถ้าอ่านยอดไม่ได้ให้ total เป็น 0 และถ้าปีเป็น พ.ศ. ให้แปลงเป็น ค.ศ. (ลบ 543)';
+  if(!aiReady()){ setS(aiErrMsg({code:'NO_KEY'}),'var(--dg)'); toast(aiErrMsg({code:'NO_KEY'})); return; }
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:500,
-        messages:[{role:'user',content:[
-          {type:'image',source:{type:'base64',media_type:m[1],data:m[2]}},
-          {type:'text',text:prompt}
-        ]}]
-      })
-    });
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const data=await res.json();
-    let txt=(data.content||[]).map(c=>c.type==='text'?c.text:'').join('').trim().replace(/```json|```/g,'').trim();
-    const d=JSON.parse(txt);
+    const d=await aiVisionJSON(img, prompt, 500);
     const total=parseFloat(d.total)||0;
     if(total>0){ const a=document.getElementById('pc-f-amt'); if(a) a.value=total; }
     if(d.date&&/^\d{4}-\d{2}-\d{2}$/.test(d.date)){ const dt=document.getElementById('pc-f-date'); if(dt) dt.value=d.date; }
     const descEl=document.getElementById('pc-f-desc'); if(descEl&&!descEl.value&&d.vendor&&d.vendor!=='null') descEl.value=d.vendor;
     if(d.category){ const cat=document.getElementById('pc-f-cat'); if(cat){ [...cat.options].forEach(o=>{ if(o.value===d.category||o.text===d.category) cat.value=o.value; }); } }
     setS(total>0?'✅ อ่านสำเร็จ — ตรวจสอบยอด/วันที่ก่อนบันทึก':'⚠️ อ่านยอดไม่ได้ — กรอกเอง', total>0?'var(--ok)':'var(--wn)');
-  }catch(e){
-    setS('⚠️ อ่านไม่สำเร็จ — กรอกเอง (ฟีเจอร์นี้ใช้ได้เมื่อเชื่อมต่อ AI)','var(--dg)');
-  }
+  }catch(e){ setS(aiErrMsg(e),'var(--dg)'); }
 }
 // ── ลงบัญชีอัตโนมัติ: จ่ายออก = Dr ค่าใช้จ่าย/Cr เงินสด · รับเข้า/เติมเงิน = Dr เงินสด/Cr ธนาคาร ──
 function autoPostPettyCash(x){
