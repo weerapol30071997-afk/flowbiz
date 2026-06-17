@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16y · 📷 Barcode + 📊 Dashboard ผู้บริหาร</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16z · 📋 งบประมาณ + 🏢 ทรัพย์สิน/ค่าเสื่อม</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2242,6 +2242,7 @@ function openExecDashboard(){
   document.getElementById('ml-t').textContent='📊 ภาพรวมผู้บริหาร (KPI)';
   document.getElementById('ml-s').textContent='ข้อมูลเดือน '+(typeof pcMonthLabel==='function'?pcMonthLabel(thisMonth):thisMonth);
   document.getElementById('ml-bd').innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px" onclick="openBudget()">📋 งบประมาณ</button><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px" onclick="openAssets()">🏢 ทรัพย์สิน</button></div>
     <div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">เดือนนี้</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       ${card('#EAF4FF','#0A6EBD','฿'+fmt(revM),'รายได้ออกบิล')}
