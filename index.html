@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16z · 📋 งบประมาณ + 🏢 ทรัพย์สิน/ค่าเสื่อม</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17d · 🎁 คูปอง/โปรโมชั่น</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -523,6 +523,7 @@ tbody tr:hover td{background:#FAFBFD}
     <div class="fb">
       <input class="fi" placeholder="🔍 ค้นหาเลขที่ / ลูกค้า" id="q-search" oninput="renderQuotes()">
       <select class="fi" style="flex:0 0 160px" id="q-status" onchange="renderQuotes()"><option value="">สถานะทั้งหมด</option><option value="รออนุมัติ">รออนุมัติ</option><option value="อนุมัติแล้ว">อนุมัติแล้ว</option><option value="ดำเนินการแล้ว">ดำเนินการแล้ว</option><option value="แบ่งจ่าย">แบ่งจ่าย</option><option value="ไม่อนุมัติ">ไม่อนุมัติ</option></select>
+      <button class="btn bo" onclick="openCRM()">🎯 ดีล/CRM</button>
       <button class="btn bp" onclick="newQuote()">+ สร้างใบเสนอราคา</button>
     </div>
     <div class="tc"><div class="tc-hd"><div class="card-t">ใบเสนอราคาทั้งหมด</div><div style="font-size:12px;color:var(--mu)">คลิกเพื่อดูรายละเอียด</div></div>
@@ -966,6 +967,8 @@ tbody tr:hover td{background:#FAFBFD}
   <div id="pg-products" class="pg">
     <div class="fb">
       <input class="fi" placeholder="🔍 ค้นหาสินค้า / รหัส / บาร์โค้ด..." id="pr-search" oninput="renderProducts()">
+      <button class="btn bo" onclick="openCoupons()">🎁 คูปอง</button>
+      <button class="btn bo" onclick="openWarehouses()">🏭 คลัง</button>
       <button class="btn bp" onclick="openProductForm(null)">+ เพิ่มสินค้า</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap" id="pr-tabs">
@@ -1312,6 +1315,11 @@ const DB = {
   recurring:[],
   budgets:[],
   assets:[],
+  bankrecs:[],
+  bankInfo:{},
+  leads:[],
+  warehouses:[],
+  coupons:[],
   pettycash:[],
   pcClosings:[],
   stockMoves:[],
@@ -1657,6 +1665,13 @@ function openDocForm(type, editId){
       </div>
       <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;padding:7px;margin-bottom:8px" onclick="addCustomDocItem()">✏️ เพิ่มรายการเอง (ระบุชื่อ/ราคาเอง)</button>
       <div id="m-itemlist" style="margin-bottom:10px"></div>
+      <div class="fg full" style="margin-bottom:8px"><label class="flb">🎁 คูปอง / โค้ดส่วนลด</label>
+        <div style="display:flex;gap:8px">
+          <input class="fi" id="m-coupon" placeholder="ใส่โค้ด เช่น SAVE10" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();couponApply();}">
+          <button class="btn bo" style="white-space:nowrap" onclick="couponApply()">ใช้คูปอง</button>
+        </div>
+        <div id="m-coupon-msg" style="font-size:11.5px;margin-top:4px"></div>
+      </div>
       <div class="fg full" style="margin-bottom:8px"><label class="flb">ส่วนลดท้ายบิล</label>
         <div style="display:flex;gap:8px">
           <input class="fi" type="number" id="m-disc" value="0" step="any" oninput="docCalcTotals()" style="flex:1">
@@ -1820,6 +1835,7 @@ function collectNotifications(){
   (DB.jobs||[]).forEach(j=>{ const w=(typeof warrantyStatus==='function')?warrantyStatus(j):null; if(w&&w.status==='expiring') list.push({ic:'🛡️',t:'ประกันใกล้หมดอายุ',s:(j.title||j.id)+' · เหลือ '+w.daysLeft+' วัน (ถึง '+fmtD(w.endStr)+')',act:`closeModal();nav('jobs')`,pri:2}); });
   (DB.contracts||[]).forEach(c=>{ const info=(typeof maInfo==='function')?maInfo(c):null; if(info&&info.status==='active'&&info.due&&info.nextStr) list.push({ic:'🔄',t:info.overdue?'เลยกำหนดเข้าบริการ MA':'ถึงกำหนดเข้าบริการ MA',s:(c.title||c.id)+' · '+(getCust(c.cust).name||'')+' · '+fmtD(info.nextStr),act:'closeModal();openMAContracts()',pri:info.overdue?1:2}); });
   (DB.recurring||[]).forEach(p=>{ const info=(typeof rcInfo==='function')?rcInfo(p):null; if(info&&info.due) list.push({ic:'🔁',t:'บิลซ้ำถึงกำหนดสร้าง',s:(p.name||'')+' · '+(getCust(p.cust).name||'')+' · ฿'+fmt(p.amt||0),act:'closeModal();openRecurring()',pri:2}); });
+  (DB.leads||[]).forEach(l=>{ if(l.stage!=='ปิดได้'&&l.stage!=='ปิดไม่ได้'&&l.nextDate){ if(l.nextDate<today) list.push({ic:'🎯',t:'ติดตามดีลเลยกำหนด',s:(l.name||l.cust||'')+(l.nextAction?' · '+l.nextAction:''),act:'closeModal();openCRM()',pri:1}); else if(l.nextDate<=in7) list.push({ic:'🎯',t:'ถึงกำหนดติดตามดีล',s:(l.name||l.cust||'')+(l.nextAction?' · '+l.nextAction:'')+' · '+fmtD(l.nextDate),act:'closeModal();openCRM()',pri:2}); } });
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -2219,6 +2235,195 @@ function printAssetRegister(){
   if(typeof showPrintPreview==='function') showPrintPreview(html,'ทะเบียนทรัพย์สิน',{});
   else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
 }
+// ── CRM: Lead / Pipeline (โอกาสการขาย) ──
+const LEAD_STAGES=[['ใหม่','#0A6EBD'],['ติดต่อแล้ว','#6366F1'],['เสนอราคา','#D97706'],['เจรจา','#9333EA'],['ปิดได้','#0F9D58'],['ปิดไม่ได้','#94a3b8']];
+function leadStageColor(s){ const f=LEAD_STAGES.find(x=>x[0]===s); return f?f[1]:'#64748b'; }
+function leadIsOpen(l){ return l.stage!=='ปิดได้'&&l.stage!=='ปิดไม่ได้'; }
+function openCRM(stageFilter){
+  const arr=(DB.leads||[]); const now=new Date(); const mKey=iso(now).slice(0,7); const todayStr=iso(now);
+  const open=arr.filter(leadIsOpen); const openVal=open.reduce((s,l)=>s+(+l.value||0),0);
+  const wonM=arr.filter(l=>l.stage==='ปิดได้'&&String(l.wonDate||l.createdDate||'').slice(0,7)===mKey); const wonMVal=wonM.reduce((s,l)=>s+(+l.value||0),0);
+  const closed=arr.filter(l=>l.stage==='ปิดได้'||l.stage==='ปิดไม่ได้');
+  const winRate=closed.length?Math.round(arr.filter(l=>l.stage==='ปิดได้').length/closed.length*100):0;
+  const filt=stageFilter||'open';
+  let shown=arr.slice();
+  if(filt==='open') shown=arr.filter(leadIsOpen); else if(filt!=='all') shown=arr.filter(l=>l.stage===filt);
+  shown.sort((a,b)=>String(a.nextDate||'9999').localeCompare(String(b.nextDate||'9999')));
+  const chip=(key,label)=>`<button class="btn ${filt===key?'bp':'bo'}" style="font-size:11px;padding:5px 10px" onclick="openCRM('${key}')">${label}</button>`;
+  const rows=shown.length?shown.map(l=>{ const overdue=leadIsOpen(l)&&l.nextDate&&l.nextDate<todayStr;
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:11px 13px;margin-bottom:8px" onclick="leadForm('${l.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${escHtml(l.name||l.cust||'(ไม่มีชื่อ)')}</div><div style="font-weight:700;color:var(--p);font-size:13px">฿${fmt(l.value||0)}</div></div>
+      <div style="font-size:11px;color:var(--mu);margin-top:3px">${escHtml(l.cust||'')}${l.contact?' · '+escHtml(l.contact):''}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:7px;gap:8px">
+        <span style="font-size:10.5px;font-weight:700;color:#fff;background:${leadStageColor(l.stage)};padding:2px 9px;border-radius:20px">${escHtml(l.stage||'ใหม่')}</span>
+        ${l.nextAction?`<span style="font-size:10.5px;color:${overdue?'#E53E3E':'var(--mu)'};text-align:right">${overdue?'⏰ ':'📅 '}${escHtml(l.nextAction)}${l.nextDate?' · '+fmtD(l.nextDate):''}</span>`:''}
+      </div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:20px;font-size:13px">ยังไม่มีดีลในกลุ่มนี้</div>';
+  document.getElementById('ml-t').textContent='🎯 ดีล / Pipeline (CRM)';
+  document.getElementById('ml-s').textContent=open.length+' ดีลกำลังดำเนินการ';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div style="background:#EAF4FF;border-radius:11px;padding:11px;text-align:center"><div style="font-size:17px;font-weight:800;color:#0A6EBD">฿${fmt(openVal)}</div><div style="font-size:10px;color:var(--mu)">มูลค่า Pipeline (${open.length} ดีล)</div></div>
+      <div style="background:#E8F8F0;border-radius:11px;padding:11px;text-align:center"><div style="font-size:17px;font-weight:800;color:#0F9D58">฿${fmt(wonMVal)}</div><div style="font-size:10px;color:var(--mu)">ปิดได้เดือนนี้ (${wonM.length}) · ชนะ ${winRate}%</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">${chip('open','กำลังทำ')}${LEAD_STAGES.map(s=>chip(s[0],s[0])).join('')}${chip('all','ทั้งหมด')}</div>
+    <button class="btn bp" style="width:100%;justify-content:center;margin:6px 0 12px" onclick="leadForm('')">+ สร้างดีล / Lead</button>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function leadForm(id){
+  const l=id?(DB.leads||[]).find(x=>x.id===id):null; const v=l||{stage:'ใหม่',createdDate:iso(new Date())};
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const custs=(DB.contacts||[]).map(c=>c.name).filter(Boolean);
+  const stageOpts=LEAD_STAGES.map(s=>`<option value="${s[0]}"${v.stage===s[0]?' selected':''}>${s[0]}</option>`).join('');
+  document.getElementById('ml-t').textContent=l?'✏️ แก้ไขดีล':'+ สร้างดีล / Lead';
+  document.getElementById('ml-s').textContent=l?(l.name||l.id):'โอกาสการขายใหม่';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="ld-id" value="${qa(id||'')}">
+    <div class="fg" style="margin-bottom:8px"><label class="flb">ชื่อดีล / เรื่อง</label><input class="fi" id="ld-name" value="${qa(v.name)}" placeholder="เช่น ติดตั้งระบบไฟอาคาร B"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">ลูกค้า / ผู้ติดต่อ</label><input class="fi" id="ld-cust" list="ld-custlist" value="${qa(v.cust)}" placeholder="ชื่อบริษัท/บุคคล"><datalist id="ld-custlist">${custs.map(c=>`<option value="${qa(c)}">`).join('')}</datalist></div>
+      <div class="fg"><label class="flb">เบอร์/ช่องทางติดต่อ</label><input class="fi" id="ld-contact" value="${qa(v.contact)}" placeholder="โทร/Line"></div>
+    </div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">มูลค่าคาดการณ์ (บาท)</label><input class="fi" type="number" id="ld-value" value="${v.value||''}" step="0.01"></div>
+      <div class="fg"><label class="flb">ที่มา</label><input class="fi" id="ld-source" value="${qa(v.source)}" placeholder="แนะนำ/โทรเข้า/FB"></div>
+    </div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">ขั้นตอน (Stage)</label><select class="fi" id="ld-stage">${stageOpts}</select></div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">ติดตามครั้งถัดไป</label><input class="fi" id="ld-action" value="${qa(v.nextAction)}" placeholder="โทรตาม/นัดดูงาน"></div>
+      <div class="fg"><label class="flb">วันที่ติดตาม</label><input class="fi" type="date" id="ld-nextdate" value="${v.nextDate||''}"></div>
+    </div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">บันทึก</label><textarea class="fi" id="ld-note" rows="2" style="resize:vertical">${escHtml(v.note||'')}</textarea></div>
+    ${l?`<div style="display:flex;gap:6px;margin-top:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;color:#0F9D58" onclick="leadStageSet('${l.id}','ปิดได้')">✅ ปิดได้</button><button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="leadStageSet('${l.id}','ปิดไม่ได้')">✖ ปิดไม่ได้</button><button class="btn bp" style="flex:1;justify-content:center;font-size:12px" onclick="leadToQuote('${l.id}')">📝 ทำใบเสนอราคา</button></div>`:''}`;
+  document.getElementById('ml-act').innerHTML=`${l?`<button class="btn bo" onclick="leadDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openCRM()">← กลับ</button><button class="btn bp" onclick="leadSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function leadSave(){
+  const id=document.getElementById('ld-id').value;
+  const data={ name:document.getElementById('ld-name').value.trim(), cust:document.getElementById('ld-cust').value.trim(), contact:document.getElementById('ld-contact').value.trim(), value:+document.getElementById('ld-value').value||0, source:document.getElementById('ld-source').value.trim(), stage:document.getElementById('ld-stage').value, nextAction:document.getElementById('ld-action').value.trim(), nextDate:document.getElementById('ld-nextdate').value, note:document.getElementById('ld-note').value.trim() };
+  if(!data.name&&!data.cust){ toast('⚠️ ใส่ชื่อดีลหรือลูกค้า'); return; }
+  if(!DB.leads) DB.leads=[];
+  if(id){ const l=DB.leads.find(x=>x.id===id); if(l){ const wasWon=l.stage==='ปิดได้'; Object.assign(l,data); if(data.stage==='ปิดได้'&&!wasWon) l.wonDate=iso(new Date()); } }
+  else { const l=Object.assign({id:'LD-'+Date.now().toString(36),createdDate:iso(new Date())},data); if(data.stage==='ปิดได้') l.wonDate=iso(new Date()); DB.leads.unshift(l); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกดีลแล้ว'); openCRM();
+}
+function leadStageSet(id, stage){
+  const l=(DB.leads||[]).find(x=>x.id===id); if(!l) return;
+  const wasWon=l.stage==='ปิดได้'; l.stage=stage; if(stage==='ปิดได้'&&!wasWon) l.wonDate=iso(new Date());
+  if(typeof saveData==='function') saveData();
+  toast(stage==='ปิดได้'?'🎉 ปิดดีลได้!':(stage==='ปิดไม่ได้'?'บันทึกปิดดีล':'อัปเดตขั้นตอนแล้ว')); openCRM();
+}
+function leadDelete(id){ const l=(DB.leads||[]).find(x=>x.id===id); if(!l) return; if(!confirm('ลบดีล "'+(l.name||l.cust||id)+'" ?')) return; DB.leads=DB.leads.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openCRM(); }
+function leadToQuote(id){
+  const l=(DB.leads||[]).find(x=>x.id===id); if(!l) return;
+  if(l.stage==='ใหม่'||l.stage==='ติดต่อแล้ว'){ l.stage='เสนอราคา'; if(typeof saveData==='function') saveData(); }
+  closeModal();
+  toast('📝 สร้างใบเสนอราคาให้ '+(l.cust||l.name||'')+' ได้เลย');
+  if(typeof nav==='function') nav('quotes');
+  setTimeout(()=>{ if(typeof newQuote==='function') newQuote(); },180);
+}
+// ── กระทบยอดธนาคาร (Bank Reconciliation) ──
+function bankAccounts(){
+  const set=new Set((DB.bankrecs||[]).map(r=>r.account).filter(Boolean));
+  const co=companyInfo&&(companyInfo.bankName||companyInfo.bankAcc)?((companyInfo.bankName||'')+' '+(companyInfo.bankAcc||'')).trim():'';
+  if(co) set.add(co);
+  if(!set.size) set.add('บัญชีธนาคาร');
+  return Array.from(set);
+}
+let _bankAcct=null;
+function openBankRec(account){
+  const accts=bankAccounts();
+  const acc=account||_bankAcct||accts[0]; _bankAcct=acc;
+  if(!DB.bankInfo) DB.bankInfo={};
+  const info=DB.bankInfo[acc]||{opening:0,stmt:null};
+  const lines=(DB.bankrecs||[]).filter(r=>r.account===acc).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  let tin=0,tout=0,uncCount=0,uncNet=0;
+  lines.forEach(r=>{ const amt=+r.amount||0; if(r.type==='out') tout+=amt; else tin+=amt; const signed=r.type==='out'?-amt:amt; if(!r.reconciled){ uncCount++; uncNet+=signed; } });
+  const net=tin-tout; const opening=+info.opening||0; const bookBal=opening+net;
+  const stmt=(info.stmt===''||info.stmt==null)?null:(+info.stmt);
+  const diff=stmt!=null?(bookBal-stmt):null;
+  const accTabs=accts.map(a=>`<button class="btn ${a===acc?'bp':'bo'}" style="font-size:11.5px;padding:5px 10px" onclick="openBankRec('${String(a).replace(/'/g,"\\'")}')">${escHtml(a)}</button>`).join('');
+  const card=(bg,c,big,lbl)=>`<div style="background:${bg};border-radius:11px;padding:11px;text-align:center"><div style="font-size:16px;font-weight:800;color:${c}">${big}</div><div style="font-size:10px;color:var(--mu)">${lbl}</div></div>`;
+  const rows=lines.length?lines.map(r=>{ const amt=+r.amount||0; const isOut=r.type==='out';
+    return `<div style="display:flex;align-items:center;gap:9px;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:9px 11px;margin-bottom:7px">
+      <button onclick="bankRecToggle('${r.id}')" title="กระทบยอด" style="flex:none;width:24px;height:24px;border-radius:7px;border:2px solid ${r.reconciled?'#0F9D58':'#cbd5e1'};background:${r.reconciled?'#0F9D58':'#fff'};color:#fff;font-size:13px;cursor:pointer;line-height:1">${r.reconciled?'✓':''}</button>
+      <div style="flex:1;min-width:0;cursor:pointer" onclick="bankRecForm('${r.id}','')"><div style="font-size:12.5px;font-weight:600">${escHtml(r.desc||'(ไม่มีคำอธิบาย)')}</div><div style="font-size:10.5px;color:var(--mu)">${fmtD(r.date)}${r.ref?' · '+escHtml(r.ref):''}${r.reconciled?'':' · ยังไม่กระทบ'}</div></div>
+      <div style="flex:none;font-weight:700;font-size:13px;color:${isOut?'#E53E3E':'#0F9D58'}">${isOut?'-':'+'}฿${fmt(amt)}</div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:18px;font-size:13px">ยังไม่มีรายการเดินบัญชี — กด "เพิ่มรายการ"</div>';
+  document.getElementById('ml-t').textContent='🏦 กระทบยอดธนาคาร';
+  document.getElementById('ml-s').textContent=escHtml(acc);
+  document.getElementById('ml-bd').innerHTML=`
+    ${accts.length>1?`<div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${accTabs}</div>`:''}
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:8px">
+      ${card('#E8F8F0','#0F9D58','฿'+fmt(tin),'เงินเข้า')}
+      ${card('#FEECEC','#E53E3E','฿'+fmt(tout),'เงินออก')}
+      ${card('#EAF4FF','#0A6EBD','฿'+fmt(net),'สุทธิ')}
+    </div>
+    <div style="background:var(--bg);border-radius:11px;padding:11px 13px;margin-bottom:10px">
+      <div class="fl2" style="margin-bottom:0">
+        <div class="fg"><label class="flb">ยอดยกมา (ต้นงวด)</label><input class="fi" type="number" id="brk-opening" value="${opening||''}" step="0.01" onchange="bankSetBalances()" placeholder="0.00"></div>
+        <div class="fg"><label class="flb">ยอดตามใบแจ้งยอดธนาคาร</label><input class="fi" type="number" id="brk-stmt" value="${stmt!=null?stmt:''}" step="0.01" onchange="bankSetBalances()" placeholder="กรอกเพื่อตรวจ"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-top:8px;padding-top:8px;border-top:1px dashed var(--bd)"><span style="color:var(--mu)">ยอดคงเหลือตามสมุด</span><span style="font-weight:700">฿${fmt(bookBal)}</span></div>
+      ${diff!=null?`<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:5px"><span style="font-weight:600">ผลต่างกับธนาคาร</span><span style="font-weight:800;color:${Math.abs(diff)<0.01?'#0F9D58':'#E53E3E'}">${Math.abs(diff)<0.01?'✓ ตรงกัน':'฿'+fmt(diff)}</span></div>`:''}
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="font-size:12px;color:${uncCount?'#D97706':'#0F9D58'};font-weight:600">${uncCount?('ยังไม่กระทบ '+uncCount+' รายการ ('+(uncNet>=0?'+':'')+fmt(uncNet)+')'):'✓ กระทบยอดครบแล้ว'}</div>
+      <button class="btn bp" style="font-size:12px;padding:6px 12px" onclick="bankRecForm('','${String(acc).replace(/'/g,"\\'")}')">+ เพิ่มรายการ</button>
+    </div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function bankSetBalances(){
+  if(!_bankAcct) return; if(!DB.bankInfo) DB.bankInfo={};
+  const op=document.getElementById('brk-opening'); const st=document.getElementById('brk-stmt');
+  const cur=DB.bankInfo[_bankAcct]||{};
+  cur.opening=op?(+op.value||0):(cur.opening||0);
+  cur.stmt=(st&&st.value!=='')?(+st.value||0):null;
+  DB.bankInfo[_bankAcct]=cur;
+  if(typeof saveData==='function') saveData();
+  openBankRec(_bankAcct);
+}
+function bankRecToggle(id){ const r=(DB.bankrecs||[]).find(x=>x.id===id); if(!r) return; r.reconciled=!r.reconciled; if(typeof saveData==='function') saveData(); openBankRec(_bankAcct); }
+function bankRecForm(id, account){
+  const r=id?(DB.bankrecs||[]).find(x=>x.id===id):null; const v=r||{type:'in',date:iso(new Date()),account:account||_bankAcct||''};
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const refs=[...(DB.invoices||[]).map(x=>x.id),...(DB.expense||[]).map(x=>x.id)].filter(Boolean);
+  document.getElementById('ml-t').textContent=r?'✏️ แก้ไขรายการเดินบัญชี':'+ เพิ่มรายการเดินบัญชี';
+  document.getElementById('ml-s').textContent=escHtml(v.account||'');
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="brkf-id" value="${qa(id||'')}"><input type="hidden" id="brkf-acc" value="${qa(v.account||'')}">
+    <div class="fl2">
+      <div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="brkf-date" value="${v.date||iso(new Date())}"></div>
+      <div class="fg"><label class="flb">ประเภท</label><select class="fi" id="brkf-type"><option value="in"${v.type!=='out'?' selected':''}>เงินเข้า (+)</option><option value="out"${v.type==='out'?' selected':''}>เงินออก (−)</option></select></div>
+    </div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">คำอธิบายรายการ (ตามสเตทเมนต์)</label><input class="fi" id="brkf-desc" value="${qa(v.desc)}" placeholder="เช่น โอนรับจากลูกค้า / ค่าธรรมเนียม"></div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">จำนวนเงิน</label><input class="fi" type="number" id="brkf-amt" value="${v.amount||''}" step="0.01"></div>
+      <div class="fg"><label class="flb">อ้างอิงเอกสาร (ถ้ามี)</label><input class="fi" id="brkf-ref" list="brkf-reflist" value="${qa(v.ref)}" placeholder="เช่น INV-..."><datalist id="brkf-reflist">${refs.map(x=>`<option value="${qa(x)}">`).join('')}</datalist></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:12px;cursor:pointer"><input type="checkbox" id="brkf-rec" ${v.reconciled?'checked':''} style="width:17px;height:17px"> กระทบยอดแล้ว (ตรงกับเอกสารในระบบ)</label>`;
+  document.getElementById('ml-act').innerHTML=`${r?`<button class="btn bo" onclick="bankRecDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openBankRec('${String(v.account||'').replace(/'/g,"\\'")}')">← กลับ</button><button class="btn bp" onclick="bankRecSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function bankRecSave(){
+  const id=document.getElementById('brkf-id').value; const account=document.getElementById('brkf-acc').value||_bankAcct||'บัญชีธนาคาร';
+  const date=document.getElementById('brkf-date').value||iso(new Date());
+  const type=document.getElementById('brkf-type').value; const desc=document.getElementById('brkf-desc').value.trim();
+  const amount=+document.getElementById('brkf-amt').value||0; const ref=document.getElementById('brkf-ref').value.trim();
+  const reconciled=document.getElementById('brkf-rec').checked;
+  if(amount<=0){ toast('⚠️ ใส่จำนวนเงิน'); return; }
+  if(!DB.bankrecs) DB.bankrecs=[];
+  if(id){ const r=DB.bankrecs.find(x=>x.id===id); if(r) Object.assign(r,{account,date,type,desc,amount,ref,reconciled}); }
+  else { DB.bankrecs.unshift({id:'BK-'+Date.now().toString(36),account,date,type,desc,amount,ref,reconciled}); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกรายการแล้ว'); _bankAcct=account; openBankRec(account);
+}
+function bankRecDelete(id){ const r=(DB.bankrecs||[]).find(x=>x.id===id); if(!r) return; if(!confirm('ลบรายการนี้?')) return; const acc=r.account; DB.bankrecs=DB.bankrecs.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openBankRec(acc); }
 // ── ภาพรวมผู้บริหาร (Executive KPI Dashboard) ──
 function execMonthKey(d){ return String(d||'').slice(0,7); }
 function openExecDashboard(){
@@ -2242,7 +2447,7 @@ function openExecDashboard(){
   document.getElementById('ml-t').textContent='📊 ภาพรวมผู้บริหาร (KPI)';
   document.getElementById('ml-s').textContent='ข้อมูลเดือน '+(typeof pcMonthLabel==='function'?pcMonthLabel(thisMonth):thisMonth);
   document.getElementById('ml-bd').innerHTML=`
-    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px" onclick="openBudget()">📋 งบประมาณ</button><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px" onclick="openAssets()">🏢 ทรัพย์สิน</button></div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap"><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px;min-width:90px" onclick="openBudget()">📋 งบประมาณ</button><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px;min-width:90px" onclick="openAssets()">🏢 ทรัพย์สิน</button><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:8px;min-width:90px" onclick="openBankRec()">🏦 กระทบยอดธนาคาร</button></div>
     <div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">เดือนนี้</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       ${card('#EAF4FF','#0A6EBD','฿'+fmt(revM),'รายได้ออกบิล')}
@@ -5897,6 +6102,205 @@ function stockAdjustSave(){
   if(!Array.isArray(DB.stockMoves)) DB.stockMoves=[];
   DB.stockMoves.unshift({id:'SM'+Date.now().toString(36),date:iso(new Date()),productId:p.id,type,qty:(type==='set'?after:qty),before,after,reason});
   saveData(); closeModal(); renderProducts(); toast('📦 ปรับสต็อก '+p.name+' แล้ว (คงเหลือ '+after+' '+(p.unit||'')+')');
+}
+// ── คูปอง / โปรโมชั่น (Coupons) ──
+function couponCheck(code, subtotal){
+  const c=(DB.coupons||[]).find(x=>String(x.code||'').trim().toLowerCase()===String(code||'').trim().toLowerCase());
+  if(!c) return {ok:false,msg:'ไม่พบคูปองนี้'};
+  if(c.active===false) return {ok:false,msg:'คูปองถูกปิดใช้งาน'};
+  const today=iso(new Date());
+  if(c.expiry&&c.expiry<today) return {ok:false,msg:'คูปองหมดอายุแล้ว ('+fmtD(c.expiry)+')'};
+  if(c.minPurchase&&(+subtotal||0)<(+c.minPurchase)) return {ok:false,msg:'ยอดซื้อขั้นต่ำ ฿'+fmt(c.minPurchase)};
+  let discount=c.type==='pct'?((+subtotal||0)*(+c.value||0)/100):Math.min(+c.value||0,(+subtotal||0));
+  discount=Math.round(discount*100)/100;
+  return {ok:true,coupon:c,discount,discMode:(c.type==='pct'?'pct':'baht'),value:(+c.value||0)};
+}
+function couponApply(){
+  const el=document.getElementById('m-coupon'); if(!el) return;
+  const code=String(el.value||'').trim(); const msgEl=document.getElementById('m-coupon-msg');
+  if(!code){ if(msgEl) msgEl.textContent=''; return; }
+  const sub=(typeof docItems!=='undefined'?docItems:[]).reduce((a,b)=>a+(typeof docLineTotal==='function'?docLineTotal(b):((+b.price||0)*(+b.qty||0))),0);
+  const r=couponCheck(code,sub);
+  if(!r.ok){ if(msgEl){ msgEl.style.color='var(--dg)'; msgEl.textContent='❌ '+r.msg; } return; }
+  const d=document.getElementById('m-disc'); const dm=document.getElementById('m-discmode');
+  if(r.discMode==='pct'){ if(dm) dm.value='pct'; if(d) d.value=r.value; } else { if(dm) dm.value='baht'; if(d) d.value=r.discount; }
+  if(typeof docCalcTotals==='function') docCalcTotals();
+  if(msgEl){ msgEl.style.color='var(--ok)'; msgEl.textContent='✅ ใช้คูปอง '+r.coupon.code+' — ส่วนลด ฿'+fmt(r.discount); }
+}
+function openCoupons(){
+  const arr=(DB.coupons||[]); const today=iso(new Date());
+  const active=arr.filter(c=>c.active!==false&&(!c.expiry||c.expiry>=today)).length;
+  const rows=arr.length?arr.slice().sort((a,b)=>String(b.expiry||'').localeCompare(String(a.expiry||''))).map(c=>{ const expired=c.expiry&&c.expiry<today; const off=c.active===false||expired;
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:8px;${off?'opacity:.6':''}" onclick="couponForm('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:700;font-size:14px;letter-spacing:.5px">${escHtml(c.code)}</div><div style="font-weight:800;color:var(--p)">${c.type==='pct'?(c.value+'%'):('฿'+fmt(c.value))}</div></div>
+      <div style="font-size:11px;color:var(--mu);margin-top:3px">${c.minPurchase?('ขั้นต่ำ ฿'+fmt(c.minPurchase)+' · '):''}${c.expiry?('ถึง '+fmtD(c.expiry)):'ไม่มีกำหนด'}${expired?' · หมดอายุ':(c.active===false?' · ปิดใช้งาน':'')}</div>
+      ${c.note?`<div style="font-size:11px;color:var(--tx);margin-top:2px">${escHtml(c.note)}</div>`:''}
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:20px;font-size:13px">ยังไม่มีคูปอง</div>';
+  document.getElementById('ml-t').textContent='🎁 คูปอง / โปรโมชั่น';
+  document.getElementById('ml-s').textContent=active+' คูปองใช้งานได้';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="font-size:11.5px;color:var(--mu);margin-bottom:8px">นำโค้ดไปใช้ที่ช่อง "🎁 คูปอง" ตอนสร้างใบเสนอราคา/บิล/ขายเงินสด</div>
+    <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="couponForm('')">+ สร้างคูปอง</button>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function couponForm(id){
+  const c=id?(DB.coupons||[]).find(x=>x.id===id):null; const v=c||{type:'pct',active:true};
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  document.getElementById('ml-t').textContent=c?'✏️ แก้ไขคูปอง':'+ สร้างคูปอง';
+  document.getElementById('ml-s').textContent='';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="cp-id" value="${qa(id||'')}">
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">โค้ดคูปอง</label><input class="fi" id="cp-code" value="${qa(v.code)}" placeholder="เช่น SAVE10, NEWYEAR" style="text-transform:uppercase"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">ประเภทส่วนลด</label><select class="fi" id="cp-type"><option value="pct"${v.type!=='baht'?' selected':''}>เปอร์เซ็นต์ %</option><option value="baht"${v.type==='baht'?' selected':''}>บาท ฿</option></select></div>
+      <div class="fg"><label class="flb">มูลค่าส่วนลด</label><input class="fi" type="number" id="cp-value" value="${v.value||''}" step="any"></div>
+    </div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">ยอดซื้อขั้นต่ำ (ไม่บังคับ)</label><input class="fi" type="number" id="cp-min" value="${v.minPurchase||''}" step="any" placeholder="0"></div>
+      <div class="fg"><label class="flb">ใช้ได้ถึง (ไม่บังคับ)</label><input class="fi" type="date" id="cp-expiry" value="${v.expiry||''}"></div>
+    </div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">รายละเอียด (ไม่บังคับ)</label><input class="fi" id="cp-note" value="${qa(v.note)}" placeholder="เช่น โปรปีใหม่ลูกค้าเก่า"></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-top:12px;cursor:pointer"><input type="checkbox" id="cp-active" ${v.active!==false?'checked':''} style="width:17px;height:17px"> เปิดใช้งาน</label>`;
+  document.getElementById('ml-act').innerHTML=`${c?`<button class="btn bo" onclick="couponDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openCoupons()">← กลับ</button><button class="btn bp" onclick="couponSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function couponSave(){
+  const id=document.getElementById('cp-id').value; const code=document.getElementById('cp-code').value.trim().toUpperCase();
+  const type=document.getElementById('cp-type').value; const value=+document.getElementById('cp-value').value||0;
+  const minPurchase=+document.getElementById('cp-min').value||0; const expiry=document.getElementById('cp-expiry').value;
+  const note=document.getElementById('cp-note').value.trim(); const active=document.getElementById('cp-active').checked;
+  if(!code){ toast('⚠️ ใส่โค้ดคูปอง'); return; }
+  if(value<=0){ toast('⚠️ ใส่มูลค่าส่วนลด'); return; }
+  if(!DB.coupons) DB.coupons=[];
+  const dup=DB.coupons.find(x=>String(x.code||'').toUpperCase()===code&&x.id!==id);
+  if(dup){ toast('⚠️ มีโค้ดนี้อยู่แล้ว'); return; }
+  const data={code,type,value,minPurchase,expiry,note,active};
+  if(id){ const c=DB.coupons.find(x=>x.id===id); if(c) Object.assign(c,data); }
+  else { DB.coupons.unshift(Object.assign({id:'CP-'+Date.now().toString(36)},data)); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกคูปองแล้ว'); openCoupons();
+}
+function couponDelete(id){ const c=(DB.coupons||[]).find(x=>x.id===id); if(!c) return; if(!confirm('ลบคูปอง "'+c.code+'" ?')) return; DB.coupons=DB.coupons.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openCoupons(); }
+// ── หลายคลัง + โอนย้ายสินค้า (Multi-warehouse overlay บน stock รวม) ──
+function whSeed(){ if(!Array.isArray(DB.warehouses)) DB.warehouses=[]; if(!DB.warehouses.length) DB.warehouses.push({id:'WH1',name:'คลังหลัก',location:''}); }
+function whName(id){ whSeed(); const w=(DB.warehouses||[]).find(x=>x.id===id); return w?w.name:(id||'-'); }
+function whQty(p,id){ return (p&&p.wh&&+p.wh[id])||0; }
+function whAssigned(p){ if(!p||!p.wh) return 0; return Object.keys(p.wh).reduce((s,k)=>s+(+p.wh[k]||0),0); }
+function whUnassigned(p){ return (+p.stock||0)-whAssigned(p); }
+function whValue(id){ return (DB.products||[]).reduce((s,p)=>{ if(p.track===false||p.type==='บริการ') return s; return s+whQty(p,id)*(+p.buyPrice||+p.price||0); },0); }
+function openWarehouses(){
+  whSeed(); const whs=DB.warehouses||[];
+  const tracked=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
+  const totalUnassigned=tracked.reduce((s,p)=>s+Math.max(0,whUnassigned(p)),0);
+  const rows=whs.map(w=>{ const cnt=tracked.filter(p=>whQty(p,w.id)>0).length; const val=whValue(w.id);
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:8px">
+      <div onclick="whStockView('${w.id}')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">🏭 ${escHtml(w.name)}</div><div style="font-weight:700;color:var(--p);font-size:13px">฿${fmt(val)}</div></div>
+        <div style="font-size:11px;color:var(--mu);margin-top:3px">${w.location?escHtml(w.location)+' · ':''}${cnt} รายการมีของ · มูลค่าทุน</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px"><button class="btn bo" style="flex:1;justify-content:center;font-size:11.5px;padding:5px" onclick="whStockView('${w.id}')">📋 ดูสต็อก</button><button class="btn bo" style="font-size:11.5px;padding:5px 10px" onclick="warehouseForm('${w.id}')">✏️</button>${whs.length>1?`<button class="btn bo" style="font-size:11.5px;padding:5px 10px" onclick="whDelete('${w.id}')">🗑️</button>`:''}</div>
+    </div>`; }).join('');
+  document.getElementById('ml-t').textContent='🏭 คลังสินค้า';
+  document.getElementById('ml-s').textContent=whs.length+' คลัง';
+  document.getElementById('ml-bd').innerHTML=`
+    ${totalUnassigned>0.0001?`<div style="background:#FFF7E6;border-radius:10px;padding:10px 13px;margin-bottom:10px;font-size:12px;color:#92400e">📦 มีสินค้ายังไม่จัดเข้าคลัง ${fmt(totalUnassigned)} หน่วย — กด "โอนย้าย" เพื่อจัดเข้าคลัง</div>`:''}
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bp" style="flex:1;justify-content:center" onclick="whTransferForm('','')">🔄 โอนย้ายสินค้า</button><button class="btn bo" style="flex:1;justify-content:center" onclick="warehouseForm('')">+ เพิ่มคลัง</button></div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function warehouseForm(id){
+  whSeed(); const w=id?(DB.warehouses||[]).find(x=>x.id===id):null; const v=w||{};
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  document.getElementById('ml-t').textContent=w?'✏️ แก้ไขคลัง':'+ เพิ่มคลัง';
+  document.getElementById('ml-s').textContent='';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="wh-id" value="${qa(id||'')}">
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">ชื่อคลัง</label><input class="fi" id="wh-name" value="${qa(v.name)}" placeholder="เช่น คลังหน้าร้าน / คลังหลัก / รถบริการ"></div>
+    <div class="fg full"><label class="flb">ที่ตั้ง (ไม่บังคับ)</label><input class="fi" id="wh-loc" value="${qa(v.location)}" placeholder="เช่น สาขาหาดใหญ่"></div>`;
+  document.getElementById('ml-act').innerHTML=`${w&&(DB.warehouses||[]).length>1?`<button class="btn bo" onclick="whDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openWarehouses()">← กลับ</button><button class="btn bp" onclick="whSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function whSave(){
+  whSeed(); const id=document.getElementById('wh-id').value; const name=document.getElementById('wh-name').value.trim(); const location=document.getElementById('wh-loc').value.trim();
+  if(!name){ toast('⚠️ ใส่ชื่อคลัง'); return; }
+  if(id){ const w=DB.warehouses.find(x=>x.id===id); if(w){ w.name=name; w.location=location; } }
+  else { DB.warehouses.push({id:'WH'+Date.now().toString(36),name,location}); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกคลังแล้ว'); openWarehouses();
+}
+function whDelete(id){
+  whSeed(); if((DB.warehouses||[]).length<=1){ toast('⚠️ ต้องมีอย่างน้อย 1 คลัง'); return; }
+  const w=DB.warehouses.find(x=>x.id===id); if(!w) return;
+  const hasStock=(DB.products||[]).some(p=>whQty(p,id)>0);
+  if(!confirm('ลบคลัง "'+w.name+'" ?'+(hasStock?'\n(สินค้าในคลังนี้จะกลายเป็น "ยังไม่จัดเข้าคลัง")':''))) return;
+  (DB.products||[]).forEach(p=>{ if(p.wh&&p.wh[id]!=null) delete p.wh[id]; });
+  DB.warehouses=DB.warehouses.filter(x=>x.id!==id);
+  if(typeof saveData==='function') saveData();
+  toast('🗑️ ลบคลังแล้ว'); openWarehouses();
+}
+function whStockView(whId){
+  whSeed(); const w=(DB.warehouses||[]).find(x=>x.id===whId); if(!w){ openWarehouses(); return; }
+  const tracked=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
+  const inWh=tracked.filter(p=>whQty(p,whId)>0).sort((a,b)=>whQty(b,whId)-whQty(a,whId));
+  const rows=inWh.length?inWh.map(p=>`<div style="display:flex;justify-content:space-between;align-items:center;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:9px 12px;margin-bottom:7px">
+      <div style="min-width:0"><div style="font-size:12.5px;font-weight:600">${escHtml(p.name)}</div><div style="font-size:10.5px;color:var(--mu)">${p.code?escHtml(p.code)+' · ':''}รวมทุกคลัง ${(+p.stock||0)} ${escHtml(p.unit||'')}</div></div>
+      <div style="text-align:right;flex:none"><div style="font-weight:700;font-size:13px">${whQty(p,whId)} ${escHtml(p.unit||'')}</div><button class="btn bo" style="font-size:10.5px;padding:3px 8px;margin-top:3px" onclick="whTransferForm('${p.id}','${whId}')">🔄 โอน</button></div>
+    </div>`).join('') : '<div style="text-align:center;color:var(--mu);padding:18px;font-size:13px">ยังไม่มีสินค้าในคลังนี้</div>';
+  document.getElementById('ml-t').textContent='🏭 '+escHtml(w.name);
+  document.getElementById('ml-s').textContent='฿'+fmt(whValue(whId))+' · '+inWh.length+' รายการ';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bp" style="flex:1;justify-content:center;font-size:12px" onclick="whTransferForm('','${whId}')">🔄 โอนเข้า/ออกคลังนี้</button><button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="openWarehouses()">← ทุกคลัง</button></div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openWarehouses()">← กลับ</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function whTransferForm(pid, fromWh){
+  whSeed(); const tracked=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
+  if(!tracked.length){ toast('ยังไม่มีสินค้านับสต็อก'); return; }
+  const prodOpts='<option value="">— เลือกสินค้า —</option>'+tracked.map(p=>`<option value="${p.id}"${p.id===pid?' selected':''}>${escHtml(p.name)} (รวม ${(+p.stock||0)})</option>`).join('');
+  const whOptsFrom='<option value="__un">ยังไม่จัดเข้าคลัง</option>'+(DB.warehouses||[]).map(w=>`<option value="${w.id}"${w.id===fromWh?' selected':''}>${escHtml(w.name)}</option>`).join('');
+  const whOptsTo=(DB.warehouses||[]).map(w=>`<option value="${w.id}">${escHtml(w.name)}</option>`).join('');
+  document.getElementById('ml-t').textContent='🔄 โอนย้ายสินค้า';
+  document.getElementById('ml-s').textContent='ย้ายระหว่างคลัง (ยอดรวมไม่เปลี่ยน)';
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">สินค้า</label><select class="fi" id="tf-prod" onchange="tfHint()">${prodOpts}</select></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">จากคลัง</label><select class="fi" id="tf-from" onchange="tfHint()">${whOptsFrom}</select></div>
+      <div class="fg"><label class="flb">ไปคลัง</label><select class="fi" id="tf-to">${whOptsTo}</select></div>
+    </div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">จำนวนที่โอน</label><input class="fi" type="number" id="tf-qty" step="any" min="0" oninput="tfHint()" placeholder="0"></div>
+    <div id="tf-hint" style="background:var(--bg);border-radius:9px;padding:10px 13px;font-size:12.5px;margin-top:8px"></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openWarehouses()">← กลับ</button><button class="btn bp" onclick="whTransferSave()">🔄 โอนย้าย</button>`;
+  document.getElementById('ml').classList.add('op');
+  tfHint();
+}
+function tfHint(){
+  const p=(DB.products||[]).find(x=>x.id===((document.getElementById('tf-prod')||{}).value)); const el=document.getElementById('tf-hint'); if(!el) return;
+  if(!p){ el.textContent='เลือกสินค้าเพื่อดูยอดคงเหลือ'; return; }
+  const from=(document.getElementById('tf-from')||{}).value;
+  const avail=from==='__un'?Math.max(0,whUnassigned(p)):whQty(p,from);
+  el.innerHTML='คงเหลือใน'+(from==='__un'?'"ยังไม่จัดเข้าคลัง"':'คลังต้นทาง')+': <b>'+fmt(avail)+'</b> '+(p.unit||'')+' · ยอดรวมทุกคลัง '+(+p.stock||0);
+}
+function whTransferSave(){
+  const p=(DB.products||[]).find(x=>x.id===document.getElementById('tf-prod').value);
+  if(!p){ toast('⚠️ เลือกสินค้า'); return; }
+  const from=document.getElementById('tf-from').value; const to=document.getElementById('tf-to').value;
+  const qty=parseFloat(document.getElementById('tf-qty').value)||0;
+  if(qty<=0){ toast('⚠️ ใส่จำนวน'); return; }
+  if(from===to){ toast('⚠️ คลังต้นทาง/ปลายทางต้องต่างกัน'); return; }
+  const avail=from==='__un'?Math.max(0,whUnassigned(p)):whQty(p,from);
+  if(qty>avail+1e-9){ toast('⚠️ จำนวนเกินคงเหลือในคลังต้นทาง ('+fmt(avail)+')'); return; }
+  if(!p.wh) p.wh={};
+  if(from!=='__un') p.wh[from]=(+p.wh[from]||0)-qty;
+  p.wh[to]=(+p.wh[to]||0)+qty;
+  if(!Array.isArray(DB.stockMoves)) DB.stockMoves=[];
+  DB.stockMoves.unshift({id:'SM'+Date.now().toString(36),date:iso(new Date()),productId:p.id,type:'move',qty,before:+p.stock||0,after:+p.stock||0,reason:'โอน '+(from==='__un'?'(ไม่ระบุคลัง)':whName(from))+' → '+whName(to)});
+  if(typeof saveData==='function') saveData();
+  toast('🔄 โอน '+fmt(qty)+' '+(p.unit||'')+' → '+whName(to)+' แล้ว');
+  openWarehouses();
 }
 
 // ฟอร์มเพิ่ม/แก้ไขสินค้า (ละเอียดตามแอพจริง)
