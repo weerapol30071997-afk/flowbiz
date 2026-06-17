@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16u · 🔄 สัญญาบริการ MA</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.16y · 📷 Barcode + 📊 Dashboard ผู้บริหาร</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -407,6 +407,7 @@ tbody tr:hover td{background:#FAFBFD}
     <button class="hamburger" id="hamburger" onclick="toggleSidebar()" aria-label="เมนู">☰</button>
     <div class="tb-title" id="tbTitle">🏠 ภาพรวมบริษัท</div>
     <div class="tb-act" id="tbAct">
+      <button class="nt" onclick="openExecDashboard()" aria-label="ภาพรวมผู้บริหาร" title="KPI ผู้บริหาร">📊</button>
       <button class="nt" onclick="paymentQRTool()" aria-label="QR รับเงิน" title="QR รับเงิน">💸</button>
       <button class="nt" onclick="openSearch()" aria-label="ค้นหา">🔍</button>
       <button class="nt" onclick="openNotifications()">🔔<div class="nt-dot" id="nt-dot" style="display:none"></div></button>
@@ -588,6 +589,8 @@ tbody tr:hover td{background:#FAFBFD}
     <div class="fb">
       <input class="fi" placeholder="🔍 ค้นหาเลขที่ / ลูกค้า" id="inv-search" oninput="renderInvoices()">
       <select class="fi" style="flex:0 0 160px" id="inv-status" onchange="renderInvoices()"><option value="">สถานะทั้งหมด</option><option value="ชำระแล้ว">ชำระแล้ว</option><option value="รอชำระ">รอชำระ</option><option value="เกินกำหนด">เกินกำหนด</option></select>
+      <button class="btn bo" onclick="openRecurring()">🔁 บิลซ้ำ</button>
+      <button class="btn bo" onclick="openCDNotes()">📑 ใบลด/เพิ่มหนี้</button>
       <button class="btn bp" onclick="editQuote(null,'invoices')">+ สร้างใบวางบิล</button>
     </div>
     <div class="kpi-g" style="grid-template-columns:repeat(3,1fr)">
@@ -1305,6 +1308,10 @@ tbody tr:hover td{background:#FAFBFD}
 // ══════════════════════════════════
 const DB = {
   contracts:[],
+  cdnotes:[],
+  recurring:[],
+  budgets:[],
+  assets:[],
   pettycash:[],
   pcClosings:[],
   stockMoves:[],
@@ -1432,9 +1439,11 @@ let docNumbering={
   employees:{prefix:'EMP',year:2026,next:4,digits:3},
   receipts:{prefix:'REC',year:2026,next:1,digits:4},
   contracts:{prefix:'MA',year:2026,next:1,digits:4},
+  creditnote:{prefix:'CN',year:2026,next:1,digits:4},
+  debitnote:{prefix:'DN',year:2026,next:1,digits:4},
 };
-const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน',contracts:'สัญญาบริการ MA'};
-const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs',jobcost:'jobs',contracts:'contracts'};
+const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน',contracts:'สัญญาบริการ MA',creditnote:'ใบลดหนี้',debitnote:'ใบเพิ่มหนี้'};
+const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs',jobcost:'jobs',contracts:'contracts',creditnote:'cdnotes',debitnote:'cdnotes'};
 const DATE_NUM_TYPES=['quotes','invoices','delivery','cashsale','po','receive','expense','installments','receipts','jobs'];
 
 // ตรวจว่าเลขนี้มีอยู่แล้วหรือไม่ (กันซ้ำ)
@@ -1638,6 +1647,10 @@ function openDocForm(type, editId){
         </select>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:6px">
+        <input class="fi" id="m-barcode" placeholder="🔫 สแกน/พิมพ์บาร์โค้ด แล้วกด Enter" onkeydown="addDocItemByBarcode(event)" inputmode="text" autocomplete="off" style="flex:1">
+        <button class="btn bo" style="white-space:nowrap" onclick="addDocItemByBarcode()">เพิ่ม</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
         <select class="fi" id="m-prod" style="flex:1"><option value="">— เลือกสินค้า —</option>${DB.products.map(p=>`<option value="${p.id}">${p.name} · ฿${fmt(p.price)}/${p.unit}</option>`).join('')}</select>
         <input class="fi" type="number" id="m-qty" value="1" min="0" step="any" style="width:64px" placeholder="จำนวน">
         <button class="btn bp" style="white-space:nowrap" onclick="addDocItem()">+ เพิ่ม</button>
@@ -1679,6 +1692,18 @@ function openDocForm(type, editId){
 }
 
 let curDocType=''; let docEditId=null;
+function addDocItemByBarcode(ev){
+  if(ev&&ev.key&&ev.key!=='Enter') return;
+  if(ev&&ev.preventDefault) ev.preventDefault();
+  const el=document.getElementById('m-barcode'); if(!el) return;
+  const code=String(el.value||'').trim(); if(!code){ el.focus&&el.focus(); return; }
+  const p=(DB.products||[]).find(x=>String(x.barcode||'').trim()===code)||(DB.products||[]).find(x=>String(x.code||'').trim().toLowerCase()===code.toLowerCase());
+  if(!p){ toast('⚠️ ไม่พบสินค้าบาร์โค้ด/รหัส: '+code); el.value=''; el.focus&&el.focus(); return; }
+  const existing=docItems.find(i=>i.pid===p.id);
+  if(existing) existing.qty+=1; else docItems.push({pid:p.id,name:p.name,price:p.price,unit:p.unit,qty:1,disc:0});
+  el.value=''; el.focus&&el.focus(); renderDocItems();
+  toast('✅ +1 '+p.name);
+}
 function addDocItem(){
   const pid=document.getElementById('m-prod')?.value;
   const qty=parseFloat(document.getElementById('m-qty')?.value)||1;
@@ -1794,6 +1819,7 @@ function collectNotifications(){
   });
   (DB.jobs||[]).forEach(j=>{ const w=(typeof warrantyStatus==='function')?warrantyStatus(j):null; if(w&&w.status==='expiring') list.push({ic:'🛡️',t:'ประกันใกล้หมดอายุ',s:(j.title||j.id)+' · เหลือ '+w.daysLeft+' วัน (ถึง '+fmtD(w.endStr)+')',act:`closeModal();nav('jobs')`,pri:2}); });
   (DB.contracts||[]).forEach(c=>{ const info=(typeof maInfo==='function')?maInfo(c):null; if(info&&info.status==='active'&&info.due&&info.nextStr) list.push({ic:'🔄',t:info.overdue?'เลยกำหนดเข้าบริการ MA':'ถึงกำหนดเข้าบริการ MA',s:(c.title||c.id)+' · '+(getCust(c.cust).name||'')+' · '+fmtD(info.nextStr),act:'closeModal();openMAContracts()',pri:info.overdue?1:2}); });
+  (DB.recurring||[]).forEach(p=>{ const info=(typeof rcInfo==='function')?rcInfo(p):null; if(info&&info.due) list.push({ic:'🔁',t:'บิลซ้ำถึงกำหนดสร้าง',s:(p.name||'')+' · '+(getCust(p.cust).name||'')+' · ฿'+fmt(p.amt||0),act:'closeModal();openRecurring()',pri:2}); });
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -2014,6 +2040,232 @@ function saveDoc(type){
 // ══════════════════════════════════
 // DASHBOARD
 // ══════════════════════════════════
+// ── งบประมาณ vs Actual (Budget) ──
+function budgetActual(line){
+  const y=String(line.year);
+  if(line.kind==='revenue'){ const r=arr=>(arr||[]).reduce((s,x)=>String(x.date||'').slice(0,4)===y?s+(+x.amt||0):s,0); return r(DB.invoices)+r(DB.cashsale); }
+  return (DB.expense||[]).reduce((s,e)=>(String(e.date||'').slice(0,4)===y && (e.cat||'อื่นๆ')===line.cat)?s+(+e.amt||0):s,0);
+}
+function openBudget(yr){
+  const yset=new Set((DB.budgets||[]).map(b=>+b.year)); yset.add(new Date().getFullYear());
+  const years=Array.from(yset).sort((a,b)=>b-a);
+  const year=+(yr||years[0]);
+  const lines=(DB.budgets||[]).filter(b=>+b.year===year);
+  const exp=lines.filter(l=>l.kind!=='revenue'); const rev=lines.filter(l=>l.kind==='revenue');
+  const totB=exp.reduce((s,l)=>s+(+l.amount||0),0); const totA=exp.reduce((s,l)=>s+budgetActual(l),0);
+  const bar=(actual,budget)=>{ const pct=budget>0?Math.min(100,actual/budget*100):(actual>0?100:0); const col=actual>budget?'#E53E3E':(pct>85?'#D97706':'#0F9D58'); return `<div style="height:7px;background:#eef1f4;border-radius:5px;overflow:hidden;margin-top:5px"><div style="height:100%;width:${pct}%;background:${col};border-radius:5px"></div></div>`; };
+  const lineRow=l=>{ const a=budgetActual(l); const b=+l.amount||0; const isRev=l.kind==='revenue'; const variance=isRev?(a-b):(b-a); const ok=isRev?(a>=b):(a<=b);
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:11px 13px;margin-bottom:8px;cursor:pointer" onclick="budgetForm('${l.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><div style="font-weight:600;font-size:13px">${isRev?'📈 ':''}${escHtml(l.cat)}</div><div style="font-size:12px;color:var(--mu)">งบ ฿${fmt(b)}</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:2px"><div style="font-size:12px">ใช้จริง <b style="color:${ok?'#0F9D58':'#E53E3E'}">฿${fmt(a)}</b></div><div style="font-size:11.5px;font-weight:700;color:${ok?'#0F9D58':'#E53E3E'}">${ok?(isRev?'เกินเป้า ':'เหลือ ')+'฿'+fmt(Math.abs(variance)):(isRev?'ต่ำกว่าเป้า ':'เกินงบ ')+'฿'+fmt(Math.abs(variance))}</div></div>
+      ${bar(a,b)}
+    </div>`; };
+  document.getElementById('ml-t').textContent='📋 งบประมาณ vs ใช้จริง';
+  document.getElementById('ml-s').textContent='ปีงบ '+(year+543);
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap">${years.map(y=>`<button class="btn ${y===year?'bp':'bo'}" style="font-size:12px;padding:5px 12px" onclick="openBudget(${y})">${y+543}</button>`).join('')}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:12px">
+      <div style="background:#EAF4FF;border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#0A6EBD">฿${fmt(totB)}</div><div style="font-size:9.5px;color:var(--mu)">งบรายจ่าย</div></div>
+      <div style="background:#FEECEC;border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#E53E3E">฿${fmt(totA)}</div><div style="font-size:9.5px;color:var(--mu)">ใช้จริง</div></div>
+      <div style="background:${totA<=totB?'#E8F8F0':'#FEECEC'};border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:${totA<=totB?'#0F9D58':'#E53E3E'}">฿${fmt(totB-totA)}</div><div style="font-size:9.5px;color:var(--mu)">${totA<=totB?'คงเหลือ':'เกินงบ'}</div></div>
+    </div>
+    <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:12px" onclick="budgetForm('','${year}')">+ ตั้งงบประมาณ</button>
+    ${rev.length?'<div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">เป้ารายได้</div>'+rev.map(lineRow).join(''):''}
+    ${exp.length?'<div style="font-size:11px;font-weight:700;color:var(--mu);margin:8px 0 6px">งบรายจ่ายตามหมวด</div>'+exp.map(lineRow).join(''):''}
+    ${!lines.length?'<div style="text-align:center;color:var(--mu);padding:20px;font-size:13px">ยังไม่ได้ตั้งงบปีนี้ — กด "ตั้งงบประมาณ"</div>':''}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function budgetForm(id, year){
+  const b=id?(DB.budgets||[]).find(x=>x.id===id):null; const v=b||{year:+year||new Date().getFullYear(),kind:'expense'};
+  const cats=Array.from(new Set((DB.expense||[]).map(e=>e.cat||'อื่นๆ').filter(Boolean)));
+  ['ค่าวัสดุ','ค่าแรง/รับเหมา','ค่าเดินทาง','ค่าเช่า','ค่าน้ำค่าไฟ','เงินเดือน','การตลาด','อื่นๆ'].forEach(c=>{ if(!cats.includes(c)) cats.push(c); });
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const catOpts=cats.map(c=>`<option value="${qa(c)}">`).join('');
+  document.getElementById('ml-t').textContent=b?'✏️ แก้ไขงบประมาณ':'+ ตั้งงบประมาณ';
+  document.getElementById('ml-s').textContent='';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="bg-id" value="${qa(id||'')}">
+    <div class="fl2">
+      <div class="fg"><label class="flb">ปีงบประมาณ (พ.ศ.)</label><input class="fi" type="number" id="bg-year" value="${(+v.year)+543}"></div>
+      <div class="fg"><label class="flb">ประเภท</label><select class="fi" id="bg-kind" onchange="bgKindToggle()"><option value="expense"${v.kind!=='revenue'?' selected':''}>งบรายจ่าย</option><option value="revenue"${v.kind==='revenue'?' selected':''}>เป้ารายได้</option></select></div>
+    </div>
+    <div class="fg full" id="bg-catwrap" style="margin-top:8px;${v.kind==='revenue'?'display:none':''}"><label class="flb">หมวดค่าใช้จ่าย</label><input class="fi" id="bg-cat" list="bg-catlist" value="${qa(v.cat)}" placeholder="เลือกหรือพิมพ์หมวด"><datalist id="bg-catlist">${catOpts}</datalist></div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">จำนวนงบประมาณ (บาท/ปี)</label><input class="fi" type="number" id="bg-amt" value="${v.amount||''}" step="0.01"></div>
+    <div style="font-size:11.5px;color:var(--mu);margin-top:8px">ยอด "ใช้จริง" จะดึงจาก${v.kind==='revenue'?'ยอดออกบิล+ขายเงินสด':'ค่าใช้จ่ายที่บันทึกในหมวดนี้'}ของปีนั้นอัตโนมัติ</div>`;
+  document.getElementById('ml-act').innerHTML=`${b?`<button class="btn bo" onclick="budgetDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openBudget(${+v.year})">← กลับ</button><button class="btn bp" onclick="budgetSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function bgKindToggle(){ const k=document.getElementById('bg-kind').value; const w=document.getElementById('bg-catwrap'); if(w) w.style.display=k==='revenue'?'none':''; if(k==='revenue'){ const c=document.getElementById('bg-cat'); if(c&&!c.value) c.value='รายได้รวม'; } }
+function budgetSave(){
+  const id=document.getElementById('bg-id').value; const year=(+document.getElementById('bg-year').value||0)-543; const kind=document.getElementById('bg-kind').value;
+  const cat=kind==='revenue'?'รายได้รวม':(document.getElementById('bg-cat').value.trim()); const amount=+document.getElementById('bg-amt').value||0;
+  if(year<2000){ toast('⚠️ ใส่ปี พ.ศ. ให้ถูกต้อง'); return; }
+  if(kind!=='revenue'&&!cat){ toast('⚠️ ใส่หมวดค่าใช้จ่าย'); return; }
+  if(amount<=0){ toast('⚠️ ใส่จำนวนงบ'); return; }
+  if(!DB.budgets) DB.budgets=[];
+  if(id){ const b=DB.budgets.find(x=>x.id===id); if(b) Object.assign(b,{year,kind,cat,amount}); }
+  else { const dup=DB.budgets.find(x=>+x.year===year&&x.kind===kind&&x.cat===cat); if(dup) dup.amount=amount; else DB.budgets.unshift({id:'BG-'+Date.now().toString(36),year,kind,cat,amount}); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกงบประมาณแล้ว'); openBudget(year);
+}
+function budgetDelete(id){ const b=(DB.budgets||[]).find(x=>x.id===id); if(!b) return; if(!confirm('ลบงบ "'+b.cat+'" ?')) return; const y=+b.year; DB.budgets=DB.budgets.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openBudget(y); }
+
+// ── ทรัพย์สินถาวร + ค่าเสื่อมราคา (เส้นตรง) ──
+function assetDep(a, asOf){
+  const cost=+a.cost||0, salvage=+a.salvage||0, life=+a.usefulLife||0; const base=Math.max(0,cost-salvage);
+  if(!a.acquireDate||life<=0){ return {annual:0,monthly:0,months:0,accum:0,book:cost,base}; }
+  const start=new Date(a.acquireDate+'T00:00:00');
+  const end=asOf?new Date(asOf+'T00:00:00'):((a.status==='disposed'&&a.disposeDate)?new Date(a.disposeDate+'T00:00:00'):new Date());
+  let months=(end.getFullYear()-start.getFullYear())*12+(end.getMonth()-start.getMonth()); if(end.getDate()<start.getDate()) months-=1;
+  months=Math.max(0,Math.min(life*12,months));
+  const annual=base/life, monthly=annual/12; const accum=Math.min(base,monthly*months); const book=cost-accum;
+  return {annual,monthly,months,accum,book,base};
+}
+function openAssets(){
+  const arr=(DB.assets||[]); const act=arr.filter(a=>a.status!=='disposed');
+  let totCost=0,totAccum=0,totBook=0,totAnnual=0;
+  act.forEach(a=>{ const d=assetDep(a); totCost+=(+a.cost||0); totAccum+=d.accum; totBook+=d.book; totAnnual+=d.annual; });
+  const rows=arr.length?arr.slice().sort((a,b)=>String(b.acquireDate||'').localeCompare(String(a.acquireDate||''))).map(a=>{ const d=assetDep(a); const disposed=a.status==='disposed';
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:8px;cursor:pointer;${disposed?'opacity:.55':''}" onclick="assetForm('${a.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${escHtml(a.name)}${disposed?' · จำหน่ายแล้ว':''}</div><div style="font-weight:800;color:var(--p);font-size:13px">฿${fmt(d.book)}</div></div>
+      <div style="font-size:11px;color:var(--mu);margin-top:3px">${escHtml(a.category||'-')} · ได้มา ${fmtD(a.acquireDate)} · อายุ ${a.usefulLife||0} ปี</div>
+      <div style="font-size:11px;color:var(--tx);margin-top:3px">ทุน ฿${fmt(a.cost)} · ค่าเสื่อมสะสม ฿${fmt(d.accum)} · ปีละ ฿${fmt(d.annual)}</div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:20px;font-size:13px">ยังไม่มีทรัพย์สิน</div>';
+  document.getElementById('ml-t').textContent='🏢 ทรัพย์สินถาวร / ค่าเสื่อม';
+  document.getElementById('ml-s').textContent=act.length+' รายการใช้งาน';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+      <div style="background:#EAF4FF;border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#0A6EBD">฿${fmt(totCost)}</div><div style="font-size:9.5px;color:var(--mu)">ราคาทุนรวม</div></div>
+      <div style="background:#FEECEC;border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#E53E3E">฿${fmt(totAccum)}</div><div style="font-size:9.5px;color:var(--mu)">ค่าเสื่อมสะสม</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:12px">
+      <div style="background:#E8F8F0;border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#0F9D58">฿${fmt(totBook)}</div><div style="font-size:9.5px;color:var(--mu)">มูลค่าคงเหลือสุทธิ</div></div>
+      <div style="background:#FFF7E6;border-radius:10px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#D97706">฿${fmt(totAnnual)}</div><div style="font-size:9.5px;color:var(--mu)">ค่าเสื่อม/ปี</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bp" style="flex:1;justify-content:center" onclick="assetForm('')">+ เพิ่มทรัพย์สิน</button><button class="btn bo" style="justify-content:center" onclick="printAssetRegister()">🖨️ ทะเบียน</button></div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function assetForm(id){
+  const a=id?(DB.assets||[]).find(x=>x.id===id):null; const v=a||{acquireDate:iso(new Date()),usefulLife:5,salvage:0,status:'active'};
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const cats=['อุปกรณ์/เครื่องมือ','ยานพาหนะ','เครื่องใช้สำนักงาน','คอมพิวเตอร์','เครื่องจักร','อาคาร/สิ่งปลูกสร้าง','อื่นๆ'];
+  const d=a?assetDep(a):null;
+  let sched='';
+  if(a&&a.acquireDate&&(+a.usefulLife>0)){
+    const cost=+a.cost||0, salvage=+a.salvage||0, life=+a.usefulLife||0; const annual=Math.max(0,cost-salvage)/life;
+    const sy=new Date(a.acquireDate+'T00:00:00').getFullYear(); let bv=cost; let rws='';
+    for(let y=0;y<life;y++){ const dep=Math.min(annual, bv-salvage); bv-=dep; rws+=`<tr><td style="padding:4px 6px">${sy+y+543}</td><td style="padding:4px 6px;text-align:right">฿${fmt(dep)}</td><td style="padding:4px 6px;text-align:right">฿${fmt(Math.max(salvage,bv))}</td></tr>`; }
+    sched=`<div style="margin-top:12px;border-top:1px solid var(--bd);padding-top:10px"><div style="font-size:12px;font-weight:700;margin-bottom:6px">ตารางค่าเสื่อมราคา (เส้นตรง)</div><table style="width:100%;border-collapse:collapse;font-size:11.5px"><thead><tr style="color:var(--mu)"><th style="padding:4px 6px;text-align:left">ปี พ.ศ.</th><th style="padding:4px 6px;text-align:right">ค่าเสื่อม</th><th style="padding:4px 6px;text-align:right">คงเหลือ</th></tr></thead><tbody>${rws}</tbody></table></div>`;
+  }
+  document.getElementById('ml-t').textContent=a?'✏️ แก้ไขทรัพย์สิน':'+ เพิ่มทรัพย์สิน';
+  document.getElementById('ml-s').textContent=a&&d?('มูลค่าคงเหลือ ฿'+fmt(d.book)):'';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="as-id" value="${qa(id||'')}">
+    <div class="fg" style="margin-bottom:8px"><label class="flb">ชื่อทรัพย์สิน *</label><input class="fi" id="as-name" value="${qa(v.name)}" placeholder="เช่น รถกระบะ / เครื่องเชื่อม"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">หมวด</label><input class="fi" id="as-cat" list="as-catlist" value="${qa(v.category)}" placeholder="เลือก/พิมพ์"><datalist id="as-catlist">${cats.map(c=>`<option value="${c}">`).join('')}</datalist></div>
+      <div class="fg"><label class="flb">วันที่ได้มา</label><input class="fi" type="date" id="as-date" value="${v.acquireDate||iso(new Date())}"></div>
+    </div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">ราคาทุน (บาท)</label><input class="fi" type="number" id="as-cost" value="${v.cost||''}" step="0.01" oninput="asPreview()"></div>
+      <div class="fg"><label class="flb">มูลค่าซาก (บาท)</label><input class="fi" type="number" id="as-salvage" value="${v.salvage||0}" step="0.01" oninput="asPreview()"></div>
+      <div class="fg"><label class="flb">อายุการใช้งาน (ปี)</label><input class="fi" type="number" id="as-life" value="${v.usefulLife||5}" min="1" oninput="asPreview()"></div>
+      <div class="fg"><label class="flb">สถานะ</label><select class="fi" id="as-status"><option value="active"${v.status!=='disposed'?' selected':''}>ใช้งาน</option><option value="disposed"${v.status==='disposed'?' selected':''}>จำหน่ายแล้ว</option></select></div>
+    </div>
+    <div id="as-preview" style="font-size:12.5px;color:var(--p);font-weight:600;margin:8px 0"></div>
+    ${sched}`;
+  document.getElementById('ml-act').innerHTML=`${a?`<button class="btn bo" onclick="assetDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openAssets()">← กลับ</button><button class="btn bp" onclick="assetSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  asPreview();
+}
+function asPreview(){
+  const g=id=>document.getElementById(id)?(+document.getElementById(id).value||0):0;
+  const cost=g('as-cost'), salvage=g('as-salvage'), life=g('as-life');
+  const el=document.getElementById('as-preview'); if(!el) return;
+  if(cost>0&&life>0){ const annual=Math.max(0,cost-salvage)/life; el.textContent='ค่าเสื่อมปีละ ฿'+fmt(annual)+' (เดือนละ ฿'+fmt(annual/12)+')'; } else el.textContent='';
+}
+function assetSave(){
+  const id=document.getElementById('as-id').value; const name=document.getElementById('as-name').value.trim();
+  const category=document.getElementById('as-cat').value.trim(); const acquireDate=document.getElementById('as-date').value;
+  const cost=+document.getElementById('as-cost').value||0; const salvage=+document.getElementById('as-salvage').value||0; const usefulLife=+document.getElementById('as-life').value||0; const status=document.getElementById('as-status').value;
+  if(!name){ toast('⚠️ ใส่ชื่อทรัพย์สิน'); return; }
+  if(cost<=0){ toast('⚠️ ใส่ราคาทุน'); return; }
+  if(usefulLife<=0){ toast('⚠️ ใส่อายุการใช้งาน (ปี)'); return; }
+  if(!DB.assets) DB.assets=[];
+  const data={name,category,acquireDate,cost,salvage,usefulLife,status};
+  if(id){ const a=DB.assets.find(x=>x.id===id); if(a) Object.assign(a,data); }
+  else DB.assets.unshift(Object.assign({id:'AS-'+Date.now().toString(36)},data));
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกทรัพย์สินแล้ว'); openAssets();
+}
+function assetDelete(id){ const a=(DB.assets||[]).find(x=>x.id===id); if(!a) return; if(!confirm('ลบทรัพย์สิน "'+a.name+'" ?')) return; DB.assets=DB.assets.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openAssets(); }
+function printAssetRegister(){
+  const arr=(DB.assets||[]); if(!arr.length){ toast('ยังไม่มีทรัพย์สิน'); return; }
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  let totCost=0,totAccum=0,totBook=0,totAnnual=0;
+  const rows=arr.map((a,i)=>{ const d=assetDep(a); totCost+=(+a.cost||0); totAccum+=d.accum; totBook+=d.book; totAnnual+=d.annual;
+    return `<tr><td>${i+1}</td><td>${esc(a.name)}${a.status==='disposed'?' (จำหน่าย)':''}</td><td>${esc(a.category||'-')}</td><td style="text-align:center">${fmtD(a.acquireDate)}</td><td style="text-align:center">${a.usefulLife||0} ปี</td><td style="text-align:right">${fmt(a.cost)}</td><td style="text-align:right">${fmt(d.annual)}</td><td style="text-align:right">${fmt(d.accum)}</td><td style="text-align:right">${fmt(d.book)}</td></tr>`; }).join('');
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>@page{size:A4 landscape;margin:12mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}body{font-size:12px;color:#1f2937}h1{font-size:18px;color:#0A6EBD;text-align:center}.sub{text-align:center;font-size:12px;color:#555;margin-bottom:12px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#0A6EBD;color:#fff;padding:6px;text-align:left}td{border:1px solid #e5e7eb;padding:5px 6px}tfoot td{font-weight:800;background:#f3f6fa}</style></head><body>
+  <h1>ทะเบียนทรัพย์สินและค่าเสื่อมราคา</h1><div class="sub">${esc(CO.name)} · ณ วันที่ ${fmtD(iso(new Date()))}</div>
+  <table><thead><tr><th>#</th><th>ชื่อทรัพย์สิน</th><th>หมวด</th><th style="text-align:center">ได้มา</th><th style="text-align:center">อายุ</th><th style="text-align:right">ราคาทุน</th><th style="text-align:right">ค่าเสื่อม/ปี</th><th style="text-align:right">ค่าเสื่อมสะสม</th><th style="text-align:right">มูลค่าคงเหลือ</th></tr></thead>
+  <tbody>${rows}</tbody>
+  <tfoot><tr><td colspan="5">รวม</td><td style="text-align:right">${fmt(totCost)}</td><td style="text-align:right">${fmt(totAnnual)}</td><td style="text-align:right">${fmt(totAccum)}</td><td style="text-align:right">${fmt(totBook)}</td></tr></tfoot></table>
+  <div style="font-size:10px;color:#9ca3af;margin-top:10px">คำนวณค่าเสื่อมราคาด้วยวิธีเส้นตรง (Straight-line) · ออกโดยระบบ FlowBiz</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ทะเบียนทรัพย์สิน',{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
+}
+// ── ภาพรวมผู้บริหาร (Executive KPI Dashboard) ──
+function execMonthKey(d){ return String(d||'').slice(0,7); }
+function openExecDashboard(){
+  const now=new Date(); const thisMonth=iso(now).slice(0,7); const thisYear=String(now.getFullYear()); const todayStr=iso(now);
+  const invs=DB.invoices||[]; const cash=DB.cashsale||[]; const exps=DB.expense||[];
+  const sumBy=(arr,pred)=>arr.reduce((s,x)=>pred(x)?s+(+x.amt||0):s,0);
+  const revM=sumBy(invs,x=>execMonthKey(x.date)===thisMonth)+sumBy(cash,x=>execMonthKey(x.date)===thisMonth);
+  const expM=sumBy(exps,x=>execMonthKey(x.date)===thisMonth);
+  const profM=revM-expM; const marginM=revM>0?(profM/revM*100):0;
+  const revY=sumBy(invs,x=>String(x.date||'').slice(0,4)===thisYear)+sumBy(cash,x=>String(x.date||'').slice(0,4)===thisYear);
+  const expY=sumBy(exps,x=>String(x.date||'').slice(0,4)===thisYear); const profY=revY-expY;
+  let ar=0,arCount=0,overdue=0,overdueAmt=0;
+  invs.forEach(i=>{ const owe=Math.max(0,(+i.amt||0)-(+i.paidAmt||0)); if(i.status!=='ชำระแล้ว'&&owe>0.01){ ar+=owe; arCount++; if(i.due&&i.due<todayStr){ overdue++; overdueAmt+=owe; } } });
+  const arDays=revM>0?Math.round(ar/(revM/30)):0;
+  let stockVal=0,lowStock=0;
+  (DB.products||[]).forEach(p=>{ if(p.track===false||p.type==='บริการ') return; const q=+p.stock||0; stockVal+=q*(+p.buyPrice||+p.price||0); if(p.min!=null&&q<(+p.min||0)) lowStock++; });
+  const months=[]; for(let k=5;k>=0;k--){ const d=new Date(now.getFullYear(),now.getMonth()-k,1); const key=iso(d).slice(0,7); const rev=sumBy(invs,x=>execMonthKey(x.date)===key)+sumBy(cash,x=>execMonthKey(x.date)===key); months.push({key,rev,label:(d.getMonth()+1)+'/'+String(d.getFullYear()+543).slice(2)}); }
+  const maxRev=Math.max(1,...months.map(m=>m.rev));
+  const bars=months.map(m=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px"><div style="font-size:9px;color:var(--mu)">${m.rev>=1000?(Math.round(m.rev/1000)+'k'):Math.round(m.rev)}</div><div style="width:70%;background:linear-gradient(#0A6EBD,#00C9A7);border-radius:4px 4px 0 0;height:${Math.max(3,Math.round(m.rev/maxRev*88))}px"></div><div style="font-size:9px;color:var(--mu)">${m.label}</div></div>`).join('');
+  const card=(bg,c,big,lbl,sub)=>`<div style="background:${bg};border-radius:12px;padding:13px"><div style="font-size:19px;font-weight:800;color:${c}">${big}</div><div style="font-size:11px;color:var(--tx);font-weight:600">${lbl}</div>${sub?`<div style="font-size:10.5px;color:var(--mu);margin-top:2px">${sub}</div>`:''}</div>`;
+  document.getElementById('ml-t').textContent='📊 ภาพรวมผู้บริหาร (KPI)';
+  document.getElementById('ml-s').textContent='ข้อมูลเดือน '+(typeof pcMonthLabel==='function'?pcMonthLabel(thisMonth):thisMonth);
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="font-size:11px;font-weight:700;color:var(--mu);margin-bottom:6px">เดือนนี้</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+      ${card('#EAF4FF','#0A6EBD','฿'+fmt(revM),'รายได้ออกบิล')}
+      ${card('#FEECEC','#E53E3E','฿'+fmt(expM),'ค่าใช้จ่าย')}
+      ${card('#E8F8F0',profM>=0?'#0F9D58':'#E53E3E','฿'+fmt(profM),'กำไรเบื้องต้น','อัตรากำไร '+marginM.toFixed(1)+'%')}
+      ${card('#FFF7E6','#D97706',arDays+' วัน','ระยะเก็บหนี้เฉลี่ย (AR days)')}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--mu);margin:12px 0 6px">ลูกหนี้ / การเก็บเงิน</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${card('#F7F8FA','#1f2937','฿'+fmt(ar),'ลูกหนี้คงค้าง (AR)',arCount+' ใบ')}
+      ${card(overdue?'#FEECEC':'#F7F8FA',overdue?'#E53E3E':'#1f2937','฿'+fmt(overdueAmt),'เกินกำหนดชำระ',overdue+' ใบ')}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--mu);margin:12px 0 6px">สต็อก</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      ${card('#EAF4FF','#0A6EBD','฿'+fmt(stockVal),'มูลค่าสต็อก (ทุน)')}
+      ${card(lowStock?'#FFF7E6':'#F7F8FA',lowStock?'#D97706':'#1f2937',lowStock+' รายการ','ต่ำกว่าขั้นต่ำ')}
+    </div>
+    <div style="font-size:11px;font-weight:700;color:var(--mu);margin:14px 0 8px">แนวโน้มรายได้ 6 เดือน</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:120px;background:var(--bg);border-radius:10px;padding:10px">${bars}</div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:12px;padding-top:10px;border-top:1px solid var(--bd)"><span style="color:var(--mu)">สะสมปี ${(+thisYear)+543}</span><span style="font-weight:700">รายได้ ฿${fmt(revY)} · กำไร ฿${fmt(profY)}</span></div>
+    <div style="font-size:10px;color:var(--mu);margin-top:8px">* กำไรเบื้องต้น = รายได้ออกบิล − ค่าใช้จ่ายในระบบ (ไม่ใช่กำไรสุทธิทางบัญชี)</div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
 function renderDashboard(){
   // ── คำนวณยอดจากข้อมูลจริง ──
   const invTotal=DB.invoices.reduce((a,b)=>a+(b.amt||0),0);
@@ -2530,6 +2782,22 @@ function convertQuote(id,type,label){
 // ── ระบบแปลง/จับคู่เอกสารกลาง (ทุกประเภท) ──
 const DOC_LABEL={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',installments:'ใบแบ่งจ่าย',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย'};
 const DOC_ALL=['quotes','invoices','installments','delivery','cashsale','po','receive','expense'];
+// สร้างใบงานจากใบเสนอราคา
+function quoteToJob(id){
+  const q=(DB.quotes||[]).find(x=>x.id===id); if(!q){ toast('ไม่พบใบเสนอราคา'); return; }
+  if(!confirm('สร้างใบงานจากใบเสนอราคา '+id+' ?\n(คัดลอกลูกค้า รายการ และมูลค่างานให้อัตโนมัติ)')) return;
+  if(!DB.jobs) DB.jobs=[];
+  const jid=nextId('jobs');
+  const first=(q.items&&q.items[0]&&(q.items[0].name||q.items[0].desc))||'';
+  const title=first?('งานตาม '+id+' — '+first):('งานตามใบเสนอราคา '+id);
+  const desc=(q.items||[]).map(it=>'• '+(it.name||it.desc||'')+(it.qty?(' x'+it.qty):'')).filter(x=>x!=='• ').join('\n');
+  DB.jobs.unshift({ id:jid, title, cust:q.cust, date:iso(new Date()), due:'', status:'รอทำ', value:(+q.amt||0), desc, quoteRef:id, costs:[], photos:[] });
+  if(typeof saveData==='function') saveData();
+  toast('✅ สร้างใบงาน '+jid+' จากใบเสนอราคาแล้ว');
+  closeDrawer();
+  if(typeof nav==='function') nav('jobs');
+  setTimeout(()=>{ if(typeof openJobDrawer==='function') openJobDrawer(jid); },160);
+}
 function convertDoc(fromType,fromId,toType){
   const src=(DB[fromType]||[]).find(x=>x.id===fromId); if(!src) return;
   const label=DOC_LABEL[toType]||toType;
@@ -2584,7 +2852,7 @@ function openQuoteDrawer(id){
   if(r.paid>0) info.push(['แบ่งจ่ายแล้ว','฿'+fmt(r.paid)],['คงเหลือ','฿'+fmt(r.amt-r.paid)]);
   openDrawer(r.id,r.cust,info,
     itemsBlock(r.items)+
-    `<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:12px;font-weight:700;margin-bottom:10px">การดำเนินการ</div><div style="display:flex;gap:8px;flex-wrap:wrap">${r.status==='รออนุมัติ'?`<button class="btn bp" style="font-size:12px" onclick="setQuoteStatus('${r.id}','อนุมัติแล้ว')">✅ อนุมัติ</button><button class="btn bd2" style="font-size:12px" onclick="setQuoteStatus('${r.id}','ไม่อนุมัติ')">✕ ไม่อนุมัติ</button>`:''}<button class="btn bo" style="font-size:12px" onclick="editQuote('${r.id}')">✏️ แก้ไข</button><button class="btn bo" style="font-size:12px" onclick="duplicateDoc('quotes','${r.id}')">📑 ทำสำเนา</button><button class="btn bo" style="font-size:12px" onclick="convertQuote('${r.id}','invoices','ใบวางบิล');closeDrawer()">→ ใบวางบิล</button><button class="btn bp" style="font-size:12px" onclick="createInstFromQuote('${r.id}')">🗓️ แบ่งจ่าย</button><button class="btn bd2" style="font-size:12px" onclick="deleteDoc('quotes','${r.id}')">🗑️ ลบ</button></div></div>`+relatedDocsBlock('quotes',r.id),'quotes');
+    `<div style="background:var(--bg);border-radius:10px;padding:14px"><div style="font-size:12px;font-weight:700;margin-bottom:10px">การดำเนินการ</div><div style="display:flex;gap:8px;flex-wrap:wrap">${r.status==='รออนุมัติ'?`<button class="btn bp" style="font-size:12px" onclick="setQuoteStatus('${r.id}','อนุมัติแล้ว')">✅ อนุมัติ</button><button class="btn bd2" style="font-size:12px" onclick="setQuoteStatus('${r.id}','ไม่อนุมัติ')">✕ ไม่อนุมัติ</button>`:''}<button class="btn bo" style="font-size:12px" onclick="editQuote('${r.id}')">✏️ แก้ไข</button><button class="btn bo" style="font-size:12px" onclick="duplicateDoc('quotes','${r.id}')">📑 ทำสำเนา</button><button class="btn bo" style="font-size:12px" onclick="convertQuote('${r.id}','invoices','ใบวางบิล');closeDrawer()">→ ใบวางบิล</button><button class="btn bp" style="font-size:12px" onclick="createInstFromQuote('${r.id}')">🗓️ แบ่งจ่าย</button><button class="btn bo" style="font-size:12px" onclick="quoteToJob('${r.id}')">🔧 สร้างงาน</button><button class="btn bd2" style="font-size:12px" onclick="deleteDoc('quotes','${r.id}')">🗑️ ลบ</button></div></div>`+relatedDocsBlock('quotes',r.id),'quotes');
 }
 function setQuoteStatus(id,st){ const r=DB.quotes.find(x=>x.id===id); if(r){ r.status=st; saveData(); renderQuotes(); closeDrawer(); toast('✅ เปลี่ยนสถานะเป็น: '+st); } }
 function changeQuoteStatus(id){ const r=DB.quotes.find(x=>x.id===id); if(!r) return; const next={รออนุมัติ:'อนุมัติแล้ว',อนุมัติแล้ว:'ดำเนินการแล้ว','ดำเนินการแล้ว':'รออนุมัติ','ไม่อนุมัติ':'รออนุมัติ',แบ่งจ่าย:'รออนุมัติ'}; r.status=next[r.status]||'รออนุมัติ'; saveData(); renderQuotes(); toast('🔄 เปลี่ยนสถานะแล้ว'); }
@@ -3092,6 +3360,262 @@ function stlPrint(id){
   </body></html>`;
   if(typeof showPrintPreview==='function') showPrintPreview(html,'settlement-'+s.id,{});
   else { const w=window.open('','_blank'); w.document.write(html); w.document.close(); setTimeout(()=>w.print(),400); }
+}
+// ══════════════════════════════════
+// ใบลดหนี้ / ใบเพิ่มหนี้ (Credit / Debit Note)
+// ══════════════════════════════════
+function cdTotal(n){ const amt=+n.amt||0; const vat=n.hasVat?Math.round(amt*0.07*100)/100:0; return {amt,vat,total:Math.round((amt+vat)*100)/100}; }
+function openCDNotes(){
+  const arr=(DB.cdnotes||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const credits=arr.filter(n=>n.kind==='credit'); const debits=arr.filter(n=>n.kind==='debit');
+  const sum=list=>list.reduce((s,n)=>s+cdTotal(n).total,0);
+  const rows=arr.length?arr.map(n=>{ const cn=getCust(n.cust).name||n.cust||'-'; const t=cdTotal(n); const isC=n.kind==='credit';
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:9px">
+      <div onclick="cdNoteForm('${n.kind}','${n.id}','')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${isC?'🔻 ใบลดหนี้':'🔺 ใบเพิ่มหนี้'} ${n.id}</div><div style="font-weight:800;color:${isC?'#E53E3E':'#0F9D58'}">${isC?'-':'+'}฿${fmt(t.total)}</div></div>
+        <div style="font-size:11.5px;color:var(--mu);margin-top:3px">${escHtml(cn)} · อ้างอิง ${escHtml(n.refId||'-')} · ${fmtD(n.date)}</div>
+        <div style="font-size:11.5px;color:var(--tx);margin-top:3px">${escHtml(n.reason||'')}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px"><button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="printCDNote('${n.id}')">🖨️ พิมพ์</button><button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="cdDelete('${n.id}')">🗑️</button></div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:22px;font-size:13px">ยังไม่มีใบลด/เพิ่มหนี้</div>';
+  document.getElementById('ml-t').textContent='📑 ใบลดหนี้ / ใบเพิ่มหนี้';
+  document.getElementById('ml-s').textContent=arr.length+' ฉบับ';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:#FEECEC;border-radius:11px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:#E53E3E">${credits.length}</div><div style="font-size:10.5px;color:var(--mu)">ใบลดหนี้ · -฿${fmt(sum(credits))}</div></div>
+      <div style="background:#E8F8F0;border-radius:11px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:#0F9D58">${debits.length}</div><div style="font-size:10.5px;color:var(--mu)">ใบเพิ่มหนี้ · +฿${fmt(sum(debits))}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bp" style="flex:1;justify-content:center" onclick="cdNoteForm('credit','','')">+ ใบลดหนี้</button><button class="btn bp" style="flex:1;justify-content:center" onclick="cdNoteForm('debit','','')">+ ใบเพิ่มหนี้</button></div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function cdNoteForm(kind, id, refId){
+  const n=id?(DB.cdnotes||[]).find(x=>x.id===id):null;
+  const v=n||{kind};
+  kind=v.kind||kind||'credit';
+  const isC=kind==='credit';
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const preRef=v.refId||refId||'';
+  const invs=(DB.invoices||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const invOpts='<option value="">— เลือกใบกำกับ/ใบแจ้งหนี้อ้างอิง —</option>'+invs.map(x=>`<option value="${x.id}"${x.id===preRef?' selected':''}>${x.id} · ${escHtml(getCust(x.cust).name||x.cust||'')} · ฿${fmt(x.amt)}</option>`).join('');
+  document.getElementById('ml-t').textContent=n?('✏️ แก้ไข'+(isC?'ใบลดหนี้':'ใบเพิ่มหนี้')):(isC?'🔻 สร้างใบลดหนี้':'🔺 สร้างใบเพิ่มหนี้');
+  document.getElementById('ml-s').textContent=n?n.id:(isC?'ลดยอดหนี้ตามใบกำกับเดิม':'เพิ่มยอดหนี้ตามใบกำกับเดิม');
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="cd-id" value="${qa(id||'')}"><input type="hidden" id="cd-kind" value="${kind}">
+    <div class="fg" style="margin-bottom:10px"><label class="flb">อ้างอิงใบกำกับภาษี/ใบแจ้งหนี้เดิม</label><select class="fi" id="cd-ref" onchange="cdRefPick()">${invOpts}</select></div>
+    <div id="cd-refinfo" style="font-size:11.5px;color:var(--mu);margin:-4px 0 10px"></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">วันที่ออก</label><input class="fi" type="date" id="cd-date" value="${v.date||iso(new Date())}"></div>
+      <div class="fg"><label class="flb">${isC?'จำนวนเงินที่ลด':'จำนวนเงินที่เพิ่ม'} (ก่อน VAT)</label><input class="fi" type="number" id="cd-amt" value="${v.amt||''}" step="0.01" oninput="cdCalc()"></div>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:10px 0;cursor:pointer"><input type="checkbox" id="cd-vat" ${v.hasVat!==false?'checked':''} style="width:17px;height:17px" onchange="cdCalc()"> มี VAT 7%</label>
+    <div id="cd-calc" style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:10px"></div>
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">รายการ/รายละเอียดที่${isC?'ลด':'เพิ่ม'}</label><input class="fi" id="cd-desc" value="${qa(v.desc)}" placeholder="${isC?'เช่น ส่วนลดตามตกลง / รับคืนสินค้า':'เช่น ค่างานเพิ่มเติม'}"></div>
+    <div class="fg full"><label class="flb">เหตุผลการออก${isC?'ใบลดหนี้':'ใบเพิ่มหนี้'} (จำเป็นตามกฎหมาย)</label><textarea class="fi" id="cd-reason" rows="3" style="resize:vertical" placeholder="${isC?'เช่น ลดราคาสินค้าเนื่องจากชำรุด / รับคืนสินค้าบางส่วน':'เช่น คิดราคาต่ำกว่าที่เป็นจริง / ส่งมอบสินค้าเพิ่ม'}">${escHtml(v.reason||'')}</textarea></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openCDNotes()">← กลับ</button><button class="btn bp" onclick="cdSaveNote()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  cdRefPick(); cdCalc();
+}
+function cdRefPick(){
+  const id=document.getElementById('cd-ref')?document.getElementById('cd-ref').value:''; const el=document.getElementById('cd-refinfo'); if(!el) return;
+  const inv=(DB.invoices||[]).find(x=>x.id===id);
+  if(inv){ el.innerHTML='ใบกำกับเดิม: <b>'+inv.id+'</b> · '+fmtD(inv.date)+' · ยอด ฿'+fmt(inv.amt)+' · ลูกค้า '+escHtml(getCust(inv.cust).name||inv.cust||''); }
+  else el.textContent='';
+}
+function cdCalc(){
+  const amt=+(document.getElementById('cd-amt')?document.getElementById('cd-amt').value:0)||0; const hasVat=document.getElementById('cd-vat')?document.getElementById('cd-vat').checked:false; const el=document.getElementById('cd-calc'); if(!el) return;
+  const vat=hasVat?Math.round(amt*0.07*100)/100:0; const total=Math.round((amt+vat)*100)/100;
+  el.innerHTML=amt>0?('มูลค่า ฿'+fmt(amt)+(hasVat?(' + VAT ฿'+fmt(vat)):'')+' = รวม ฿'+fmt(total)):'';
+}
+function cdSaveNote(){
+  const id=document.getElementById('cd-id').value; const kind=document.getElementById('cd-kind').value||'credit';
+  const refId=document.getElementById('cd-ref').value; const date=document.getElementById('cd-date').value||iso(new Date());
+  const amt=+document.getElementById('cd-amt').value||0; const hasVat=document.getElementById('cd-vat').checked;
+  const desc=document.getElementById('cd-desc').value.trim(); const reason=document.getElementById('cd-reason').value.trim();
+  if(!refId){ toast('⚠️ เลือกใบกำกับ/ใบแจ้งหนี้อ้างอิงก่อน'); return; }
+  if(amt<=0){ toast('⚠️ ใส่จำนวนเงิน'); return; }
+  if(!reason){ toast('⚠️ ใส่เหตุผลการออก (จำเป็นตามกฎหมาย)'); return; }
+  const inv=(DB.invoices||[]).find(x=>x.id===refId);
+  if(!DB.cdnotes) DB.cdnotes=[];
+  const data={ kind, cust:inv?inv.cust:'', refId, refDate:inv?inv.date:'', refAmt:inv?(+inv.amt||0):0, date, amt, hasVat, desc, reason };
+  if(id){ const n=DB.cdnotes.find(x=>x.id===id); if(n) Object.assign(n,data); }
+  else { DB.cdnotes.unshift(Object.assign({id:nextId(kind==='credit'?'creditnote':'debitnote')},data)); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึก'+(kind==='credit'?'ใบลดหนี้':'ใบเพิ่มหนี้')+'แล้ว');
+  openCDNotes();
+}
+function cdDelete(id){
+  const n=(DB.cdnotes||[]).find(x=>x.id===id); if(!n) return;
+  if(!confirm('ลบ '+(n.kind==='credit'?'ใบลดหนี้':'ใบเพิ่มหนี้')+' '+id+' ?')) return;
+  DB.cdnotes=DB.cdnotes.filter(x=>x.id!==id);
+  if(typeof saveData==='function') saveData();
+  toast('🗑️ ลบแล้ว'); openCDNotes();
+}
+function printCDNote(id){
+  const n=(DB.cdnotes||[]).find(x=>x.id===id); if(!n){ toast('ไม่พบเอกสาร'); return; }
+  const isC=n.kind==='credit'; const t=cdTotal(n);
+  const cust=getCust(n.cust); const cn=(cust&&cust.name)||n.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const br=x=>esc(x).replace(/\n/g,'<br>');
+  const newAmt=isC?(n.refAmt-t.total):(n.refAmt+t.total);
+  const accent=isC?'#E53E3E':'#0F9D58';
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.55}.frame{border:2px solid ${accent};border-radius:10px;padding:22px 26px;min-height:1000px}
+.hd{text-align:center;border-bottom:2px solid ${accent};padding-bottom:12px;margin-bottom:8px}.hd .cn{font-weight:700;font-size:15px}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:14px 0 4px}.title h1{font-size:23px;color:${accent};font-weight:800}.title .en{font-size:11px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
+.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:14px}
+.party{display:flex;gap:16px;margin:8px 0 12px}.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:11px 13px}.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:600}
+.row{display:flex;font-size:12.5px;padding:2px 0}.row .k{color:#6b7280;width:130px;flex:none}.row .v{font-weight:600}
+.ref{background:#f7f8fa;border:1px solid #e5e7eb;border-radius:9px;padding:11px 13px;margin-bottom:12px;font-size:12.5px}
+table.it{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}table.it th{background:${accent};color:#fff;padding:6px;text-align:left}table.it td{border:1px solid #e5e7eb;padding:6px}
+.sum{margin-left:auto;width:56%;font-size:13px}.sum .r{display:flex;justify-content:space-between;padding:3px 0}.sum .tot{border-top:2px solid #1f2937;margin-top:4px;padding-top:6px;font-weight:800;font-size:15px;color:${accent}}
+.reason{background:#fafbfc;border-left:3px solid ${accent};border-radius:6px;padding:10px 13px;font-size:12.5px;margin:10px 0}
+.sig{display:flex;justify-content:flex-end;margin-top:30px}.sig .col{width:240px;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:6px;font-size:12px}
+.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:16px;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</div></div>
+  <div class="title"><h1>${isC?'ใบลดหนี้':'ใบเพิ่มหนี้'}</h1><div class="en">${isC?'Credit Note':'Debit Note'}</div></div>
+  <div class="no">เลขที่ ${esc(n.id)} · วันที่ ${fmtD(n.date)}</div>
+  <div class="party"><div class="box"><div class="t">ลูกค้า</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>${cust&&cust.tax?`<div class="row"><span class="k">เลขผู้เสียภาษี</span><span class="v">${esc(cust.tax)}</span></div>`:''}${cust&&cust.phone?`<div class="row"><span class="k">โทร</span><span class="v">${esc(cust.phone)}</span></div>`:''}</div></div>
+  <div class="ref"><b>อ้างอิงใบกำกับภาษี/ใบแจ้งหนี้เดิม:</b> ${esc(n.refId)}${n.refDate?(' ลงวันที่ '+fmtD(n.refDate)):''} · มูลค่าตามเอกสารเดิม ฿${fmt(n.refAmt)}</div>
+  <table class="it"><thead><tr><th>รายการ</th><th style="text-align:right;width:150px">${isC?'จำนวนที่ลด':'จำนวนที่เพิ่ม'} (บาท)</th></tr></thead>
+    <tbody><tr><td>${esc(n.desc||(isC?'ปรับลดยอดตามใบกำกับเดิม':'ปรับเพิ่มยอดตามใบกำกับเดิม'))}</td><td style="text-align:right">${fmt(t.amt)}</td></tr></tbody></table>
+  <div class="sum"><div class="r"><span>มูลค่า${isC?'ที่ลด':'ที่เพิ่ม'}</span><span>฿${fmt(t.amt)}</span></div>${n.hasVat?`<div class="r"><span>ภาษีมูลค่าเพิ่ม 7%</span><span>฿${fmt(t.vat)}</span></div>`:''}<div class="r tot"><span>รวม${isC?'ลด':'เพิ่ม'}ทั้งสิ้น</span><span>${isC?'-':'+'}฿${fmt(t.total)}</span></div><div class="r" style="margin-top:6px;color:#52606d"><span>ยอดหลังปรับปรุง</span><span>฿${fmt(newAmt)}</span></div></div>
+  <div style="clear:both"></div>
+  <div class="reason"><b>เหตุผลการออก${isC?'ใบลดหนี้':'ใบเพิ่มหนี้'}:</b> ${br(n.reason||'')}</div>
+  <div class="sig"><div class="col"><div class="ln">ผู้มีอำนาจลงนาม<br>(${esc(CO.seller||'____________________')})<br>${esc(CO.name)}</div></div></div>
+  <div class="foot">ออกโดยระบบ FlowBiz · ${isC?'ใบลดหนี้':'ใบเพิ่มหนี้'}เลขที่ ${esc(n.id)} · อ้างอิง ${esc(n.refId)}</div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,(isC?'ใบลดหนี้ ':'ใบเพิ่มหนี้ ')+n.id,{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
+}
+// ══════════════════════════════════
+// บิลซ้ำอัตโนมัติ (Recurring Invoice)
+// ══════════════════════════════════
+const RC_FREQ=[[1,'ทุกเดือน'],[3,'ทุก 3 เดือน'],[6,'ทุก 6 เดือน'],[12,'ทุกปี']];
+function rcFreqLabel(m){ const f=RC_FREQ.find(x=>x[0]===+m); return f?f[1]:(m+' เดือน'); }
+function rcNextRun(p){
+  const f=+p.freq||1; const base=p.lastRun||p.startDate; if(!base) return null;
+  const d=new Date(base+'T00:00:00'); if(isNaN(d.getTime())) return null;
+  if(p.lastRun) d.setMonth(d.getMonth()+f);
+  return iso(d);
+}
+function rcInfo(p){
+  const next=rcNextRun(p); const now=new Date(); now.setHours(0,0,0,0);
+  let daysToNext=null; if(next){ daysToNext=Math.ceil((new Date(next+'T00:00:00')-now)/86400000); }
+  const due = p.active!==false && next!=null && daysToNext<=0;
+  return {next,daysToNext,due};
+}
+function rcGenerate(p){
+  if(!DB.invoices) DB.invoices=[];
+  const runDate=rcNextRun(p)||iso(new Date());
+  const due=new Date(runDate+'T00:00:00'); due.setDate(due.getDate()+(+p.dueDays||0));
+  const rec={ id:nextId('invoices'), cust:p.cust, date:runDate, due:iso(due), status:'รอชำระ', amt:+p.amt||0, vat:p.vat, vatMode:p.vatMode, disc:p.disc, discMode:p.discMode, items:p.items?JSON.parse(JSON.stringify(p.items)):[], note:p.note, ship:p.ship, terms:p.terms, wht:p.wht, recurringRef:p.id };
+  DB.invoices.unshift(rec);
+  try{ if(typeof autoPostInvoice==='function') autoPostInvoice(rec); }catch(e){}
+  p.lastRun=runDate; if(!p.generated) p.generated=[]; p.generated.push(rec.id);
+  return rec.id;
+}
+function openRecurring(){
+  const arr=(DB.recurring||[]);
+  const active=arr.filter(p=>p.active!==false).length;
+  const dueCount=arr.filter(p=>rcInfo(p).due).length;
+  const rows=arr.length?arr.map(p=>{ const cn=getCust(p.cust).name||p.cust||'-'; const info=rcInfo(p); const cnt=(p.generated||[]).length;
+    const nextLine=p.active===false?'⏸ หยุดชั่วคราว':(info.next?('สร้างบิลรอบถัดไป '+fmtD(info.next)+(info.daysToNext!=null?(info.daysToNext<=0?' · ถึงกำหนดแล้ว':(' · อีก '+info.daysToNext+' วัน')):'')):'');
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:9px">
+      <div onclick="recurringForm('${p.id}')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${escHtml(p.name||cn)}</div><div style="font-weight:800;color:var(--p)">฿${fmt(p.amt||0)}</div></div>
+        <div style="font-size:11.5px;color:var(--mu);margin-top:3px">${escHtml(cn)} · ${rcFreqLabel(p.freq)} · ออกบิลแล้ว ${cnt} ใบ</div>
+        <div style="font-size:11.5px;margin-top:3px;font-weight:600;color:${info.due?'#D97706':p.active===false?'#94a3b8':'#0F9D58'}">${nextLine}</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+        ${info.due?`<button class="btn bp" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="recurringRunOne('${p.id}')">▶️ สร้างบิลรอบนี้</button>`:''}
+        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="recurringToggle('${p.id}')">${p.active===false?'▶️ เปิด':'⏸ หยุด'}</button>
+        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="recurringDelete('${p.id}')">🗑️</button>
+      </div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:22px;font-size:13px">ยังไม่มีบิลซ้ำ — สร้างจากใบแจ้งหนี้ที่มีอยู่</div>';
+  document.getElementById('ml-t').textContent='🔁 บิลซ้ำอัตโนมัติ';
+  document.getElementById('ml-s').textContent=arr.length+' รายการ';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:#E8F8F0;border-radius:11px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:#0F9D58">${active}</div><div style="font-size:10.5px;color:var(--mu)">กำลังทำงาน</div></div>
+      <div style="background:#FEF3C7;border-radius:11px;padding:11px;text-align:center"><div style="font-size:19px;font-weight:800;color:#D97706">${dueCount}</div><div style="font-size:10.5px;color:var(--mu)">ถึงกำหนดสร้าง</div></div>
+    </div>
+    ${dueCount?`<button class="btn bp" style="width:100%;justify-content:center;margin-bottom:8px" onclick="recurringGenerateDue()">▶️ สร้างบิลที่ถึงกำหนดทั้งหมด (${dueCount})</button>`:''}
+    <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:12px" onclick="recurringPickSource()">+ สร้างบิลซ้ำจากใบแจ้งหนี้</button>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function recurringPickSource(){
+  const invs=(DB.invoices||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  if(!invs.length){ toast('ยังไม่มีใบแจ้งหนี้ให้ใช้เป็นต้นแบบ'); return; }
+  const opts='<option value="">— เลือกใบแจ้งหนี้ต้นแบบ —</option>'+invs.map(x=>`<option value="${x.id}">${x.id} · ${escHtml(getCust(x.cust).name||x.cust||'')} · ฿${fmt(x.amt)}</option>`).join('');
+  document.getElementById('ml-t').textContent='+ สร้างบิลซ้ำ';
+  document.getElementById('ml-s').textContent='เลือกใบแจ้งหนี้ต้นแบบ';
+  document.getElementById('ml-bd').innerHTML=`<div class="fg full"><label class="flb">ใช้ใบแจ้งหนี้นี้เป็นต้นแบบ (คัดลอกลูกค้า+รายการ+ยอด)</label><select class="fi" id="rc-src">${opts}</select></div><div style="font-size:11.5px;color:var(--mu);margin-top:8px">ระบบจะคัดลอกข้อมูลจากใบที่เลือก แล้วให้ตั้งความถี่การออกบิลซ้ำ</div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openRecurring()">← กลับ</button><button class="btn bp" onclick="recurringFromSource()">ถัดไป →</button>`;
+}
+function recurringFromSource(){
+  const sid=document.getElementById('rc-src').value; if(!sid){ toast('⚠️ เลือกใบแจ้งหนี้ต้นแบบ'); return; }
+  const inv=(DB.invoices||[]).find(x=>x.id===sid); if(!inv){ toast('ไม่พบใบแจ้งหนี้'); return; }
+  if(!DB.recurring) DB.recurring=[];
+  const p={ id:'RP-'+Date.now().toString(36), name:'บิลซ้ำ — '+(getCust(inv.cust).name||inv.cust||''), cust:inv.cust, items:inv.items?JSON.parse(JSON.stringify(inv.items)):[], amt:+inv.amt||0, vat:inv.vat, vatMode:inv.vatMode, disc:inv.disc, discMode:inv.discMode, wht:inv.wht, terms:inv.terms, ship:inv.ship, note:inv.note, srcRef:sid, freq:1, dueDays:7, startDate:iso(new Date()), lastRun:null, generated:[], active:true };
+  DB.recurring.unshift(p);
+  if(typeof saveData==='function') saveData();
+  recurringForm(p.id);
+}
+function recurringForm(id){
+  const p=(DB.recurring||[]).find(x=>x.id===id); if(!p){ toast('ไม่พบ'); return; }
+  const cn=getCust(p.cust).name||p.cust||'';
+  const freqOpts=RC_FREQ.map(f=>`<option value="${f[0]}"${(+p.freq||1)===f[0]?' selected':''}>${f[1]}</option>`).join('');
+  const itemCount=(p.items||[]).length;
+  document.getElementById('ml-t').textContent='🔁 ตั้งค่าบิลซ้ำ';
+  document.getElementById('ml-s').textContent=cn;
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="rcf-id" value="${p.id}">
+    <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อเรียก</label><input class="fi" id="rcf-name" value="${String(p.name||'').replace(/"/g,'&quot;')}"></div>
+    <div style="background:var(--bg);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:12px"><b>ลูกค้า:</b> ${escHtml(cn)} · <b>${itemCount} รายการ</b> · <b>ยอด ฿${fmt(p.amt||0)}</b><br><span style="color:var(--mu);font-size:11px">คัดลอกจาก ${escHtml(p.srcRef||'-')}</span></div>
+    <div class="fl2">
+      <div class="fg"><label class="flb">ความถี่</label><select class="fi" id="rcf-freq" onchange="rcFormHint()">${freqOpts}</select></div>
+      <div class="fg"><label class="flb">วันเริ่ม (บิลใบแรก)</label><input class="fi" type="date" id="rcf-start" value="${p.startDate||iso(new Date())}" onchange="rcFormHint()"></div>
+      <div class="fg"><label class="flb">กำหนดชำระ (วันหลังออกบิล)</label><input class="fi" type="number" id="rcf-duedays" value="${p.dueDays!=null?p.dueDays:7}" min="0"></div>
+      <div class="fg"><label class="flb">สถานะ</label><select class="fi" id="rcf-active"><option value="1"${p.active!==false?' selected':''}>เปิดทำงาน</option><option value="0"${p.active===false?' selected':''}>หยุดชั่วคราว</option></select></div>
+    </div>
+    <div id="rcf-hint" style="font-size:12.5px;color:var(--p);font-weight:600;margin:8px 0"></div>
+    ${(p.generated&&p.generated.length)?`<div style="margin-top:6px;border-top:1px solid var(--bd);padding-top:10px;font-size:12px"><b>ออกบิลแล้ว ${p.generated.length} ใบ:</b> <span style="color:var(--mu)">${p.generated.map(g=>escHtml(g)).join(', ')}</span></div>`:''}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openRecurring()">← กลับ</button><button class="btn bp" onclick="recurringSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  rcFormHint();
+}
+function rcFormHint(){
+  const s=document.getElementById('rcf-start')?document.getElementById('rcf-start').value:''; const f=+(document.getElementById('rcf-freq')?document.getElementById('rcf-freq').value:1)||1; const el=document.getElementById('rcf-hint'); if(!el) return;
+  if(s){ el.textContent='บิลใบแรกออกวันที่ '+fmtD(s)+' แล้วออกซ้ำ'+rcFreqLabel(f); } else el.textContent='';
+}
+function recurringSave(){
+  const p=(DB.recurring||[]).find(x=>x.id===document.getElementById('rcf-id').value); if(!p) return;
+  p.name=document.getElementById('rcf-name').value.trim()||p.name;
+  p.freq=+document.getElementById('rcf-freq').value||1;
+  p.startDate=document.getElementById('rcf-start').value||p.startDate;
+  p.dueDays=+document.getElementById('rcf-duedays').value||0;
+  p.active=document.getElementById('rcf-active').value==='1';
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกบิลซ้ำแล้ว');
+  openRecurring();
+}
+function recurringToggle(id){ const p=(DB.recurring||[]).find(x=>x.id===id); if(!p) return; p.active=p.active===false; if(typeof saveData==='function') saveData(); openRecurring(); }
+function recurringDelete(id){ const p=(DB.recurring||[]).find(x=>x.id===id); if(!p) return; if(!confirm('ลบบิลซ้ำ "'+(p.name||id)+'" ?\n(บิลที่ออกไปแล้วยังอยู่)')) return; DB.recurring=DB.recurring.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openRecurring(); }
+function recurringRunOne(id){ const p=(DB.recurring||[]).find(x=>x.id===id); if(!p) return; const r=rcGenerate(p); if(r){ if(typeof saveData==='function') saveData(); toast('✅ สร้างใบแจ้งหนี้ '+r+' แล้ว'); } openRecurring(); }
+function recurringGenerateDue(){
+  let count=0;
+  (DB.recurring||[]).forEach(p=>{ let guard=0; while(rcInfo(p).due && guard<60){ const r=rcGenerate(p); if(!r) break; count++; guard++; } });
+  if(typeof saveData==='function') saveData();
+  toast(count?('✅ สร้างบิลที่ถึงกำหนด '+count+' ใบแล้ว'):'ไม่มีบิลที่ถึงกำหนด');
+  openRecurring();
 }
 // ── ใบเสร็จรับเงิน (ออกเมื่อรับชำระแล้ว) ──
 function printReceipt(srcType,id){
@@ -3848,7 +4372,7 @@ function compressReceiptImage(file,maxDim,quality){
 function renderSlipPreview(){} // legacy stub — ใช้ expRenderSlips แทน
 // ── AI (Claude API) — ใช้ key ของผู้ใช้ + header สำหรับเรียกตรงจากเบราว์เซอร์ ──
 function aiKey(){ return (companyInfo&&companyInfo.aiKey)?String(companyInfo.aiKey).trim():''; }
-function aiModel(){ return (companyInfo&&companyInfo.aiModel&&String(companyInfo.aiModel).trim())||'claude-sonnet-4-6'; }
+function aiModel(){ return (companyInfo&&companyInfo.aiModel&&String(companyInfo.aiModel).trim())||'claude-3-5-sonnet-20241022'; }
 function aiReady(){ return !!aiKey(); }
 async function aiVisionJSON(dataUrl, prompt, maxTokens){
   const key=aiKey();
@@ -3880,12 +4404,12 @@ async function aiTestKey(){
   const st=document.getElementById('co-ai-test');
   const setS=(t,c)=>{ if(st){ st.style.display='block'; st.textContent=t; st.style.color=c; } };
   const keyEl=document.getElementById('co-aikey'); const key=keyEl?keyEl.value.trim():'';
-  const modelEl=document.getElementById('co-aimodel'); const model=(modelEl&&modelEl.value.trim())||'claude-sonnet-4-6';
+  const modelEl=document.getElementById('co-aimodel'); const model=(modelEl&&modelEl.value.trim())||'claude-3-5-sonnet-20241022';
   if(!key){ setS('⚠️ ใส่ API Key ก่อนทดสอบ','var(--dg)'); return; }
   setS('🔌 กำลังทดสอบการเชื่อมต่อ...','var(--p)');
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{ method:'POST', headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}, body:JSON.stringify({ model, max_tokens:16, messages:[{role:'user',content:'ตอบกลับว่า OK'}] }) });
-    if(!res.ok){ let t=''; try{ t=await res.text(); }catch(_){}; if(res.status===401) setS('❌ API Key ไม่ถูกต้อง/หมดอายุ (401)','var(--dg)'); else if(res.status===404||/model/i.test(t)) setS('❌ ชื่อโมเดลไม่ถูกต้อง — ลองเว้นช่องโมเดลให้ว่าง','var(--dg)'); else setS('❌ เชื่อมต่อไม่สำเร็จ ('+res.status+')','var(--dg)'); return; }
+    if(!res.ok){ let t=''; try{ t=await res.text(); }catch(_){}; const msg=(t||'').replace(/\s+/g,' ').trim(); if(res.status===401) setS('❌ API Key ไม่ถูกต้อง/หมดอายุ (401)','var(--dg)'); else if(res.status===404||/model/i.test(t)) setS('❌ ชื่อโมเดลไม่ถูกต้อง — ลองเว้นช่องโมเดลให้ว่าง','var(--dg)'); else if(/credit balance|too low|billing|insufficient/i.test(t)) setS('❌ เครดิตในบัญชี Anthropic ไม่พอ — เติมเครดิต/ผูกบัตรที่ console.anthropic.com → Billing','var(--dg)'); else setS('❌ ('+res.status+') '+(msg?msg.slice(0,170):'เชื่อมต่อไม่สำเร็จ'),'var(--dg)'); return; }
     setS('✅ เชื่อมต่อ AI สำเร็จ! กด "บันทึกข้อมูลบริษัท" เพื่อใช้งาน','var(--ok)');
   }catch(e){ setS('❌ เชื่อมต่อไม่ได้ — อาจถูกเบราว์เซอร์บล็อก (CORS) หรือไม่มีเน็ต','var(--dg)'); }
 }
@@ -4658,7 +5182,7 @@ function openMAContracts(){
         ${(c.services&&c.services.length)?`<div style="font-size:11px;color:var(--mu);margin-top:2px">เข้าบริการแล้ว ${c.services.length} ครั้ง · ล่าสุด ${fmtD(maLastService(c))}</div>`:''}
       </div>
       <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
-        <button class="btn bp" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="maLogService('${c.id}')">✅ ลงบันทึกเข้าบริการ</button>
+        <button class="btn bp" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="maServiceForm('${c.id}')">✅ ลงบันทึกเข้าบริการ</button>
         <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="printMAContract('${c.id}')">🖨️ สัญญา</button>
         <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="maDelete('${c.id}')">🗑️</button>
       </div>
@@ -4690,6 +5214,10 @@ function maContractForm(id){
     <input type="hidden" id="ma-id" value="${qa(id||'')}">
     <div class="fg" style="margin-bottom:10px"><label class="flb">ลูกค้า</label><select class="fi" id="ma-cust">${custOpts}</select></div>
     <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อสัญญา / รายละเอียดบริการ</label><input class="fi" id="ma-title" value="${qa(v.title)}" placeholder="เช่น สัญญาบำรุงรักษาระบบไฟฟ้า อาคาร A"></div>
+    <div class="fl2" style="margin-bottom:0">
+      <div class="fg"><label class="flb">สถานที่ / หน่วยงาน</label><input class="fi" id="ma-site" value="${qa(v.site)}" placeholder="เช่น อาคาร A ชั้น 3"></div>
+      <div class="fg"><label class="flb">ผู้ประสานงาน (ลูกค้า)</label><input class="fi" id="ma-contact" value="${qa(v.contact)}" placeholder="ชื่อ + เบอร์ติดต่อ"></div>
+    </div>
     <div class="fl2">
       <div class="fg"><label class="flb">วันเริ่มสัญญา</label><input class="fi" type="date" id="ma-start" value="${v.startDate||iso(new Date())}" onchange="maFormHint()"></div>
       <div class="fg"><label class="flb">ระยะเวลา (เดือน)</label><input class="fi" type="number" id="ma-months" value="${v.months||12}" min="1" max="120" oninput="maFormHint()"></div>
@@ -4698,7 +5226,8 @@ function maContractForm(id){
       <div class="fg full"><label class="flb">รอบเรียกเก็บค่าบริการ</label><select class="fi" id="ma-billcycle">${bcOpts}</select></div>
     </div>
     <div id="ma-hint" style="font-size:12.5px;color:var(--p);font-weight:600;margin:4px 0 12px"></div>
-    <div class="fg full"><label class="flb">ขอบเขตงาน / เงื่อนไขบริการ</label><textarea class="fi" id="ma-scope" rows="6" style="line-height:1.6;resize:vertical">${escHtml(v.scope||DEFAULT_MA_SCOPE)}</textarea></div>`;
+    <div class="fg full"><label class="flb">ขอบเขตงาน / เงื่อนไขบริการ</label><textarea class="fi" id="ma-scope" rows="6" style="line-height:1.6;resize:vertical">${escHtml(v.scope||DEFAULT_MA_SCOPE)}</textarea></div>
+    ${(c&&c.services&&c.services.length)?`<div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:12px"><div style="font-size:12px;font-weight:700;margin-bottom:8px">📋 ประวัติการเข้าบริการ (${c.services.length} ครั้ง)</div>${c.services.map((s,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--bd)"><div style="font-size:12px;min-width:0"><b>${fmtD(s.date)}</b>${s.tech?' · '+escHtml(s.tech):''}${s.sign?' · ✍️':''}<br><span style="color:var(--mu);font-size:11px">${escHtml((s.work||'').slice(0,55))||'—'}</span></div><button class="btn bo" style="font-size:11px;padding:4px 9px;flex:none" onclick="printMAServiceReport('${c.id}',${i})">🖨️ รายงาน</button></div>`).join('')}</div>`:''}`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openMAContracts()">← กลับ</button><button class="btn bp" onclick="maSaveContract()">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
   maFormHint();
@@ -4719,12 +5248,14 @@ function maSaveContract(){
   const fee=+document.getElementById('ma-fee').value||0;
   const billCycle=document.getElementById('ma-billcycle').value||'visit';
   const scope=document.getElementById('ma-scope').value||'';
+  const site=document.getElementById('ma-site')?document.getElementById('ma-site').value.trim():'';
+  const contact=document.getElementById('ma-contact')?document.getElementById('ma-contact').value.trim():'';
   if(!cust){ toast('⚠️ เลือกลูกค้าก่อน'); return; }
   if(!title){ toast('⚠️ ใส่ชื่อสัญญา'); return; }
   if(!startDate){ toast('⚠️ ใส่วันเริ่มสัญญา'); return; }
   if(!DB.contracts) DB.contracts=[];
-  if(id){ const c=DB.contracts.find(x=>x.id===id); if(c) Object.assign(c,{cust,title,startDate,months,intervalMonths,fee,billCycle,scope}); }
-  else { DB.contracts.unshift({id:nextId('contracts'),cust,title,startDate,months,intervalMonths,fee,billCycle,scope,services:[],status:'active'}); }
+  if(id){ const c=DB.contracts.find(x=>x.id===id); if(c) Object.assign(c,{cust,title,startDate,months,intervalMonths,fee,billCycle,scope,site,contact}); }
+  else { DB.contracts.unshift({id:nextId('contracts'),cust,title,startDate,months,intervalMonths,fee,billCycle,scope,site,contact,services:[],status:'active'}); }
   if(typeof saveData==='function') saveData();
   toast('✅ บันทึกสัญญาแล้ว');
   openMAContracts();
@@ -4782,10 +5313,11 @@ table.sc{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}table
   <div class="no">เลขที่สัญญา ${esc(c.id)}</div>
   <div class="party">
     <div class="box"><div class="t">ผู้ให้บริการ</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(CO.name)}</span></div><div class="row"><span class="k">โทร</span><span class="v">${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</span></div></div>
-    <div class="box"><div class="t">ผู้รับบริการ (ลูกค้า)</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>${cust&&cust.phone?`<div class="row"><span class="k">โทร</span><span class="v">${esc(cust.phone)}</span></div>`:''}${cust&&cust.tax?`<div class="row"><span class="k">เลขผู้เสียภาษี</span><span class="v">${esc(cust.tax)}</span></div>`:''}</div>
+    <div class="box"><div class="t">ผู้รับบริการ (ลูกค้า)</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>${cust&&cust.phone?`<div class="row"><span class="k">โทร</span><span class="v">${esc(cust.phone)}</span></div>`:''}${c.contact?`<div class="row"><span class="k">ผู้ประสานงาน</span><span class="v">${esc(c.contact)}</span></div>`:''}${cust&&cust.tax?`<div class="row"><span class="k">เลขผู้เสียภาษี</span><span class="v">${esc(cust.tax)}</span></div>`:''}</div>
   </div>
   <div class="sec"><div class="t">รายละเอียดสัญญา</div>
     <div class="row"><span class="k">ชื่อสัญญา</span><span class="v">${esc(c.title)}</span></div>
+    ${c.site?`<div class="row"><span class="k">สถานที่/หน่วยงาน</span><span class="v">${esc(c.site)}</span></div>`:''}
     <div class="row"><span class="k">เริ่มสัญญา</span><span class="v">${fmtD(c.startDate)}</span></div>
     <div class="row"><span class="k">สิ้นสุดสัญญา</span><span class="v" style="color:#c0392b">${fmtD(endStr)}</span></div>
     <div class="row"><span class="k">ระยะเวลา</span><span class="v">${esc(period)}</span></div>
@@ -4801,6 +5333,93 @@ table.sc{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}table
 </div></body></html>`;
   closeModal();
   if(typeof showPrintPreview==='function') showPrintPreview(html,'สัญญา MA '+c.id,{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
+}
+let _maSvcContract=null;
+// ── MA: บันทึกการเข้าบริการ + ลายเซ็นลูกค้ารับทราบ ──
+function maServiceForm(contractId){
+  const c=(DB.contracts||[]).find(x=>x.id===contractId); if(!c){ toast('ไม่พบสัญญา'); return; }
+  _maSvcContract=contractId;
+  document.getElementById('ml-t').textContent='✅ บันทึกการเข้าบริการ';
+  document.getElementById('ml-s').textContent=(c.title||c.id);
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fl2">
+      <div class="fg"><label class="flb">วันที่เข้าบริการ</label><input class="fi" type="date" id="msv-date" value="${iso(new Date())}"></div>
+      <div class="fg"><label class="flb">ช่างผู้เข้าบริการ</label><input class="fi" id="msv-tech" placeholder="ชื่อช่าง"></div>
+    </div>
+    <div class="fg full" style="margin-top:6px"><label class="flb">งานที่ทำ / ผลการตรวจเช็ค</label><textarea class="fi" id="msv-work" rows="4" style="resize:vertical" placeholder="เช่น ตรวจเช็คตู้ควบคุม ทำความสะอาด ขันแน่นจุดต่อ ทดสอบการทำงาน — ปกติ"></textarea></div>
+    <div class="fg full"><label class="flb">อะไหล่ที่เปลี่ยน / หมายเหตุ (ถ้ามี)</label><input class="fi" id="msv-note" placeholder="เช่น เปลี่ยนแมกเนติก 1 ตัว"></div>
+    <div style="font-size:12px;color:var(--mu);margin:12px 0 6px;font-weight:600">✍️ ลายเซ็นลูกค้ารับทราบการเข้าบริการ (เซ็นด้วยนิ้ว)</div>
+    <canvas id="maSigCanvas" style="width:100%;height:180px;border:2px dashed var(--p);border-radius:12px;background:#fff;touch-action:none;display:block"></canvas>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><button class="btn bo" style="font-size:12px;padding:6px 12px" onclick="maSigClear()">↺ ล้าง</button><span style="font-size:11px;color:var(--mu)">เซ็นในกรอบสีขาว</span></div>
+    <div class="fg" style="margin-top:10px"><label class="flb">ชื่อผู้เซ็นรับทราบ (ลูกค้า)</label><input class="fi" id="msv-signname" placeholder="ชื่อ-นามสกุล"></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openMAContracts()">← กลับ</button><button class="btn bp" onclick="maSaveService()">💾 บันทึกการเข้าบริการ</button>`;
+  document.getElementById('ml').classList.add('op');
+  setTimeout(maSigInit,60);
+}
+function maSigInit(){
+  const c=document.getElementById('maSigCanvas'); if(!c) return;
+  const r=c.getBoundingClientRect(); c.width=r.width*2; c.height=r.height*2;
+  _sigCtx=c.getContext('2d'); _sigCtx.scale(2,2); _sigCtx.lineWidth=2.5; _sigCtx.lineCap='round'; _sigCtx.lineJoin='round'; _sigCtx.strokeStyle='#0D1B2A'; _sigEmpty=true; _sigDrawing=false;
+  const pos=e=>{ const rect=c.getBoundingClientRect(); const t=(e.touches&&e.touches[0])||e; return {x:t.clientX-rect.left,y:t.clientY-rect.top}; };
+  const start=e=>{ e.preventDefault(); _sigDrawing=true; const p=pos(e); _sigCtx.beginPath(); _sigCtx.moveTo(p.x,p.y); };
+  const move=e=>{ if(!_sigDrawing) return; e.preventDefault(); const p=pos(e); _sigCtx.lineTo(p.x,p.y); _sigCtx.stroke(); _sigEmpty=false; };
+  const end=()=>{ _sigDrawing=false; };
+  c.onmousedown=start; c.onmousemove=move; c.onmouseup=end; c.onmouseleave=end;
+  c.ontouchstart=start; c.ontouchmove=move; c.ontouchend=end;
+}
+function maSigClear(){ const c=document.getElementById('maSigCanvas'); if(c&&_sigCtx){ _sigCtx.clearRect(0,0,c.width,c.height); _sigEmpty=true; } }
+function maSaveService(){
+  const c=(DB.contracts||[]).find(x=>x.id===_maSvcContract); if(!c){ toast('ไม่พบสัญญา'); return; }
+  const date=document.getElementById('msv-date').value||iso(new Date());
+  const tech=document.getElementById('msv-tech').value.trim();
+  const work=document.getElementById('msv-work').value.trim();
+  const note=document.getElementById('msv-note').value.trim();
+  const signName=document.getElementById('msv-signname').value.trim();
+  let sign=null; const cv=document.getElementById('maSigCanvas'); if(cv&&!_sigEmpty){ try{ sign=cv.toDataURL('image/png'); }catch(e){} }
+  if(!c.services) c.services=[];
+  c.services.push({date,tech,work,note,sign,signName,signAt:new Date().toISOString()});
+  if(typeof saveData==='function') saveData();
+  const nx=maNextService(c);
+  toast('✅ บันทึกการเข้าบริการแล้ว'+(nx?(' · ครั้งถัดไป '+fmtD(nx)):' · ครบรอบสัญญาแล้ว'));
+  openMAContracts();
+}
+function printMAServiceReport(contractId, idx){
+  const c=(DB.contracts||[]).find(x=>x.id===contractId); if(!c){ toast('ไม่พบสัญญา'); return; }
+  const s=(c.services||[])[idx]; if(!s){ toast('ไม่พบรายการเข้าบริการ'); return; }
+  const cust=getCust(c.cust); const cn=(cust&&cust.name)||c.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const br=x=>esc(x).replace(/\n/g,'<br>');
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.55}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px;min-height:1000px}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:8px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:14px 0 4px}.title h1{font-size:22px;color:#0A6EBD;font-weight:800}.title .en{font-size:11px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
+.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:14px}
+.row{display:flex;font-size:13px;padding:4px 0;border-bottom:1px dashed #eef1f4}.row .k{color:#6b7280;width:150px;flex:none}.row .v{font-weight:600}
+.work{border:1px solid #cfe4fa;background:#f5faff;border-radius:9px;padding:13px;margin:12px 0}.work .t{font-size:11px;color:#0A6EBD;font-weight:700;margin-bottom:5px}
+.sig{display:flex;justify-content:space-between;margin-top:26px;gap:30px}.sig .col{flex:1;text-align:center}
+.sig img{max-height:78px;max-width:210px;object-fit:contain}.sig .ln{border-top:1px dotted #94a3b8;margin-top:8px;padding-top:6px;font-size:12px}.sig .box{height:84px;display:flex;align-items:flex-end;justify-content:center}
+.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:18px;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>โทร. ${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</div></div>
+  <div class="title"><h1>ใบรายงานการเข้าบริการ</h1><div class="en">Service Report</div></div>
+  <div class="no">ตามสัญญาบริการเลขที่ ${esc(c.id)}</div>
+  <div class="row"><span class="k">ลูกค้า</span><span class="v">${esc(cn)}</span></div>
+  ${c.site?`<div class="row"><span class="k">สถานที่/หน่วยงาน</span><span class="v">${esc(c.site)}</span></div>`:''}
+  <div class="row"><span class="k">สัญญา</span><span class="v">${esc(c.title||'')}</span></div>
+  <div class="row"><span class="k">วันที่เข้าบริการ</span><span class="v">${fmtD(s.date)}</span></div>
+  <div class="row"><span class="k">ช่างผู้ให้บริการ</span><span class="v">${esc(s.tech||'-')}</span></div>
+  <div class="work"><div class="t">รายละเอียดงานที่ทำ / ผลการตรวจเช็ค</div><div>${br(s.work||'-')}</div>${s.note?`<div style="margin-top:6px;font-size:12px;color:#52606d">อะไหล่/หมายเหตุ: ${esc(s.note)}</div>`:''}</div>
+  <div class="sig">
+    <div class="col"><div class="box">${s.sign?`<img src="${s.sign}">`:''}</div><div class="ln">ลูกค้าผู้รับบริการ<br>(${esc(s.signName||cn||'____________________')})<br>วันที่ ${fmtD(s.date)}</div></div>
+    <div class="col"><div class="box"></div><div class="ln">ช่าง/ผู้ให้บริการ<br>(${esc(s.tech||CO.seller||'____________________')})<br>วันที่ ${fmtD(s.date)}</div></div>
+  </div>
+  <div class="foot">ออกโดยระบบ FlowBiz · ใบรายงานการเข้าบริการตามสัญญา ${esc(c.id)}</div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบรายงานบริการ '+c.id,{});
   else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
 }
 // ── บันทึกเวลา+ตำแหน่ง เริ่มงาน/เสร็จงาน (เหมือนตอกบัตรหน้างาน) ──
@@ -5746,8 +6365,8 @@ function openCompanyForm(){
     <div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:14px">
       <div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">🤖 AI (อ่านใบเสร็จ / สลิปอัตโนมัติ)</div>
       <div class="fg" style="margin-bottom:10px"><label class="flb">Anthropic API Key</label><input class="fi" id="co-aikey" type="password" value="${(v.aiKey||'').replace(/"/g,'&quot;')}" placeholder="sk-ant-... (เก็บในเครื่องนี้เท่านั้น)" autocomplete="off"></div>
-      <div class="fg" style="margin-bottom:8px"><label class="flb">โมเดล (ไม่บังคับ)</label><input class="fi" id="co-aimodel" value="${(v.aiModel||'').replace(/"/g,'&quot;')}" placeholder="claude-sonnet-4-6"></div>
-      <div style="font-size:11px;color:var(--mu);line-height:1.6">ใช้สำหรับ <b>อ่านใบเสร็จ/สลิปอัตโนมัติ</b> · ขอคีย์ได้ที่ console.anthropic.com<br>⚠️ คีย์เก็บในเบราว์เซอร์นี้ (ไม่ฝังในซอร์สโค้ด GitHub) แต่เห็นได้ใน Network ของเครื่องนี้ — แนะนำใช้คีย์ที่ตั้งวงเงินจำกัด และอย่าใส่ในเครื่องสาธารณะ</div>
+      <div class="fg" style="margin-bottom:8px"><label class="flb">โมเดล (ไม่บังคับ)</label><input class="fi" id="co-aimodel" value="${(v.aiModel||'').replace(/"/g,'&quot;')}" placeholder="claude-3-5-sonnet-20241022"></div>
+      <div style="font-size:11px;color:var(--mu);line-height:1.6">ใช้สำหรับ <b>อ่านใบเสร็จ/สลิปอัตโนมัติ</b> · ขอคีย์ได้ที่ console.anthropic.com<br>💡 โมเดลเริ่มต้น <b>claude-3-5-sonnet-20241022</b> (ใช้ได้ทุกบัญชี) · ถ้าบัญชีรองรับรุ่นใหม่กว่า ใส่เองได้ เช่น claude-sonnet-4-20250514<br>⚠️ คีย์เก็บในเบราว์เซอร์นี้ (ไม่ฝังในซอร์สโค้ด GitHub) แต่เห็นได้ใน Network ของเครื่องนี้ — แนะนำใช้คีย์ที่ตั้งวงเงินจำกัด และอย่าใส่ในเครื่องสาธารณะ</div>
       <button type="button" class="btn bo" style="width:100%;justify-content:center;padding:9px;margin-top:10px;font-size:13px" onclick="aiTestKey()">🔌 ทดสอบการเชื่อมต่อ AI</button>
       <div id="co-ai-test" style="display:none;font-size:12px;margin-top:7px;font-weight:600;line-height:1.5"></div>
     </div>
