@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17d · 🎁 คูปอง/โปรโมชั่น</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17f · 🎁 คูปองในใบเสนอราคา (แก้บั๊ก)</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -562,6 +562,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div style="margin-top:20px;border-top:1px solid var(--bd);padding-top:16px">
         <div style="max-width:420px;margin-left:auto;display:flex;flex-direction:column;gap:10px">
           <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--mu)">รวมเป็นเงิน</span><span style="font-weight:600" id="qe-subtotal">0.00</span></div>
+          <div style="margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--bd)"><div style="font-size:12px;color:var(--mu);margin-bottom:5px">🎁 คูปอง / โค้ดส่วนลด</div><div style="display:flex;gap:6px"><input class="fi" id="qe-coupon" placeholder="ใส่หรือเลือกโค้ด" list="qe-coupon-list" style="flex:1;padding:6px 8px" onkeydown="if(event.key==='Enter'){event.preventDefault();qeCouponApply();}"><datalist id="qe-coupon-list"></datalist><button class="btn bo" style="padding:6px 12px;white-space:nowrap" onclick="qeCouponApply()">ใช้</button></div><div id="qe-coupon-msg" style="font-size:11px;margin-top:3px"></div></div>
           <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--mu)">ส่วนลด <input class="fi" type="number" id="qe-disc" value="0" min="0" max="100" step="0.01" style="width:64px;padding:5px 8px;display:inline-block;text-align:center" oninput="qeRecalc()"> %</span><span id="qe-discamt">0.00</span></div>
           <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--mu)">จำนวนเงินหลังหักส่วนลด</span><span style="font-weight:600" id="qe-afterdisc">0.00</span></div>
           <div style="display:flex;justify-content:space-between;align-items:center"><span style="color:var(--mu)">ภาษีมูลค่าเพิ่ม 7% <button class="sw" id="qe-vatsw" onclick="qeToggleVat()" style="vertical-align:middle;margin-left:4px"></button></span><span id="qe-vatamt">0.00</span></div>
@@ -1666,8 +1667,9 @@ function openDocForm(type, editId){
       <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;padding:7px;margin-bottom:8px" onclick="addCustomDocItem()">✏️ เพิ่มรายการเอง (ระบุชื่อ/ราคาเอง)</button>
       <div id="m-itemlist" style="margin-bottom:10px"></div>
       <div class="fg full" style="margin-bottom:8px"><label class="flb">🎁 คูปอง / โค้ดส่วนลด</label>
+        ${(DB.coupons||[]).length?`<select class="fi" id="m-coupon-pick" onchange="if(this.value){document.getElementById('m-coupon').value=this.value;couponApply();}" style="margin-bottom:6px"><option value="">— เลือกคูปองที่ใช้ได้ —</option>${couponActiveOptions()}</select>`:`<div style="font-size:11px;color:var(--mu);margin-bottom:6px;background:var(--bg);padding:8px 10px;border-radius:8px">ยังไม่มีคูปอง — สร้างที่ <b>หน้าสินค้า → 🎁 คูปอง</b> ก่อน แล้วจะมาเลือกใช้ที่นี่ได้</div>`}
         <div style="display:flex;gap:8px">
-          <input class="fi" id="m-coupon" placeholder="ใส่โค้ด เช่น SAVE10" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();couponApply();}">
+          <input class="fi" id="m-coupon" placeholder="หรือพิมพ์โค้ดเอง เช่น SAVE10" style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();couponApply();}">
           <button class="btn bo" style="white-space:nowrap" onclick="couponApply()">ใช้คูปอง</button>
         </div>
         <div id="m-coupon-msg" style="font-size:11.5px;margin-top:4px"></div>
@@ -2693,6 +2695,7 @@ function editQuote(id, type){
   document.getElementById('qe-exp').value=qeState.exp;
   document.getElementById('qe-credit').value=qeState.credit;
   document.getElementById('qe-disc').value=qeState.disc;
+  {const cl=document.getElementById('qe-coupon-list'); if(cl) cl.innerHTML=couponActiveOptions(); const cc=document.getElementById('qe-coupon'); if(cc) cc.value=''; const cm=document.getElementById('qe-coupon-msg'); if(cm) cm.textContent='';}
   document.getElementById('qe-note').value=qeState.note;
   document.getElementById('qe-vatsw').classList.toggle('on',qeState.vat);
   document.getElementById('qe-whtsw').classList.toggle('on',qeState.wht);
@@ -2828,6 +2831,19 @@ function pkCartLine(i){
 function qeToggleVat(){ qeState.vat=!qeState.vat; document.getElementById('qe-vatsw').classList.toggle('on',qeState.vat); qeRecalc(); }
 function qeToggleSig(){ qeState.noSig=!qeState.noSig; document.getElementById('qe-sigsw').classList.toggle('on',!qeState.noSig); }
 function qeToggleWht(){ qeState.wht=!qeState.wht; document.getElementById('qe-whtsw').classList.toggle('on',qeState.wht); document.getElementById('qe-whtrate').disabled=!qeState.wht; if(!qeState.wht) document.getElementById('qe-whtrate').value=0; qeRecalc(); }
+function qeCouponApply(){
+  const el=document.getElementById('qe-coupon'); if(!el) return;
+  const code=String(el.value||'').trim(); const msgEl=document.getElementById('qe-coupon-msg');
+  if(!code){ if(msgEl) msgEl.textContent=''; return; }
+  const sub=qeState.items.reduce((a,b)=>a+(parseFloat(b.price)||0)*(parseFloat(b.qty)||0),0);
+  if(sub<=0){ if(msgEl){ msgEl.style.color='var(--dg)'; msgEl.textContent='❌ เพิ่มรายการสินค้าก่อนใช้คูปอง'; } return; }
+  const r=couponCheck(code,sub);
+  if(!r.ok){ if(msgEl){ msgEl.style.color='var(--dg)'; msgEl.textContent='❌ '+r.msg; } return; }
+  let pct=r.discMode==='pct'?r.value:(r.discount/sub*100); pct=Math.round(pct*100)/100; if(pct>100)pct=100;
+  const d=document.getElementById('qe-disc'); if(d) d.value=pct; qeState.disc=pct;
+  if(typeof qeRecalc==='function') qeRecalc();
+  if(msgEl){ msgEl.style.color='var(--ok)'; msgEl.textContent='✅ ใช้คูปอง '+r.coupon.code+' — ส่วนลด ฿'+fmt(r.discount)+(r.discMode==='baht'?(' ('+pct+'%)'):''); }
+}
 function qeRecalc(){
   qeState.items.forEach((it,i)=>{ const el=document.getElementById('qe-line-'+i); if(el) el.textContent=fmt((it.price||0)*(it.qty||0)); });
   const sub=qeState.items.reduce((a,b)=>a+(b.price||0)*(b.qty||0),0);
@@ -6114,6 +6130,10 @@ function couponCheck(code, subtotal){
   let discount=c.type==='pct'?((+subtotal||0)*(+c.value||0)/100):Math.min(+c.value||0,(+subtotal||0));
   discount=Math.round(discount*100)/100;
   return {ok:true,coupon:c,discount,discMode:(c.type==='pct'?'pct':'baht'),value:(+c.value||0)};
+}
+function couponActiveOptions(){
+  const today=iso(new Date());
+  return (DB.coupons||[]).filter(c=>c.active!==false&&(!c.expiry||c.expiry>=today)).map(c=>`<option value="${String(c.code||'').replace(/"/g,'&quot;')}">${escHtml(c.code)} (${c.type==='pct'?(c.value+'%'):('฿'+fmt(c.value))})${c.minPurchase?(' · ขั้นต่ำ ฿'+fmt(c.minPurchase)):''}</option>`).join('');
 }
 function couponApply(){
   const el=document.getElementById('m-coupon'); if(!el) return;
