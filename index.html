@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17f · 🎁 คูปองในใบเสนอราคา (แก้บั๊ก)</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17g · 📜 สัญญาจ้างเหมางาน</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -791,7 +791,8 @@ tbody tr:hover td{background:#FAFBFD}
       <select class="fi" style="flex:0 0 150px" id="job-status-f" onchange="renderJobs()">
         <option value="">สถานะทั้งหมด</option><option>สำรวจ</option><option>รอทำ</option><option>กำลังทำ</option><option>ตรวจงาน</option><option>อนุมัติแล้ว</option><option>ไม่อนุมัติ</option><option>ส่งมอบแล้ว</option>
       </select>
-      <button class="btn bo" style="margin-left:auto" onclick="openMAContracts()">🔄 สัญญา MA</button>
+      <button class="btn bo" style="margin-left:auto" onclick="openWorkContracts()">📜 สัญญาจ้าง</button>
+      <button class="btn bo" onclick="openMAContracts()">🔄 สัญญา MA</button>
       <button class="btn bo" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
       <button class="btn bo" onclick="openJobCalendar()">📅 ปฏิทิน</button>
       <button class="btn bp" onclick="openJobForm()">+ สร้างงานใหม่</button>
@@ -1321,6 +1322,7 @@ const DB = {
   leads:[],
   warehouses:[],
   coupons:[],
+  workcontracts:[],
   pettycash:[],
   pcClosings:[],
   stockMoves:[],
@@ -1450,9 +1452,10 @@ let docNumbering={
   contracts:{prefix:'MA',year:2026,next:1,digits:4},
   creditnote:{prefix:'CN',year:2026,next:1,digits:4},
   debitnote:{prefix:'DN',year:2026,next:1,digits:4},
+  workcontract:{prefix:'WC',year:2026,next:1,digits:4},
 };
-const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน',contracts:'สัญญาบริการ MA',creditnote:'ใบลดหนี้',debitnote:'ใบเพิ่มหนี้'};
-const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs',jobcost:'jobs',contracts:'contracts',creditnote:'cdnotes',debitnote:'cdnotes'};
+const DOC_TYPE_LABELS={quotes:'ใบเสนอราคา',invoices:'ใบวางบิล/ใบแจ้งหนี้',delivery:'ใบส่งสินค้า',cashsale:'ขายเงินสด',po:'ใบสั่งซื้อ',receive:'ใบรับสินค้า',expense:'ค่าใช้จ่าย',installments:'ใบแบ่งจ่าย',jobs:'ใบงาน',contracts:'สัญญาบริการ MA',creditnote:'ใบลดหนี้',debitnote:'ใบเพิ่มหนี้',workcontract:'สัญญาจ้างเหมางาน'};
+const DB_KEY_BY_TYPE={quotes:'quotes',invoices:'invoices',delivery:'delivery',cashsale:'cashsale',po:'po',receive:'receive',expense:'expense',installments:'installments',jobs:'jobs',jobcost:'jobs',contracts:'contracts',creditnote:'cdnotes',debitnote:'cdnotes',workcontract:'workcontracts'};
 const DATE_NUM_TYPES=['quotes','invoices','delivery','cashsale','po','receive','expense','installments','receipts','jobs'];
 
 // ตรวจว่าเลขนี้มีอยู่แล้วหรือไม่ (กันซ้ำ)
@@ -3019,6 +3022,344 @@ function quoteToJob(id){
   closeDrawer();
   if(typeof nav==='function') nav('jobs');
   setTimeout(()=>{ if(typeof openJobDrawer==='function') openJobDrawer(jid); },160);
+}
+// ══════════════════════════════════
+// สัญญาจ้างเหมางาน (Work / Lump-sum Contract) — งานเหมา + งานเพิ่มเติม + ข้อจำกัดความรับผิด
+// ══════════════════════════════════
+const DEFAULT_WC_EXTRA='งานใดที่อยู่นอกเหนือขอบเขตงานตามสัญญานี้ ให้ถือเป็นงานเพิ่มเติม (Extra Work / Change Order) ซึ่งผู้รับจ้างจะดำเนินการได้ต่อเมื่อได้รับความเห็นชอบเป็นลายลักษณ์อักษรจากผู้ว่าจ้างเกี่ยวกับขอบเขตงานและราคาก่อนเริ่มดำเนินการทุกครั้ง มูลค่างานเพิ่มเติมไม่รวมอยู่ในราคาตามสัญญานี้ และให้คิดราคาแยกตามที่ตกลงกันเป็นกรณีไป โดยจัดทำเป็นใบสั่งงานเพิ่มเติมแนบท้ายสัญญา';
+const DEFAULT_WC_LIABILITY='ผู้รับจ้างรับผิดชอบเฉพาะความเสียหายที่เกิดจากความบกพร่องในการทำงานของผู้รับจ้างโดยตรงเท่านั้น และจะไม่รับผิดชอบต่อความเสียหายอันเกิดจาก (1) เหตุสุดวิสัยหรือเหตุที่อยู่นอกเหนือการควบคุมของผู้รับจ้าง (2) สภาพเดิมของระบบ/อุปกรณ์ที่ชำรุดหรือเสื่อมสภาพอยู่ก่อนเริ่มงาน (3) วัสดุ อุปกรณ์ หรือข้อมูลที่ผู้ว่าจ้างเป็นผู้จัดหาหรือระบุให้ใช้ (4) การใช้งาน ดัดแปลง หรือซ่อมแซมโดยบุคคลอื่นภายหลังส่งมอบงาน (5) ความเสียหายทางอ้อม การสูญเสียโอกาสทางธุรกิจ หรือค่าเสียหายที่เป็นผลสืบเนื่อง ทั้งนี้ ความรับผิดของผู้รับจ้างในทุกกรณีรวมกันแล้วจะไม่เกินมูลค่างานตามสัญญานี้ และข้อจำกัดความรับผิดตามข้อนี้ไม่ใช้บังคับกับความเสียหายอันเกิดจากการกระทำโดยจงใจหรือประมาทเลินเล่ออย่างร้ายแรงของผู้รับจ้าง';
+const DEFAULT_WC_TERMINATION='คู่สัญญาฝ่ายใดฝ่ายหนึ่งมีสิทธิบอกเลิกสัญญาได้ หากอีกฝ่ายผิดสัญญาในสาระสำคัญและไม่ดำเนินการแก้ไขภายใน 15 วันนับแต่ได้รับหนังสือแจ้งเป็นลายลักษณ์อักษร ในกรณีที่ผู้ว่าจ้างบอกเลิกสัญญาโดยมิใช่ความผิดของผู้รับจ้าง ผู้ว่าจ้างตกลงชำระค่างานตามสัดส่วนที่ผู้รับจ้างได้ดำเนินการแล้วเสร็จจริงจนถึงวันบอกเลิกสัญญา';
+const DEFAULT_WC_DISPUTE='หากมีข้อพิพาทเกิดขึ้นเกี่ยวกับสัญญานี้ คู่สัญญาตกลงเจรจาไกล่เกลี่ยกันก่อนเป็นลำดับแรก หากตกลงกันไม่ได้ภายในระยะเวลาอันสมควร ให้นำคดีขึ้นสู่ศาลที่มีเขตอำนาจตามกฎหมายไทย';
+const DEFAULT_WC_PAYTERMS='งวดที่ 1: ชำระ 30% ของมูลค่างาน เมื่อลงนามในสัญญา\nงวดที่ 2: ชำระ 40% ของมูลค่างาน เมื่องานแล้วเสร็จร้อยละ 50\nงวดที่ 3: ชำระ 30% ส่วนที่เหลือ เมื่อส่งมอบงานและตรวจรับเรียบร้อย';
+let wcItems=[];
+function wcAddItem(){ wcItems.push({desc:'',qty:'',unit:'',price:''}); wcRenderItems(); }
+function wcRemoveItem(i){ wcItems.splice(i,1); if(!wcItems.length) wcItems.push({desc:'',qty:'',unit:'',price:''}); wcRenderItems(); wcCalcAmount(); }
+function wcSetItem(i,field,val){ if(wcItems[i]) wcItems[i][field]=val; if(field==='qty'||field==='price') wcCalcAmount(); }
+function wcRenderItems(){
+  const box=document.getElementById('wc-items'); if(!box) return;
+  const unitMode=(document.getElementById('wc-pricetype')||{}).value==='unit';
+  box.innerHTML=wcItems.map((it,i)=>`
+    <div style="background:var(--bg);border-radius:9px;padding:8px;margin-bottom:6px">
+      <div style="display:flex;gap:6px;align-items:flex-start">
+        <input class="fi" value="${escHtml(it.desc)}" placeholder="รายละเอียดขอบเขตงาน เช่น ติดตั้งตู้ MDB 100A" style="flex:1;padding:6px 8px" oninput="wcSetItem(${i},'desc',this.value)">
+        <button class="btn bo" style="padding:6px 9px;flex:none" onclick="wcRemoveItem(${i})">✕</button>
+      </div>
+      ${unitMode?`<div style="display:flex;gap:6px;margin-top:6px"><input class="fi" type="number" value="${it.qty}" placeholder="จำนวน" style="width:78px;padding:6px 8px" oninput="wcSetItem(${i},'qty',this.value)"><input class="fi" value="${escHtml(it.unit)}" placeholder="หน่วย" style="width:70px;padding:6px 8px" oninput="wcSetItem(${i},'unit',this.value)"><input class="fi" type="number" value="${it.price}" placeholder="ราคา/หน่วย" style="flex:1;padding:6px 8px" oninput="wcSetItem(${i},'price',this.value)"></div>`:''}
+    </div>`).join('');
+}
+function wcTogglePriceType(){ wcRenderItems(); wcCalcAmount(); }
+function wcCalcAmount(){
+  const unitMode=(document.getElementById('wc-pricetype')||{}).value==='unit';
+  const amtEl=document.getElementById('wc-amount'); if(!amtEl) return;
+  if(unitMode){ const sum=wcItems.reduce((s,it)=>s+((+it.qty||0)*(+it.price||0)),0); amtEl.value=sum; amtEl.readOnly=true; amtEl.style.background='var(--bg)'; }
+  else { amtEl.readOnly=false; amtEl.style.background=''; }
+}
+function openWorkContracts(){
+  const arr=(DB.workcontracts||[]).slice().sort((a,b)=>String(b.createdDate||'').localeCompare(String(a.createdDate||'')));
+  const active=arr.filter(c=>c.status==='active'); const draft=arr.filter(c=>c.status==='draft'||!c.status);
+  const totalVal=arr.filter(c=>c.status!=='terminated').reduce((s,c)=>s+(+c.amount||0),0);
+  const STATUS_LABEL={draft:'ร่าง',active:'ดำเนินการอยู่',completed:'เสร็จสมบูรณ์',terminated:'ยกเลิก'};
+  const STATUS_COLOR={draft:'#94a3b8',active:'#0A6EBD',completed:'#0F9D58',terminated:'#E53E3E'};
+  const rows=arr.length?arr.map(c=>{ const cn=getCust(c.cust).name||c.cust||'-'; const st=c.status||'draft'; const exCount=(c.extras||[]).length;
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:9px" onclick="workContractForm('${c.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><div style="font-weight:600;font-size:13px">${escHtml(c.title||c.id)}</div><div style="font-weight:800;color:var(--p)">฿${fmt(c.amount||0)}</div></div>
+      <div style="font-size:11.5px;color:var(--mu);margin-top:3px">${escHtml(cn)} · ${c.id}${exCount?(' · งานเพิ่มเติม '+exCount+' รายการ'):''}</div>
+      <div style="margin-top:7px"><span style="font-size:10.5px;font-weight:700;color:#fff;background:${STATUS_COLOR[st]};padding:2px 9px;border-radius:20px">${STATUS_LABEL[st]||st}</span>${c.customerSig?' <span style="font-size:10.5px;color:var(--ok)">✍️ เซ็นแล้ว</span>':''}</div>
+    </div>`; }).join('') : '<div style="text-align:center;color:var(--mu);padding:22px;font-size:13px">ยังไม่มีสัญญาจ้างเหมางาน</div>';
+  document.getElementById('ml-t').textContent='📜 สัญญาจ้างเหมางาน';
+  document.getElementById('ml-s').textContent=arr.length+' ฉบับ';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:12px">
+      <div style="background:#EAF4FF;border-radius:11px;padding:10px;text-align:center"><div style="font-size:17px;font-weight:800;color:#0A6EBD">${active.length}</div><div style="font-size:10px;color:var(--mu)">ดำเนินการอยู่</div></div>
+      <div style="background:#F7F8FA;border-radius:11px;padding:10px;text-align:center"><div style="font-size:17px;font-weight:800;color:#64748b">${draft.length}</div><div style="font-size:10px;color:var(--mu)">ร่าง</div></div>
+      <div style="background:#E8F8F0;border-radius:11px;padding:10px;text-align:center"><div style="font-size:14px;font-weight:800;color:#0F9D58">฿${fmt(totalVal)}</div><div style="font-size:10px;color:var(--mu)">มูลค่ารวม</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn bp" style="flex:1;justify-content:center" onclick="workContractForm('')">+ สร้างสัญญาใหม่</button><button class="btn bo" style="flex:1;justify-content:center" onclick="wcPickQuote()">📋 จากใบเสนอราคา</button></div>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function wcPickQuote(){
+  const qs=(DB.quotes||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  if(!qs.length){ toast('ยังไม่มีใบเสนอราคาให้ใช้เป็นต้นแบบ'); return; }
+  const opts='<option value="">— เลือกใบเสนอราคาต้นแบบ —</option>'+qs.map(x=>`<option value="${x.id}">${x.id} · ${escHtml(getCust(x.cust).name||x.cust||'')} · ฿${fmt(x.amt)}</option>`).join('');
+  document.getElementById('ml-t').textContent='📋 สร้างสัญญาจากใบเสนอราคา';
+  document.getElementById('ml-s').textContent='คัดลอกลูกค้า รายการ และมูลค่า';
+  document.getElementById('ml-bd').innerHTML=`<div class="fg full"><label class="flb">ใบเสนอราคาต้นแบบ</label><select class="fi" id="wc-srcq">${opts}</select></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openWorkContracts()">← กลับ</button><button class="btn bp" onclick="quoteToWorkContract()">ถัดไป →</button>`;
+}
+function quoteToWorkContract(){
+  const qid=document.getElementById('wc-srcq').value; if(!qid){ toast('⚠️ เลือกใบเสนอราคา'); return; }
+  const q=(DB.quotes||[]).find(x=>x.id===qid); if(!q){ toast('ไม่พบใบเสนอราคา'); return; }
+  if(!DB.workcontracts) DB.workcontracts=[];
+  wcItems=(q.items&&q.items.length)?q.items.map(it=>({desc:it.name||it.desc||'',qty:'',unit:'',price:''})):[{desc:'',qty:'',unit:'',price:''}];
+  const c={ id:nextId('workcontract'), cust:q.cust, quoteRef:q.id, jobRef:'', title:'สัญญาจ้างเหมางานตาม '+q.id, site:'', contact:'', priceType:'lumpsum', amount:+q.amt||0, paymentTerms:DEFAULT_WC_PAYTERMS, startDate:iso(new Date()), endDate:'', warrantyMonths:12, delayPenaltyPct:0, delayPenaltyCapPct:0, extraWorkTerms:DEFAULT_WC_EXTRA, liabilityTerms:DEFAULT_WC_LIABILITY, terminationTerms:DEFAULT_WC_TERMINATION, disputeTerms:DEFAULT_WC_DISPUTE, status:'draft', createdDate:iso(new Date()), extras:[], items:wcItems.slice() };
+  DB.workcontracts.unshift(c);
+  if(typeof saveData==='function') saveData();
+  toast('✅ สร้างร่างสัญญาจากใบเสนอราคาแล้ว — ตรวจสอบและบันทึก');
+  workContractForm(c.id);
+}
+function workContractForm(id){
+  const c=id?(DB.workcontracts||[]).find(x=>x.id===id):null;
+  const v=c||{priceType:'lumpsum',warrantyMonths:12,paymentTerms:DEFAULT_WC_PAYTERMS,extraWorkTerms:DEFAULT_WC_EXTRA,liabilityTerms:DEFAULT_WC_LIABILITY,terminationTerms:DEFAULT_WC_TERMINATION,disputeTerms:DEFAULT_WC_DISPUTE,status:'draft'};
+  wcItems=(v.items&&v.items.length)?JSON.parse(JSON.stringify(v.items)):[{desc:'',qty:'',unit:'',price:''}];
+  const custs=DB.contacts.filter(x=>x.type==='ลูกค้า');
+  const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
+  const custOpts='<option value="">— เลือกลูกค้า —</option>'+custs.map(x=>`<option value="${x.id}"${x.id===v.cust?' selected':''}>${escHtml(x.name)}</option>`).join('');
+  const STATUS_LABEL={draft:'ร่าง',active:'ดำเนินการอยู่',completed:'เสร็จสมบูรณ์',terminated:'ยกเลิก'};
+  document.getElementById('ml-t').textContent=c?'✏️ แก้ไขสัญญาจ้างเหมา':'+ สร้างสัญญาจ้างเหมางาน';
+  document.getElementById('ml-s').textContent=c?(c.id+' · '+(STATUS_LABEL[c.status||'draft'])):'งานเหมา + งานเพิ่มเติม + ข้อจำกัดความรับผิด';
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="wc-id" value="${qa(id||'')}">
+    <div class="fl2">
+      <div class="fg"><label class="flb">ลูกค้า (ผู้ว่าจ้าง)</label><select class="fi" id="wc-cust">${custOpts}</select></div>
+      <div class="fg"><label class="flb">ผู้ประสานงาน</label><input class="fi" id="wc-contact" value="${qa(v.contact)}" placeholder="ชื่อ+เบอร์"></div>
+    </div>
+    <div class="fg" style="margin-top:8px"><label class="flb">ชื่อโครงการ / งาน</label><input class="fi" id="wc-title" value="${qa(v.title)}" placeholder="เช่น งานติดตั้งระบบไฟฟ้าอาคาร B"></div>
+    <div class="fg" style="margin-top:8px"><label class="flb">สถานที่ทำงาน</label><input class="fi" id="wc-site" value="${qa(v.site)}" placeholder="ที่อยู่/หน่วยงานที่ทำงาน"></div>
+    <div style="margin-top:12px;font-size:12px;font-weight:700;color:var(--mu)">ขอบเขตงาน (รายการ)</div>
+    <div id="wc-items" style="margin-top:6px"></div>
+    <button class="btn bo" style="font-size:12px;padding:6px 12px;margin-bottom:6px" onclick="wcAddItem()">+ เพิ่มรายการขอบเขตงาน</button>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">รูปแบบราคา</label><select class="fi" id="wc-pricetype" onchange="wcTogglePriceType()"><option value="lumpsum"${v.priceType!=='unit'?' selected':''}>เหมาเบ็ดเสร็จ (Lump Sum)</option><option value="unit"${v.priceType==='unit'?' selected':''}>ราคาต่อหน่วย (รวมจากรายการ)</option></select></div>
+      <div class="fg"><label class="flb">มูลค่างานรวม (บาท)</label><input class="fi" type="number" id="wc-amount" value="${v.amount||''}" step="0.01"></div>
+    </div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">เงื่อนไขการชำระเงิน</label><textarea class="fi" id="wc-payterms" rows="3" style="resize:vertical">${escHtml(v.paymentTerms||DEFAULT_WC_PAYTERMS)}</textarea></div>
+    <div class="fl2" style="margin-top:8px">
+      <div class="fg"><label class="flb">วันเริ่มงาน</label><input class="fi" type="date" id="wc-start" value="${v.startDate||iso(new Date())}"></div>
+      <div class="fg"><label class="flb">วันแล้วเสร็จตามสัญญา</label><input class="fi" type="date" id="wc-end" value="${v.endDate||''}"></div>
+      <div class="fg"><label class="flb">รับประกันผลงาน (เดือน)</label><input class="fi" type="number" id="wc-warranty" value="${v.warrantyMonths!=null?v.warrantyMonths:12}" min="0"></div>
+      <div class="fg"><label class="flb">ค่าปรับล่าช้า (% ของมูลค่างาน/วัน)</label><input class="fi" type="number" id="wc-penalty" value="${v.delayPenaltyPct||''}" step="0.01" placeholder="0 = ไม่มี"></div>
+    </div>
+    <div class="fg" style="margin-top:8px"><label class="flb">เพดานค่าปรับล่าช้าสูงสุด (% ของมูลค่างาน, ไม่บังคับ)</label><input class="fi" type="number" id="wc-penaltycap" value="${v.delayPenaltyCapPct||''}" step="0.01" placeholder="เช่น 10"></div>
+    <div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:10px;font-size:12px;font-weight:700;color:var(--mu)">📑 ข้อสัญญา (แก้ไขได้)</div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">งานเพิ่มเติม / การเปลี่ยนแปลงงาน</label><textarea class="fi" id="wc-extraterms" rows="4" style="resize:vertical;font-size:12.5px">${escHtml(v.extraWorkTerms||DEFAULT_WC_EXTRA)}</textarea></div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">ข้อจำกัดความรับผิดของผู้รับจ้าง</label><textarea class="fi" id="wc-liability" rows="5" style="resize:vertical;font-size:12.5px">${escHtml(v.liabilityTerms||DEFAULT_WC_LIABILITY)}</textarea></div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">การบอกเลิกสัญญา</label><textarea class="fi" id="wc-termination" rows="3" style="resize:vertical;font-size:12.5px">${escHtml(v.terminationTerms||DEFAULT_WC_TERMINATION)}</textarea></div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">การระงับข้อพิพาท</label><textarea class="fi" id="wc-dispute" rows="2" style="resize:vertical;font-size:12.5px">${escHtml(v.disputeTerms||DEFAULT_WC_DISPUTE)}</textarea></div>
+    ${c?`<div style="margin-top:14px;border-top:1px solid var(--bd);padding-top:10px">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        ${c.status!=='active'?`<button class="btn bo" style="font-size:11.5px;padding:6px 10px" onclick="wcStatusSet('${c.id}','active')">▶️ เริ่มดำเนินการ</button>`:''}
+        ${c.status!=='completed'?`<button class="btn bo" style="font-size:11.5px;padding:6px 10px;color:#0F9D58" onclick="wcStatusSet('${c.id}','completed')">✅ เสร็จสมบูรณ์</button>`:''}
+        ${c.status!=='terminated'?`<button class="btn bo" style="font-size:11.5px;padding:6px 10px;color:#E53E3E" onclick="wcStatusSet('${c.id}','terminated')">✖ ยกเลิกสัญญา</button>`:''}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="printWorkContract('${c.id}')">🖨️ พิมพ์สัญญา</button>
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="wcSignForm('${c.id}')">✍️ ${c.customerSig?'ดูลายเซ็นลูกค้า':'ลูกค้าเซ็นรับทราบ'}</button>
+      </div>
+      <div style="margin-top:12px"><div style="font-size:12px;font-weight:700;margin-bottom:7px">🧾 งานเพิ่มเติม (${(c.extras||[]).length})</div>
+        ${(c.extras||[]).map((ex,i)=>`<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--bd)"><div style="font-size:12px;min-width:0"><b>฿${fmt(ex.amount||0)}</b> · ${fmtD(ex.date)}${ex.sign?' · ✍️':''}<br><span style="color:var(--mu);font-size:11px">${escHtml((ex.desc||'').slice(0,50))}</span></div><button class="btn bo" style="font-size:11px;padding:4px 9px;flex:none" onclick="printWorkContractExtra('${c.id}',${i})">🖨️</button></div>`).join('')}
+        <button class="btn bp" style="width:100%;justify-content:center;font-size:12px;margin-top:8px" onclick="wcExtraForm('${c.id}','')">+ เพิ่มงานเพิ่มเติม (Change Order)</button>
+      </div>
+      ${c.quoteRef?`<div style="font-size:11px;color:var(--mu);margin-top:10px">อ้างอิงใบเสนอราคา: ${escHtml(c.quoteRef)}</div>`:''}
+    </div>`:''}`;
+  document.getElementById('ml-act').innerHTML=`${c?`<button class="btn bo" onclick="wcDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openWorkContracts()">← กลับ</button><button class="btn bp" onclick="workContractSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  wcRenderItems(); wcCalcAmount();
+}
+function workContractSave(){
+  const id=document.getElementById('wc-id').value;
+  const cust=document.getElementById('wc-cust').value; const title=document.getElementById('wc-title').value.trim();
+  const amount=+document.getElementById('wc-amount').value||0;
+  if(!cust){ toast('⚠️ เลือกลูกค้าก่อน'); return; }
+  if(!title){ toast('⚠️ ใส่ชื่อโครงการ/งาน'); return; }
+  if(amount<=0){ toast('⚠️ ใส่มูลค่างาน'); return; }
+  const data={
+    cust, title, contact:document.getElementById('wc-contact').value.trim(), site:document.getElementById('wc-site').value.trim(),
+    items:wcItems.filter(it=>it.desc&&it.desc.trim()), priceType:document.getElementById('wc-pricetype').value, amount,
+    paymentTerms:document.getElementById('wc-payterms').value, startDate:document.getElementById('wc-start').value, endDate:document.getElementById('wc-end').value,
+    warrantyMonths:+document.getElementById('wc-warranty').value||0, delayPenaltyPct:+document.getElementById('wc-penalty').value||0, delayPenaltyCapPct:+document.getElementById('wc-penaltycap').value||0,
+    extraWorkTerms:document.getElementById('wc-extraterms').value, liabilityTerms:document.getElementById('wc-liability').value, terminationTerms:document.getElementById('wc-termination').value, disputeTerms:document.getElementById('wc-dispute').value
+  };
+  if(!DB.workcontracts) DB.workcontracts=[];
+  if(id){ const c=DB.workcontracts.find(x=>x.id===id); if(c) Object.assign(c,data); }
+  else { DB.workcontracts.unshift(Object.assign({id:nextId('workcontract'),quoteRef:'',jobRef:'',status:'draft',createdDate:iso(new Date()),extras:[]},data)); }
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกสัญญาแล้ว'); openWorkContracts();
+}
+function wcStatusSet(id,status){ const c=(DB.workcontracts||[]).find(x=>x.id===id); if(!c) return; c.status=status; if(typeof saveData==='function') saveData(); toast(status==='active'?'▶️ เริ่มดำเนินการสัญญาแล้ว':status==='completed'?'✅ ปิดงานสมบูรณ์แล้ว':'✖ ยกเลิกสัญญาแล้ว'); workContractForm(id); }
+function wcDelete(id){ const c=(DB.workcontracts||[]).find(x=>x.id===id); if(!c) return; if(!confirm('ลบสัญญา "'+(c.title||c.id)+'" ?')) return; DB.workcontracts=DB.workcontracts.filter(x=>x.id!==id); if(typeof saveData==='function') saveData(); toast('🗑️ ลบแล้ว'); openWorkContracts(); }
+// ✍️ ลูกค้าเซ็นรับทราบสัญญาหลัก
+function wcSignForm(id){
+  const c=(DB.workcontracts||[]).find(x=>x.id===id); if(!c) return;
+  document.getElementById('ml-t').textContent='✍️ ลูกค้าเซ็นรับทราบสัญญา';
+  document.getElementById('ml-s').textContent=c.title||c.id;
+  document.getElementById('ml-bd').innerHTML=c.customerSig?`
+    <div style="text-align:center"><img src="${c.customerSig}" style="max-width:100%;max-height:200px;border:1px solid var(--bd);border-radius:10px;background:#fff"></div>
+    <div style="text-align:center;margin-top:8px;font-size:12.5px">ลงนามโดย <b>${escHtml(c.customerSigName||'')}</b> · ${fmtD(c.signedDate)}</div>`:`
+    <div style="font-size:12px;color:var(--mu);margin-bottom:8px">ให้ลูกค้าเซ็นด้วยนิ้วเพื่อรับทราบและยอมรับเงื่อนไขสัญญานี้</div>
+    <canvas id="wcSigCanvas" style="width:100%;height:180px;border:2px dashed var(--p);border-radius:12px;background:#fff;touch-action:none;display:block"></canvas>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><button class="btn bo" style="font-size:12px;padding:6px 12px" onclick="wcSigClear()">↺ ล้าง</button></div>
+    <div class="fg" style="margin-top:10px"><label class="flb">ชื่อผู้เซ็น (ลูกค้า/ผู้รับมอบอำนาจ)</label><input class="fi" id="wc-signname" placeholder="ชื่อ-นามสกุล"></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="workContractForm('${id}')">← กลับ</button>${c.customerSig?'':`<button class="btn bp" onclick="wcSignSave('${id}')">💾 บันทึกลายเซ็น</button>`}`;
+  document.getElementById('ml').classList.add('op');
+  if(!c.customerSig) setTimeout(wcSigInit,60);
+}
+function wcSigInit(){
+  const c=document.getElementById('wcSigCanvas'); if(!c) return;
+  const r=c.getBoundingClientRect(); c.width=r.width*2; c.height=r.height*2;
+  _sigCtx=c.getContext('2d'); _sigCtx.scale(2,2); _sigCtx.lineWidth=2.5; _sigCtx.lineCap='round'; _sigCtx.lineJoin='round'; _sigCtx.strokeStyle='#0D1B2A'; _sigEmpty=true; _sigDrawing=false;
+  const pos=e=>{ const rect=c.getBoundingClientRect(); const t=(e.touches&&e.touches[0])||e; return {x:t.clientX-rect.left,y:t.clientY-rect.top}; };
+  const start=e=>{ e.preventDefault(); _sigDrawing=true; const p=pos(e); _sigCtx.beginPath(); _sigCtx.moveTo(p.x,p.y); };
+  const move=e=>{ if(!_sigDrawing) return; e.preventDefault(); const p=pos(e); _sigCtx.lineTo(p.x,p.y); _sigCtx.stroke(); _sigEmpty=false; };
+  const end=()=>{ _sigDrawing=false; };
+  c.onmousedown=start; c.onmousemove=move; c.onmouseup=end; c.onmouseleave=end;
+  c.ontouchstart=start; c.ontouchmove=move; c.ontouchend=end;
+}
+function wcSigClear(){ const c=document.getElementById('wcSigCanvas'); if(c&&_sigCtx){ _sigCtx.clearRect(0,0,c.width,c.height); _sigEmpty=true; } }
+function wcSignSave(id){
+  const c=(DB.workcontracts||[]).find(x=>x.id===id); if(!c) return;
+  const cv=document.getElementById('wcSigCanvas'); if(!cv||_sigEmpty){ toast('⚠️ กรุณาเซ็นก่อนบันทึก'); return; }
+  c.customerSig=cv.toDataURL('image/png'); c.customerSigName=document.getElementById('wc-signname').value.trim(); c.signedDate=iso(new Date());
+  if(c.status==='draft') c.status='active';
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกลายเซ็นรับทราบสัญญาแล้ว'); workContractForm(id);
+}
+// 🧾 งานเพิ่มเติม (Change Order) — มีลายเซ็นอนุมัติแยกต่อรายการ
+function wcExtraForm(contractId, idx){
+  const c=(DB.workcontracts||[]).find(x=>x.id===contractId); if(!c) return;
+  document.getElementById('ml-t').textContent='🧾 งานเพิ่มเติม (Change Order)';
+  document.getElementById('ml-s').textContent=c.title||c.id;
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="wcx-cid" value="${contractId}">
+    <div class="fl2"><div class="fg"><label class="flb">วันที่</label><input class="fi" type="date" id="wcx-date" value="${iso(new Date())}"></div><div class="fg"><label class="flb">ผู้ขอ (ลูกค้า)</label><input class="fi" id="wcx-reqby" placeholder="ชื่อผู้ขอ"></div></div>
+    <div class="fg full" style="margin-top:8px"><label class="flb">รายละเอียดงานเพิ่มเติม</label><textarea class="fi" id="wcx-desc" rows="3" style="resize:vertical" placeholder="เช่น เพิ่มจุดปลั๊กไฟ 5 จุด"></textarea></div>
+    <div class="fg" style="margin-top:8px"><label class="flb">มูลค่างานเพิ่มเติม (บาท)</label><input class="fi" type="number" id="wcx-amount" step="0.01"></div>
+    <div style="font-size:12px;color:var(--mu);margin:12px 0 6px;font-weight:600">✍️ ลายเซ็นลูกค้าอนุมัติงานเพิ่มเติม</div>
+    <canvas id="wcExSigCanvas" style="width:100%;height:160px;border:2px dashed var(--p);border-radius:12px;background:#fff;touch-action:none;display:block"></canvas>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><button class="btn bo" style="font-size:12px;padding:6px 12px" onclick="wcExSigClear()">↺ ล้าง</button></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="workContractForm('${contractId}')">← กลับ</button><button class="btn bp" onclick="wcExtraSave()">💾 บันทึก</button>`;
+  document.getElementById('ml').classList.add('op');
+  setTimeout(wcExSigInit,60);
+}
+function wcExSigInit(){
+  const c=document.getElementById('wcExSigCanvas'); if(!c) return;
+  const r=c.getBoundingClientRect(); c.width=r.width*2; c.height=r.height*2;
+  _sigCtx=c.getContext('2d'); _sigCtx.scale(2,2); _sigCtx.lineWidth=2.5; _sigCtx.lineCap='round'; _sigCtx.lineJoin='round'; _sigCtx.strokeStyle='#0D1B2A'; _sigEmpty=true; _sigDrawing=false;
+  const pos=e=>{ const rect=c.getBoundingClientRect(); const t=(e.touches&&e.touches[0])||e; return {x:t.clientX-rect.left,y:t.clientY-rect.top}; };
+  const start=e=>{ e.preventDefault(); _sigDrawing=true; const p=pos(e); _sigCtx.beginPath(); _sigCtx.moveTo(p.x,p.y); };
+  const move=e=>{ if(!_sigDrawing) return; e.preventDefault(); const p=pos(e); _sigCtx.lineTo(p.x,p.y); _sigCtx.stroke(); _sigEmpty=false; };
+  const end=()=>{ _sigDrawing=false; };
+  c.onmousedown=start; c.onmousemove=move; c.onmouseup=end; c.onmouseleave=end;
+  c.ontouchstart=start; c.ontouchmove=move; c.ontouchend=end;
+}
+function wcExSigClear(){ const c=document.getElementById('wcExSigCanvas'); if(c&&_sigCtx){ _sigCtx.clearRect(0,0,c.width,c.height); _sigEmpty=true; } }
+function wcExtraSave(){
+  const cid=document.getElementById('wcx-cid').value; const c=(DB.workcontracts||[]).find(x=>x.id===cid); if(!c) return;
+  const date=document.getElementById('wcx-date').value||iso(new Date()); const reqby=document.getElementById('wcx-reqby').value.trim();
+  const desc=document.getElementById('wcx-desc').value.trim(); const amount=+document.getElementById('wcx-amount').value||0;
+  if(!desc){ toast('⚠️ ใส่รายละเอียดงานเพิ่มเติม'); return; }
+  if(amount<=0){ toast('⚠️ ใส่มูลค่างานเพิ่มเติม'); return; }
+  let sign=null; const cv=document.getElementById('wcExSigCanvas'); if(cv&&!_sigEmpty){ try{ sign=cv.toDataURL('image/png'); }catch(e){} }
+  if(!c.extras) c.extras=[];
+  c.extras.push({id:'EX'+Date.now().toString(36),date,reqby,desc,amount,sign,signName:reqby,approvedDate:date});
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกงานเพิ่มเติมแล้ว'); workContractForm(cid);
+}
+function printWorkContract(id){
+  const c=(DB.workcontracts||[]).find(x=>x.id===id); if(!c){ toast('ไม่พบสัญญา'); return; }
+  const cust=getCust(c.cust); const cn=(cust&&cust.name)||c.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const br=x=>esc(x).replace(/\n/g,'<br>');
+  const items=(c.items||[]).filter(it=>it.desc);
+  const unitMode=c.priceType==='unit';
+  const itemRows=items.length?items.map((it,i)=>`<tr><td style="width:30px;text-align:center">${i+1}</td><td>${esc(it.desc)}</td>${unitMode?`<td style="text-align:right;width:60px">${it.qty||''}</td><td style="width:55px">${esc(it.unit||'')}</td><td style="text-align:right;width:90px">${it.price?fmt(it.price):''}</td>`:''}</tr>`).join('') : `<tr><td colspan="${unitMode?5:2}" style="text-align:center;color:#94a3b8">ตามรายละเอียดแนบท้ายสัญญา</td></tr>`;
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:12.5px;line-height:1.6}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:8px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:14px 0 4px}.title h1{font-size:21px;color:#0A6EBD;font-weight:800}.title .en{font-size:10.5px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
+.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:14px}
+.party{display:flex;gap:14px;margin:8px 0 12px}.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:10px 12px}.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:700}
+.row{display:flex;font-size:12px;padding:2px 0}.row .k{color:#6b7280;width:140px;flex:none}.row .v{font-weight:600}
+.sec{margin-top:14px}.sec h3{font-size:13px;color:#0A6EBD;border-bottom:1px solid #cfe4fa;padding-bottom:4px;margin-bottom:6px}
+table.it{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0}table.it th{background:#0A6EBD;color:#fff;padding:5px 6px;text-align:left}table.it td{border:1px solid #e5e7eb;padding:5px 6px}
+.sum{margin-top:8px;display:flex;justify-content:flex-end}.sum .box2{width:60%;background:#f5faff;border-radius:9px;padding:10px 13px;font-weight:700;display:flex;justify-content:space-between;color:#0A6EBD;font-size:14px}
+.clause{font-size:11.5px;color:#374151;text-align:justify;margin-top:4px}
+.sig{display:flex;justify-content:space-between;margin-top:34px;gap:30px;page-break-inside:avoid}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:50px;padding-top:6px;font-size:12px}
+.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:18px;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</div></div>
+  <div class="title"><h1>สัญญาจ้างเหมางาน</h1><div class="en">Work / Lump-Sum Contract</div></div>
+  <div class="no">เลขที่สัญญา ${esc(c.id)} · วันที่ทำสัญญา ${fmtD(c.createdDate||c.startDate)}</div>
+  <div class="party">
+    <div class="box"><div class="t">ผู้รับจ้าง</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(CO.name)}</span></div><div class="row"><span class="k">เลขผู้เสียภาษี</span><span class="v">${esc(CO.tax)}</span></div></div>
+    <div class="box"><div class="t">ผู้ว่าจ้าง</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>${cust&&cust.tax?`<div class="row"><span class="k">เลขผู้เสียภาษี</span><span class="v">${esc(cust.tax)}</span></div>`:''}${c.contact?`<div class="row"><span class="k">ผู้ประสานงาน</span><span class="v">${esc(c.contact)}</span></div>`:''}</div>
+  </div>
+  <div class="row"><span class="k">ชื่อโครงการ/งาน</span><span class="v">${esc(c.title)}</span></div>
+  ${c.site?`<div class="row"><span class="k">สถานที่ทำงาน</span><span class="v">${esc(c.site)}</span></div>`:''}
+  <div class="row"><span class="k">ระยะเวลาทำงาน</span><span class="v">${fmtD(c.startDate)}${c.endDate?(' ถึง '+fmtD(c.endDate)):''}</span></div>
+
+  <div class="sec"><h3>1. ขอบเขตงาน</h3>
+    <table class="it"><thead><tr><th>#</th><th>รายการ</th>${unitMode?'<th style="text-align:right">จำนวน</th><th>หน่วย</th><th style="text-align:right">ราคา/หน่วย</th>':''}</tr></thead><tbody>${itemRows}</tbody></table>
+    <div class="sum"><div class="box2"><span>มูลค่างานตามสัญญา (${c.priceType==='unit'?'รวมตามรายการ':'เหมาเบ็ดเสร็จ'})</span><span>฿${fmt(c.amount)}</span></div></div>
+  </div>
+
+  <div class="sec"><h3>2. เงื่อนไขการชำระเงิน</h3><div class="clause">${br(c.paymentTerms||DEFAULT_WC_PAYTERMS)}</div></div>
+
+  <div class="sec"><h3>3. งานเพิ่มเติมและการเปลี่ยนแปลงงาน</h3><div class="clause">${br(c.extraWorkTerms||DEFAULT_WC_EXTRA)}</div></div>
+
+  <div class="sec"><h3>4. การรับประกันผลงาน</h3><div class="clause">ผู้รับจ้างรับประกันผลงานตามสัญญานี้เป็นระยะเวลา ${c.warrantyMonths||0} เดือน นับจากวันที่ส่งมอบงานและตรวจรับเรียบร้อย โดยรับผิดชอบแก้ไขความชำรุดบกพร่องอันเกิดจากการทำงานของผู้รับจ้างโดยไม่คิดค่าใช้จ่าย</div></div>
+
+  ${(c.delayPenaltyPct>0)?`<div class="sec"><h3>5. ค่าปรับกรณีล่าช้า</h3><div class="clause">หากผู้รับจ้างส่งมอบงานล่าช้ากว่ากำหนดโดยมิใช่เหตุสุดวิสัยหรือความผิดของผู้ว่าจ้าง ผู้รับจ้างยินยอมชำระค่าปรับในอัตราร้อยละ ${c.delayPenaltyPct} ของมูลค่างานตามสัญญานี้ต่อวัน นับแต่วันถัดจากวันครบกำหนดจนถึงวันที่ส่งมอบงานจริง${c.delayPenaltyCapPct>0?(' ทั้งนี้ค่าปรับรวมทั้งสิ้นจะไม่เกินร้อยละ '+c.delayPenaltyCapPct+' ของมูลค่างานตามสัญญานี้'):''}</div></div>`:''}
+
+  <div class="sec"><h3>${(c.delayPenaltyPct>0)?'6':'5'}. ข้อจำกัดความรับผิดของผู้รับจ้าง</h3><div class="clause">${br(c.liabilityTerms||DEFAULT_WC_LIABILITY)}</div></div>
+
+  <div class="sec"><h3>${(c.delayPenaltyPct>0)?'7':'6'}. การบอกเลิกสัญญา</h3><div class="clause">${br(c.terminationTerms||DEFAULT_WC_TERMINATION)}</div></div>
+
+  <div class="sec"><h3>${(c.delayPenaltyPct>0)?'8':'7'}. การระงับข้อพิพาท</h3><div class="clause">${br(c.disputeTerms||DEFAULT_WC_DISPUTE)}</div></div>
+
+  <div class="clause" style="margin-top:14px">คู่สัญญาทั้งสองฝ่ายได้อ่านและเข้าใจข้อความในสัญญานี้โดยตลอดแล้ว เห็นว่าถูกต้องตรงตามเจตนา จึงลงลายมือชื่อไว้เป็นหลักฐาน ทำขึ้นเป็น 2 ฉบับ มีข้อความถูกต้องตรงกัน คู่สัญญาเก็บไว้ฝ่ายละ 1 ฉบับ</div>
+
+  <div class="sig">
+    <div class="col">${c.customerSig?`<img src="${c.customerSig}" style="max-height:70px;max-width:200px">`:''}<div class="ln">ผู้ว่าจ้าง<br>(${esc(c.customerSigName||cn||'____________________')})</div></div>
+    <div class="col"><div class="ln">ผู้รับจ้าง<br>(${esc(CO.seller||'____________________')})<br>${esc(CO.name)}</div></div>
+  </div>
+  <div class="foot">เอกสารนี้จัดทำโดยระบบ FlowBiz เพื่อใช้เป็นแบบร่างสัญญา · ขอแนะนำให้ตรวจสอบโดยที่ปรึกษากฎหมายก่อนใช้งานจริงสำหรับโครงการที่มีมูลค่าสูง · สัญญาเลขที่ ${esc(c.id)}</div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'สัญญาจ้างเหมา '+c.id,{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
+}
+function printWorkContractExtra(contractId, idx){
+  const c=(DB.workcontracts||[]).find(x=>x.id===contractId); if(!c){ toast('ไม่พบสัญญา'); return; }
+  const ex=(c.extras||[])[idx]; if(!ex){ toast('ไม่พบรายการ'); return; }
+  const cust=getCust(c.cust); const cn=(cust&&cust.name)||c.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const br=x=>esc(x).replace(/\n/g,'<br>');
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.55}.frame{border:2px solid #D97706;border-radius:10px;padding:22px 26px;min-height:1000px}
+.hd{text-align:center;border-bottom:2px solid #D97706;padding-bottom:12px;margin-bottom:8px}.hd .cn{font-weight:700;font-size:15px}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:14px 0 4px}.title h1{font-size:21px;color:#D97706;font-weight:800}.title .en{font-size:10.5px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
+.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:14px}
+.row{display:flex;font-size:12.5px;padding:3px 0}.row .k{color:#6b7280;width:150px;flex:none}.row .v{font-weight:600}
+.ref{background:#fff7e6;border:1px solid #fde68a;border-radius:9px;padding:10px 13px;margin-bottom:12px;font-size:12.5px}
+.work{border:1px solid #e5e7eb;border-radius:9px;padding:13px;margin:12px 0}.work .t{font-size:11px;color:#D97706;font-weight:700;margin-bottom:5px}
+.amt{background:#f5faff;border-radius:9px;padding:11px 14px;display:flex;justify-content:space-between;font-weight:800;color:#D97706;font-size:16px;margin:10px 0}
+.sig{display:flex;justify-content:space-between;margin-top:30px;gap:30px}.sig .col{flex:1;text-align:center}.sig img{max-height:70px;max-width:200px}.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:6px;font-size:12px}
+.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:18px;border-top:1px solid #eef1f4;padding-top:8px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>โทร. ${esc(CO.tel)}</div></div>
+  <div class="title"><h1>ใบสั่งงานเพิ่มเติม</h1><div class="en">Change Order / Extra Work</div></div>
+  <div class="no">เลขที่ ${esc(ex.id)} · วันที่ ${fmtD(ex.date)}</div>
+  <div class="ref"><b>แนบท้ายสัญญาจ้างเหมาเลขที่:</b> ${esc(c.id)} — ${esc(c.title||'')}</div>
+  <div class="row"><span class="k">ผู้ว่าจ้าง</span><span class="v">${esc(cn)}</span></div>
+  <div class="row"><span class="k">ผู้ขอ</span><span class="v">${esc(ex.reqby||'-')}</span></div>
+  <div class="work"><div class="t">รายละเอียดงานเพิ่มเติม</div><div>${br(ex.desc||'-')}</div></div>
+  <div class="amt"><span>มูลค่างานเพิ่มเติม</span><span>฿${fmt(ex.amount)}</span></div>
+  <div style="font-size:11.5px;color:#52606d">งานเพิ่มเติมนี้เป็นไปตามเงื่อนไขข้อ 3 ของสัญญาจ้างเหมาหลัก มูลค่าดังกล่าวไม่รวมอยู่ในราคาตามสัญญาเดิม และให้ถือเป็นส่วนหนึ่งของสัญญานับแต่วันที่ลงนามอนุมัตินี้</div>
+  <div class="sig">
+    <div class="col">${ex.sign?`<img src="${ex.sign}">`:''}<div class="ln">ผู้ว่าจ้าง (อนุมัติ)<br>(${esc(ex.signName||cn||'____________________')})</div></div>
+    <div class="col"><div class="ln">ผู้รับจ้าง<br>(${esc(CO.seller||'____________________')})</div></div>
+  </div>
+  <div class="foot">ออกโดยระบบ FlowBiz · แนบท้ายสัญญาจ้างเหมาเลขที่ ${esc(c.id)}</div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'งานเพิ่มเติม '+ex.id,{});
+  else { const wn=window.open('','_blank'); if(wn){ wn.document.write(html); wn.document.close(); setTimeout(()=>wn.print(),400); } }
 }
 function convertDoc(fromType,fromId,toType){
   const src=(DB[fromType]||[]).find(x=>x.id===fromId); if(!src) return;
@@ -4910,13 +5251,15 @@ tfoot td{font-weight:700;border-top:2px solid #d1d5db;background:#f4f6f8;padding
 // ── ศูนย์ติดตามการรับประกัน (Warranty Center) ──
 function warrantyStatus(j){
   if(!j||!j.warranty||!j.warranty.date) return null;
-  const months=j.warranty.months||12;
+  const unit=j.warranty.unit==='day'?'day':'month';
+  const value=j.warranty.value!=null?(+j.warranty.value||0):(+j.warranty.months||12);
   const start=new Date(j.warranty.date+'T00:00:00'); if(isNaN(start.getTime())) return null;
-  const end=new Date(start.getTime()); end.setMonth(end.getMonth()+months);
+  const end=new Date(start.getTime()); if(unit==='day') end.setDate(end.getDate()+value); else end.setMonth(end.getMonth()+value);
   const now=new Date(); now.setHours(0,0,0,0);
   const daysLeft=Math.ceil((end-now)/86400000);
   const status=daysLeft<0?'expired':(daysLeft<=30?'expiring':'active');
-  return {no:j.warranty.no||'', startStr:iso(start), endStr:iso(end), months, daysLeft, status};
+  const periodLabel=unit==='day'?(value+' วัน'):(value%12===0?(value/12)+' ปี':value+' เดือน');
+  return {no:j.warranty.no||'', startStr:iso(start), endStr:iso(end), value, unit, periodLabel, months:unit==='month'?value:null, daysLeft, status};
 }
 function openWarrantyCenter(){
   const list=(DB.jobs||[]).map(j=>{ const w=warrantyStatus(j); return w?{j,w}:null; }).filter(Boolean);
