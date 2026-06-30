@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17g · 📜 สัญญาจ้างเหมางาน</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17i · 🛡️ ใบรับประกัน เดือน+วัน</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -3128,7 +3128,7 @@ function workContractForm(id){
     <div class="fl2" style="margin-top:8px">
       <div class="fg"><label class="flb">วันเริ่มงาน</label><input class="fi" type="date" id="wc-start" value="${v.startDate||iso(new Date())}"></div>
       <div class="fg"><label class="flb">วันแล้วเสร็จตามสัญญา</label><input class="fi" type="date" id="wc-end" value="${v.endDate||''}"></div>
-      <div class="fg"><label class="flb">รับประกันผลงาน (เดือน)</label><input class="fi" type="number" id="wc-warranty" value="${v.warrantyMonths!=null?v.warrantyMonths:12}" min="0"></div>
+      <div class="fg"><label class="flb">รับประกันผลงาน</label><div style="display:flex;gap:6px;align-items:center"><input class="fi" type="number" id="wc-warranty" value="${v.warrantyMonths!=null?v.warrantyMonths:0}" min="0" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">เดือน</span> <input class="fi" type="number" id="wc-warrantydays" value="${v.warrantyDays!=null?v.warrantyDays:0}" min="0" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">วัน</span></div></div>
       <div class="fg"><label class="flb">ค่าปรับล่าช้า (% ของมูลค่างาน/วัน)</label><input class="fi" type="number" id="wc-penalty" value="${v.delayPenaltyPct||''}" step="0.01" placeholder="0 = ไม่มี"></div>
     </div>
     <div class="fg" style="margin-top:8px"><label class="flb">เพดานค่าปรับล่าช้าสูงสุด (% ของมูลค่างาน, ไม่บังคับ)</label><input class="fi" type="number" id="wc-penaltycap" value="${v.delayPenaltyCapPct||''}" step="0.01" placeholder="เช่น 10"></div>
@@ -3168,7 +3168,9 @@ function workContractSave(){
     cust, title, contact:document.getElementById('wc-contact').value.trim(), site:document.getElementById('wc-site').value.trim(),
     items:wcItems.filter(it=>it.desc&&it.desc.trim()), priceType:document.getElementById('wc-pricetype').value, amount,
     paymentTerms:document.getElementById('wc-payterms').value, startDate:document.getElementById('wc-start').value, endDate:document.getElementById('wc-end').value,
-    warrantyMonths:+document.getElementById('wc-warranty').value||0, delayPenaltyPct:+document.getElementById('wc-penalty').value||0, delayPenaltyCapPct:+document.getElementById('wc-penaltycap').value||0,
+    warrantyMonths:+document.getElementById('wc-warranty').value||0,
+    warrantyDays:+document.getElementById('wc-warrantydays').value||0,
+    delayPenaltyPct:+document.getElementById('wc-penalty').value||0, delayPenaltyCapPct:+document.getElementById('wc-penaltycap').value||0,
     extraWorkTerms:document.getElementById('wc-extraterms').value, liabilityTerms:document.getElementById('wc-liability').value, terminationTerms:document.getElementById('wc-termination').value, disputeTerms:document.getElementById('wc-dispute').value
   };
   if(!DB.workcontracts) DB.workcontracts=[];
@@ -3300,7 +3302,7 @@ table.it{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0}table
 
   <div class="sec"><h3>3. งานเพิ่มเติมและการเปลี่ยนแปลงงาน</h3><div class="clause">${br(c.extraWorkTerms||DEFAULT_WC_EXTRA)}</div></div>
 
-  <div class="sec"><h3>4. การรับประกันผลงาน</h3><div class="clause">ผู้รับจ้างรับประกันผลงานตามสัญญานี้เป็นระยะเวลา ${c.warrantyMonths||0} เดือน นับจากวันที่ส่งมอบงานและตรวจรับเรียบร้อย โดยรับผิดชอบแก้ไขความชำรุดบกพร่องอันเกิดจากการทำงานของผู้รับจ้างโดยไม่คิดค่าใช้จ่าย</div></div>
+  <div class="sec"><h3>4. การรับประกันผลงาน</h3><div class="clause">ผู้รับจ้างรับประกันผลงานตามสัญญานี้เป็นระยะเวลา ${(()=>{ const mo=+c.warrantyMonths||0; const dy=+c.warrantyDays||0; const parts=[]; if(mo) parts.push(mo+' เดือน'); if(dy) parts.push(dy+' วัน'); return parts.length?parts.join(' '):('0 เดือน'); })()} นับจากวันที่ส่งมอบงานและตรวจรับเรียบร้อย โดยรับผิดชอบแก้ไขความชำรุดบกพร่องอันเกิดจากการทำงานของผู้รับจ้างโดยไม่คิดค่าใช้จ่าย</div></div>
 
   ${(c.delayPenaltyPct>0)?`<div class="sec"><h3>5. ค่าปรับกรณีล่าช้า</h3><div class="clause">หากผู้รับจ้างส่งมอบงานล่าช้ากว่ากำหนดโดยมิใช่เหตุสุดวิสัยหรือความผิดของผู้ว่าจ้าง ผู้รับจ้างยินยอมชำระค่าปรับในอัตราร้อยละ ${c.delayPenaltyPct} ของมูลค่างานตามสัญญานี้ต่อวัน นับแต่วันถัดจากวันครบกำหนดจนถึงวันที่ส่งมอบงานจริง${c.delayPenaltyCapPct>0?(' ทั้งนี้ค่าปรับรวมทั้งสิ้นจะไม่เกินร้อยละ '+c.delayPenaltyCapPct+' ของมูลค่างานตามสัญญานี้'):''}</div></div>`:''}
 
@@ -5589,7 +5591,8 @@ function warrantyForm(id){
   const w=j.warranty||{};
   const defDate=w.date||(j.finishedAt?String(j.finishedAt).slice(0,10):(j.due||j.date||iso(new Date())));
   const defNo=w.no||('WR-'+String(j.id||'').replace(/[^0-9]/g,'').slice(-7));
-  const defMonths=w.months||12;
+  const defMonths=w.value!=null&&w.unit!=='day'?(+w.value||0):(w.months||0);
+  const defDays=w.value!=null&&w.unit==='day'?(+w.value||0):(w.days||0);
   const defTerms=w.terms||DEFAULT_WARRANTY_TERMS;
   const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
   document.getElementById('ml-t').textContent='🛡️ ออกใบรับประกันงาน';
@@ -5599,7 +5602,9 @@ function warrantyForm(id){
     <div class="fl2">
       <div class="fg"><label class="flb">เลขที่ใบรับประกัน</label><input class="fi" id="wr-no" value="${qa(defNo)}"></div>
       <div class="fg"><label class="flb">วันที่ส่งมอบ / เริ่มประกัน</label><input class="fi" type="date" id="wr-date" value="${defDate}" onchange="wrEndHint()"></div>
-      <div class="fg full"><label class="flb">ระยะเวลารับประกัน (เดือน)</label><input class="fi" type="number" id="wr-months" value="${defMonths}" min="1" max="120" oninput="wrEndHint()"></div>
+      <div class="fg full"><label class="flb">ระยะเวลารับประกัน</label>
+        <div style="display:flex;gap:6px;align-items:center"><input class="fi" type="number" id="wr-months" value="${defMonths}" min="0" max="120" oninput="wrEndHint()" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">เดือน</span> <input class="fi" type="number" id="wr-days" value="${defDays}" min="0" max="365" oninput="wrEndHint()" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">วัน</span></div>
+      </div>
     </div>
     <div id="wr-end-hint" style="font-size:12.5px;color:var(--p);font-weight:600;margin:2px 0 12px"></div>
     <div class="fg full"><label class="flb">ขอบเขต / เงื่อนไขการรับประกัน</label><textarea class="fi" id="wr-terms" rows="7" style="line-height:1.65;resize:vertical">${escHtml(defTerms)}</textarea></div>`;
@@ -5608,20 +5613,30 @@ function warrantyForm(id){
   wrEndHint();
 }
 function wrEndHint(){
-  const d=document.getElementById('wr-date')?.value; const m=+(document.getElementById('wr-months')?.value)||0;
+  const d=document.getElementById('wr-date')?.value;
+  const m=+(document.getElementById('wr-months')?.value)||0;
+  const dy=+(document.getElementById('wr-days')?.value)||0;
   const el=document.getElementById('wr-end-hint'); if(!el) return;
-  if(d&&m>0){ const end=new Date(d); end.setMonth(end.getMonth()+m); el.innerHTML='ครบกำหนดรับประกัน: '+fmtD(iso(end))+' ('+(m%12===0?(m/12)+' ปี':m+' เดือน')+')'; }
-  else el.textContent='';
+  if(d&&(m>0||dy>0)){
+    const end=new Date(d+'T00:00:00'); end.setMonth(end.getMonth()+m); end.setDate(end.getDate()+dy);
+    const parts=[]; if(m) parts.push(m%12===0?(m/12)+' ปี':m+' เดือน'); if(dy) parts.push(dy+' วัน');
+    el.innerHTML='ครบกำหนดรับประกัน: '+fmtD(iso(end))+' ('+parts.join(' ')+')';
+  } else el.textContent='';
 }
 function doPrintWarranty(){
   const id=document.getElementById('wr-job').value; const j=DB.jobs.find(x=>x.id===id); if(!j){ toast('ไม่พบงาน'); return; }
   const no=(document.getElementById('wr-no').value||'').trim()||('WR-'+id);
   const date=document.getElementById('wr-date').value||iso(new Date());
-  const months=+document.getElementById('wr-months').value||12;
+  const months=+(document.getElementById('wr-months')?.value)||0;
+  const days=+(document.getElementById('wr-days')?.value)||0;
   const terms=document.getElementById('wr-terms').value||'';
-  j.warranty={no,date,months,terms}; if(typeof saveData==='function') saveData();
-  const end=new Date(date); end.setMonth(end.getMonth()+months); const endStr=iso(end);
-  const periodLabel=months%12===0?(months/12)+' ปี':months+' เดือน';
+  const totalDays=months*30+days;
+  const unit=months>0?'mixed':'day';
+  j.warranty={no,date,months,days,value:months>0?months:days,unit:months>0?(days>0?'mixed':'month'):'day',terms};
+  if(typeof saveData==='function') saveData();
+  const end=new Date(date+'T00:00:00'); end.setMonth(end.getMonth()+months); end.setDate(end.getDate()+days); const endStr=iso(end);
+  const parts=[]; if(months) parts.push(months%12===0?(months/12)+' ปี':months+' เดือน'); if(days) parts.push(days+' วัน');
+  const periodLabel=parts.length?parts.join(' '):'0 เดือน';
   const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
   const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
   const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
