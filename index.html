@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17j · 📋 Audit Log + ตรวจรับงาน + ใบมอบอำนาจ + ขอซื้อ</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17k · 📦 ปุ่มขอซื้อ/เบิกใน 2 หน้า</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -794,7 +794,7 @@ tbody tr:hover td{background:#FAFBFD}
       <button class="btn bo" style="margin-left:auto" onclick="openWorkContracts()">📜 สัญญาจ้าง</button>
       <button class="btn bo" onclick="openMAContracts()">🔄 สัญญา MA</button>
       <button class="btn bo" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
-      <button class="btn bo" onclick="openMRForm('')">📦 ขอซื้อ/เบิก</button>
+      <button class="btn bo" onclick="openMRManager()">📦 ขอซื้อ/เบิก</button>
       <button class="btn bo" onclick="openJobCalendar()">📅 ปฏิทิน</button>
       <button class="btn bp" onclick="openJobForm()">+ สร้างงานใหม่</button>
     </div>
@@ -970,6 +970,7 @@ tbody tr:hover td{background:#FAFBFD}
   <div id="pg-products" class="pg">
     <div class="fb">
       <input class="fi" placeholder="🔍 ค้นหาสินค้า / รหัส / บาร์โค้ด..." id="pr-search" oninput="renderProducts()">
+      <button class="btn bo" onclick="openMRManager()">📦 ขอซื้อ/เบิก</button>
       <button class="btn bo" onclick="openCoupons()">🎁 คูปอง</button>
       <button class="btn bo" onclick="openWarehouses()">🏭 คลัง</button>
       <button class="btn bp" onclick="openProductForm(null)">+ เพิ่มสินค้า</button>
@@ -1845,6 +1846,7 @@ function collectNotifications(){
   (DB.contracts||[]).forEach(c=>{ const info=(typeof maInfo==='function')?maInfo(c):null; if(info&&info.status==='active'&&info.due&&info.nextStr) list.push({ic:'🔄',t:info.overdue?'เลยกำหนดเข้าบริการ MA':'ถึงกำหนดเข้าบริการ MA',s:(c.title||c.id)+' · '+(getCust(c.cust).name||'')+' · '+fmtD(info.nextStr),act:'closeModal();openMAContracts()',pri:info.overdue?1:2}); });
   (DB.recurring||[]).forEach(p=>{ const info=(typeof rcInfo==='function')?rcInfo(p):null; if(info&&info.due) list.push({ic:'🔁',t:'บิลซ้ำถึงกำหนดสร้าง',s:(p.name||'')+' · '+(getCust(p.cust).name||'')+' · ฿'+fmt(p.amt||0),act:'closeModal();openRecurring()',pri:2}); });
   (DB.leads||[]).forEach(l=>{ if(l.stage!=='ปิดได้'&&l.stage!=='ปิดไม่ได้'&&l.nextDate){ if(l.nextDate<today) list.push({ic:'🎯',t:'ติดตามดีลเลยกำหนด',s:(l.name||l.cust||'')+(l.nextAction?' · '+l.nextAction:''),act:'closeModal();openCRM()',pri:1}); else if(l.nextDate<=in7) list.push({ic:'🎯',t:'ถึงกำหนดติดตามดีล',s:(l.name||l.cust||'')+(l.nextAction?' · '+l.nextAction:'')+' · '+fmtD(l.nextDate),act:'closeModal();openCRM()',pri:2}); } });
+  const pendMR=(DB.mreqs||[]).filter(m=>m.status==='pending').length; if(pendMR) list.push({ic:'📦',t:'ใบขอซื้อ/เบิกรออนุมัติ '+pendMR+' ใบ',s:'แตะเพื่อดูและอนุมัติ',act:'closeModal();openMRManager()',pri:1});
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -2554,6 +2556,56 @@ function mrRenderItems(){
 }
 function mrAddItem(){ _mrItems.push({desc:'',qty:1,unit:'',note:''}); mrRenderItems(); }
 function mrPickProd(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; mrRenderItems(); }
+function openMRManager(filter){
+  const all=(DB.mreqs||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const filt=filter||'pending';
+  const pending=all.filter(m=>m.status==='pending');
+  const approved=all.filter(m=>m.status==='approved');
+  const rejected=all.filter(m=>m.status==='rejected');
+  const shown=filt==='all'?all:all.filter(m=>m.status===filt);
+  const STATUS_STYLE={pending:{bg:'#FEF3C7',c:'#D97706',lb:'รออนุมัติ'},approved:{bg:'#E8F8F0',c:'#0F9D58',lb:'อนุมัติแล้ว'},rejected:{bg:'#FEECEC',c:'#E53E3E',lb:'ปฏิเสธ'}};
+  const chip=(k,lbl,cnt)=>`<button class="btn ${filt===k?'bp':'bo'}" style="font-size:11.5px;padding:5px 10px" onclick="openMRManager('${k}')">${lbl}${cnt?' ('+cnt+')':''}</button>`;
+  const rows=shown.length?shown.map(m=>{
+    const st=STATUS_STYLE[m.status]||STATUS_STYLE.pending; const j=m.jobId?((DB.jobs||[]).find(x=>x.id===m.jobId)||(DB.workcontracts||[]).find(x=>x.id===m.jobId)):null;
+    const typeLabel=m.type==='withdraw'?'ใบเบิกจากคลัง':'ใบขอซื้อ (PR)';
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div><div style="font-weight:600;font-size:13px">${escHtml(typeLabel)} · ${escHtml(m.id)}</div>
+          <div style="font-size:11.5px;color:var(--mu);margin-top:3px">ขอโดย ${escHtml(m.reqby||'-')} · ${fmtD(m.date)}${j?' · งาน '+escHtml(j.title||j.id):''}${m.note?' · '+escHtml(m.note):''}</div>
+          <div style="font-size:11.5px;margin-top:3px">${(m.items||[]).map(it=>escHtml(it.desc)+(it.qty?' x'+it.qty:'')).join(', ')}</div>
+        </div>
+        <span style="font-size:10.5px;font-weight:700;color:${st.c};background:${st.bg};padding:3px 10px;border-radius:20px;white-space:nowrap">${st.lb}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
+        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="printMR('${m.id}')">🖨️ พิมพ์</button>
+        ${m.status==='pending'?`<button class="btn bo" style="font-size:12px;padding:6px 10px;color:#0F9D58;flex:1;justify-content:center" onclick="mrApprove('${m.id}',true)">✅ อนุมัติ</button><button class="btn bo" style="font-size:12px;padding:6px 10px;color:#E53E3E;flex:1;justify-content:center" onclick="mrApprove('${m.id}',false)">❌ ปฏิเสธ</button>`:''}
+        ${m.status!=='pending'?`<span style="font-size:11px;color:var(--mu);align-self:center">${m.approvedBy?('โดย '+escHtml(m.approvedBy)+' · '+fmtD(String(m.approvedAt||'').slice(0,10))):''}</span>`:''}
+      </div>
+    </div>`; }).join('') : `<div style="text-align:center;color:var(--mu);padding:22px;font-size:13px">ไม่มีรายการ</div>`;
+  document.getElementById('ml-t').textContent='📦 จัดการใบขอซื้อ / ใบเบิกวัสดุ';
+  document.getElementById('ml-s').textContent=all.length+' ใบทั้งหมด';
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
+      <div style="background:#FEF3C7;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#D97706">${pending.length}</div><div style="font-size:10px;color:var(--mu)">รออนุมัติ</div></div>
+      <div style="background:#E8F8F0;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#0F9D58">${approved.length}</div><div style="font-size:10px;color:var(--mu)">อนุมัติแล้ว</div></div>
+      <div style="background:#FEECEC;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#E53E3E">${rejected.length}</div><div style="font-size:10px;color:var(--mu)">ปฏิเสธ</div></div>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${chip('pending','รออนุมัติ',pending.length)}${chip('approved','อนุมัติแล้ว','')}${chip('rejected','ปฏิเสธ','')}${chip('all','ทั้งหมด','')}</div>
+    <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="openMRForm('')">+ สร้างใบขอซื้อ/เบิกใหม่</button>
+    ${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function mrApprove(id, approve){
+  const m=(DB.mreqs||[]).find(x=>x.id===id); if(!m) return;
+  const who=(companyInfo&&companyInfo.seller)||'ผู้อนุมัติ';
+  m.status=approve?'approved':'rejected';
+  m.approvedBy=who; m.approvedAt=new Date().toISOString();
+  if(typeof saveData==='function') saveData();
+  if(typeof auditLog==='function') auditLog(approve?'approve':'reject','mreq',id,m.items&&m.items.length?m.items[0].desc:'');
+  toast(approve?'✅ อนุมัติแล้ว — แจ้งผู้ขอได้เลย':'❌ ปฏิเสธแล้ว');
+  openMRManager(approve?'approved':'rejected');
+}
 function saveMR(){
   const date=document.getElementById('mr-date').value||iso(new Date());
   const reqby=document.getElementById('mr-reqby').value.trim();
@@ -2567,8 +2619,9 @@ function saveMR(){
   DB.mreqs.unshift({id,date,reqby,type,jobId,note,items,status:'pending'});
   if(typeof saveData==='function') saveData();
   if(typeof auditLog==='function') auditLog('save','mreq',id,items.length+' รายการ');
-  toast('✅ บันทึกใบขอซื้อ/เบิกวัสดุแล้ว');
+  toast('✅ ส่งใบขอซื้อ/เบิกวัสดุแล้ว — รอแอดมินอนุมัติ');
   printMR(id);
+  setTimeout(()=>openMRManager('pending'),600);
 }
 function printMR(id){
   const mr=(DB.mreqs||[]).find(x=>x.id===id); if(!mr){ toast('ไม่พบเอกสาร'); return; }
