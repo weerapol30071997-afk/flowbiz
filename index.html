@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17l · 📦 ใบขอซื้อ/เบิก + workflow อนุมัติ</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17l · 📦 ช่างขอเบิก/ซื้อจากงาน + ส่งแอดมินอนุมัติ</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2517,45 +2517,96 @@ ${to?`<div style="text-align:right;margin-bottom:16px">เรียน: ${esc(to
 }
 // ── ใบเบิกวัสดุ / ใบขอซื้อ (Material Request / PR) ──
 let _mrItems=[];
-function openMRForm(jobId){
+function empOpenMRForm(jobId, jobTitle, empName){
+  _mrItems=[{desc:'',qty:1,unit:'',note:''},{desc:'',qty:1,unit:'',note:''},{desc:'',qty:1,unit:'',note:''}];
   const j=jobId?((DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId)):null;
-  _mrItems=[{desc:'',qty:1,unit:'',note:''}];
-  document.getElementById('ml-t').textContent='📦 ใบเบิกวัสดุ / ใบขอซื้อ';
-  document.getElementById('ml-s').textContent=j?(j.title||j.id):'ใบขอซื้อทั่วไป';
-  const prods=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
+  document.getElementById('ml-t').textContent='📦 ขอเบิก / ขอซื้อวัสดุ';
+  document.getElementById('ml-s').textContent=jobTitle||(j?j.title||j.id:'ทั่วไป');
   document.getElementById('ml-bd').innerHTML=`
     <input type="hidden" id="mr-job" value="${escHtml(jobId||'')}">
+    ${j?`<div style="background:#EAF4FF;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12.5px">🛠️ <b>${escHtml(j.title||j.id)}</b>${j.due?' · กำหนด '+fmtD(j.due):''}${getCust(j.cust||'').name?' · '+escHtml(getCust(j.cust||'').name):''}</div>`:''}
     <div class="fl2" style="margin-bottom:10px">
       <div class="fg"><label class="flb">วันที่ขอ</label><input class="fi" type="date" id="mr-date" value="${iso(new Date())}"></div>
-      <div class="fg"><label class="flb">ผู้ขอ</label><input class="fi" id="mr-reqby" placeholder="ชื่อช่าง/ผู้ขอ"></div>
+      <div class="fg"><label class="flb">ผู้ขอ</label><input class="fi" id="mr-reqby" value="${escHtml(empName||'')}" placeholder="ชื่อช่าง/พนักงาน"></div>
     </div>
-    <div class="fg" style="margin-bottom:10px"><label class="flb">ประเภท</label><select class="fi" id="mr-type"><option value="req">ใบขอซื้อ (PR)</option><option value="withdraw">ใบเบิกจากคลัง</option></select></div>
+    <div class="fg" style="margin-bottom:10px"><label class="flb">ประเภท</label><select class="fi" id="mr-type"><option value="req">ใบขอซื้อ (PR) — ซื้อวัสดุใหม่</option><option value="withdraw">ใบเบิกจากคลัง — เบิกของในคลัง</option></select></div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">รายการวัสดุ / อุปกรณ์ที่ต้องการ</div>
     <div id="mr-items-box"></div>
-    <button class="btn bo" style="font-size:12px;margin-bottom:10px" onclick="mrAddItem()">+ เพิ่มรายการ</button>
-    <div class="fg full"><label class="flb">หมายเหตุ</label><input class="fi" id="mr-note" placeholder="เช่น ด่วน / ใช้งาน ${j?escHtml(j.title||j.id):''}">
-    </div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveMR()">💾 บันทึก + พิมพ์</button>`;
+    <button class="btn bo" style="font-size:12px;margin-bottom:10px;width:100%;justify-content:center" onclick="_mrItems.push({desc:'',qty:1,unit:'',note:''});mrRenderItemsDetail()">+ เพิ่มรายการ</button>
+    <div class="fg full"><label class="flb">หมายเหตุ / เหตุผลที่ขอ</label><input class="fi" id="mr-note" placeholder="เช่น ด่วน สายไฟขาด / ต้องใช้ภายในวันนี้"></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveMR()">📤 ส่งขออนุมัติ</button>`;
+  document.getElementById('ml').classList.add('op');
+  mrRenderItemsDetail();
+}
+function mrRenderItemsDetail(){
+  const box=document.getElementById('mr-items-box'); if(!box) return;
+  const prods=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
+  const prodOpts='<option value="">— เลือกจากคลัง (ไม่บังคับ) —</option>'+prods.map(p=>`<option value="${p.id}">${escHtml(p.name)} (คลัง ${p.stock||0} ${p.unit||''})</option>`).join('');
+  box.innerHTML=_mrItems.map((it,i)=>`<div style="background:var(--bg);border-radius:9px;padding:9px;margin-bottom:7px">
+    <div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:5px">รายการที่ ${i+1}</div>
+    <select class="fi" style="width:100%;margin-bottom:6px" onchange="mrPickProdD(${i},this.value)">${prodOpts}</select>
+    <input class="fi" value="${escHtml(it.desc)}" placeholder="ชื่อ/รายละเอียดวัสดุ (กรอกเองหรือเลือกจากคลัง)" style="margin-bottom:6px;width:100%" oninput="_mrItems[${i}].desc=this.value">
+    <div style="display:flex;gap:6px;align-items:center">
+      <div style="flex:none"><div style="font-size:10.5px;color:var(--mu);margin-bottom:2px">จำนวน</div><input class="fi" type="number" value="${it.qty}" style="width:80px;text-align:center" min="1" step="any" oninput="_mrItems[${i}].qty=+this.value"></div>
+      <div style="flex:1"><div style="font-size:10.5px;color:var(--mu);margin-bottom:2px">หน่วย</div><input class="fi" value="${escHtml(it.unit)}" placeholder="เมตร/ตัว/ชุด/ม้วน" oninput="_mrItems[${i}].unit=this.value"></div>
+      <div style="flex:1"><div style="font-size:10.5px;color:var(--mu);margin-bottom:2px">หมายเหตุ</div><input class="fi" value="${escHtml(it.note||'')}" placeholder="หมายเหตุ" oninput="_mrItems[${i}].note=this.value"></div>
+      ${_mrItems.length>1?`<button class="btn bo" style="padding:6px 9px;flex:none;margin-top:16px" onclick="_mrItems.splice(${i},1);mrRenderItemsDetail()">✕</button>`:''}
+    </div>
+  </div>`).join('');
+}
+function mrPickProdD(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; mrRenderItemsDetail(); }
+function openMRFormForJob(jobId, empId, empName){
+  const j=(DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId);
+  const emp=empId?(DB.employees||[]).find(e=>e.id===empId):null;
+  const reqby=(emp&&emp.name)||empName||'';
+  openMRForm(jobId, reqby);
+}
+function openMRForm(jobId, reqbyHint){
+  const j=jobId?((DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId)):null;
+  _mrItems=[{desc:'',spec:'',qty:1,unit:'',price:'',note:'',fromStock:false}];
+  const jobs=[...(DB.jobs||[]),...(DB.workcontracts||[])].filter(x=>x.title||x.id);
+  const jobOpts='<option value="">— ไม่ระบุงาน —</option>'+jobs.map(x=>`<option value="${x.id}"${x.id===jobId?' selected':''}>${escHtml(x.title||x.id)}</option>`).join('');
+  document.getElementById('ml-t').textContent='📦 ใบขอซื้อ / ใบเบิกวัสดุ';
+  document.getElementById('ml-s').textContent=j?(j.title||j.id):'สร้างเอกสารใหม่';
+  document.getElementById('ml-bd').innerHTML=`
+    <div class="fl2" style="margin-bottom:8px">
+      <div class="fg"><label class="flb">วันที่ขอ</label><input class="fi" type="date" id="mr-date" value="${iso(new Date())}"></div>
+      <div class="fg"><label class="flb">ผู้ขอ (ชื่อช่าง/พนักงาน)</label><input class="fi" id="mr-reqby" value="${escHtml(reqbyHint||'')}" placeholder="ชื่อช่าง/ผู้ขอ" list="mr-emp-list"><datalist id="mr-emp-list">${(DB.employees||[]).filter(e=>e.active!==false).map(e=>`<option value="${escHtml(e.name)}">`).join('')}</datalist></div>
+    </div>
+    <div class="fl2" style="margin-bottom:8px">
+      <div class="fg"><label class="flb">ประเภทเอกสาร</label><select class="fi" id="mr-type"><option value="req">📋 ใบขอซื้อ (PR)</option><option value="withdraw">📤 ใบเบิกจากคลัง</option></select></div>
+      <div class="fg"><label class="flb">งาน / โครงการ</label><select class="fi" id="mr-job">${jobOpts}</select></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin:10px 0 6px;color:var(--mu)">📋 รายการวัสดุ/อุปกรณ์ที่ขอ</div>
+    <div id="mr-items-box"></div>
+    <button class="btn bo" style="font-size:12px;padding:6px 12px;margin-bottom:10px" onclick="mrAddItem()">+ เพิ่มรายการ</button>
+    <div class="fg full"><label class="flb">หมายเหตุ / ความเร่งด่วน</label><input class="fi" id="mr-note" placeholder="เช่น ด่วนมาก — ต้องการก่อน 10.00 น."></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveMR()">💾 ส่งขออนุมัติ</button>`;
   document.getElementById('ml').classList.add('op');
   mrRenderItems();
 }
 function mrRenderItems(){
   const box=document.getElementById('mr-items-box'); if(!box) return;
-  const prods=(DB.products||[]);
-  const prodOpts='<option value="">— สินค้าในคลัง —</option>'+prods.filter(p=>p.track!==false&&p.type!=='บริการ').map(p=>`<option value="${p.id}">${escHtml(p.name)} (คลัง ${p.stock||0} ${p.unit||''})</option>`).join('');
-  box.innerHTML=_mrItems.map((it,i)=>`<div style="background:var(--bg);border-radius:9px;padding:8px;margin-bottom:7px">
-    <div style="display:flex;gap:6px;align-items:center;margin-bottom:6px">
-      <select class="fi" style="flex:1" onchange="mrPickProd(${i},this.value)">${prodOpts}</select>
-      <button class="btn bo" style="padding:6px 9px;flex:none" onclick="_mrItems.splice(${i},1);mrRenderItems()">✕</button>
+  const prods=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
+  const prodOpts='<option value="">— เลือกจากสต็อก —</option>'+prods.map(p=>`<option value="${p.id}">${escHtml(p.name)} (คงเหลือ ${p.stock||0} ${p.unit||''})</option>`).join('');
+  box.innerHTML=_mrItems.map((it,i)=>`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+      <span style="font-size:11.5px;font-weight:700;color:var(--p);min-width:20px">รายการ ${i+1}</span>
+      ${prods.length?`<select class="fi" style="flex:1;font-size:12px" onchange="mrPickProd(${i},this.value)">${prodOpts}</select>`:''}
+      <button class="btn bo" style="padding:5px 9px;flex:none;font-size:12px" onclick="_mrItems.splice(${i},1);mrRenderItems()">✕</button>
     </div>
-    <div style="display:flex;gap:6px">
-      <input class="fi" value="${escHtml(it.desc)}" placeholder="ชื่อ/รายละเอียดวัสดุ" style="flex:2" oninput="_mrItems[${i}].desc=this.value">
-      <input class="fi" type="number" value="${it.qty}" style="width:65px" min="1" oninput="_mrItems[${i}].qty=+this.value">
-      <input class="fi" value="${escHtml(it.unit)}" placeholder="หน่วย" style="width:65px" oninput="_mrItems[${i}].unit=this.value">
+    <div class="fg full" style="margin-bottom:6px"><input class="fi" value="${escHtml(it.desc)}" placeholder="ชื่อสินค้า / วัสดุ / อุปกรณ์ *" style="font-weight:600" oninput="_mrItems[${i}].desc=this.value"></div>
+    <div class="fg full" style="margin-bottom:6px"><input class="fi" value="${escHtml(it.spec||'')}" placeholder="รุ่น / ยี่ห้อ / ขนาด / spec (ถ้ามี)" oninput="_mrItems[${i}].spec=this.value"></div>
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <div style="flex:1"><label style="font-size:10.5px;color:var(--mu)">จำนวน *</label><input class="fi" type="number" value="${it.qty||1}" min="1" step="any" style="text-align:center" oninput="_mrItems[${i}].qty=+this.value||1"></div>
+      <div style="flex:1"><label style="font-size:10.5px;color:var(--mu)">หน่วย</label><input class="fi" value="${escHtml(it.unit||'')}" placeholder="ม./ตัว/ชุด/ก้อน" oninput="_mrItems[${i}].unit=this.value"></div>
+      <div style="flex:1"><label style="font-size:10.5px;color:var(--mu)">ราคาโดยประมาณ</label><input class="fi" type="number" value="${it.price||''}" step="0.01" placeholder="0.00" oninput="_mrItems[${i}].price=+this.value||0"></div>
     </div>
+    <div class="fg full"><input class="fi" value="${escHtml(it.note||'')}" placeholder="หมายเหตุรายการนี้ เช่น ต้องการสีขาว / ยี่ห้อ A เท่านั้น" oninput="_mrItems[${i}].note=this.value"></div>
   </div>`).join('');
 }
-function mrAddItem(){ _mrItems.push({desc:'',qty:1,unit:'',note:''}); mrRenderItems(); }
-function mrPickProd(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; mrRenderItems(); }
+function mrAddItem(){ _mrItems.push({desc:'',spec:'',qty:1,unit:'',price:0,note:'',fromStock:false}); mrRenderItems(); }
+function mrPickProd(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; _mrItems[i].price=+p.price||0; _mrItems[i].spec=''; mrRenderItems(); }
 function openMRManager(filter){
   const all=(DB.mreqs||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const filt=filter||'pending';
@@ -2610,15 +2661,17 @@ function saveMR(){
   const date=document.getElementById('mr-date').value||iso(new Date());
   const reqby=document.getElementById('mr-reqby').value.trim();
   const type=document.getElementById('mr-type').value;
-  const jobId=document.getElementById('mr-job').value;
+  const jobId=(document.getElementById('mr-job')||{}).value||'';
   const note=document.getElementById('mr-note').value.trim();
-  const items=_mrItems.filter(it=>it.desc&&it.desc.trim());
+  const items=_mrItems.filter(it=>it.desc&&String(it.desc).trim());
   if(!items.length){ toast('⚠️ เพิ่มรายการอย่างน้อย 1 รายการ'); return; }
+  if(!reqby){ toast('⚠️ ใส่ชื่อผู้ขอ'); return; }
   if(!DB.mreqs) DB.mreqs=[];
   const id='MR-'+Date.now().toString(36).toUpperCase();
-  DB.mreqs.unshift({id,date,reqby,type,jobId,note,items,status:'pending'});
+  const totalEst=items.reduce((s,it)=>s+(+it.price||0)*(+it.qty||1),0);
+  DB.mreqs.unshift({id,date,reqby,type,jobId,note,items:items.map(it=>({desc:String(it.desc||'').trim(),spec:String(it.spec||'').trim(),qty:+it.qty||1,unit:String(it.unit||'').trim(),price:+it.price||0,note:String(it.note||'').trim()})),totalEst,status:'pending'});
   if(typeof saveData==='function') saveData();
-  if(typeof auditLog==='function') auditLog('save','mreq',id,items.length+' รายการ');
+  if(typeof auditLog==='function') auditLog('save','mreq',id,reqby+' · '+items.length+' รายการ');
   toast('✅ ส่งใบขอซื้อ/เบิกวัสดุแล้ว — รอแอดมินอนุมัติ');
   printMR(id);
   setTimeout(()=>openMRManager('pending'),600);
@@ -2629,27 +2682,31 @@ function printMR(id){
   const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
   const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
   const typeLabel=mr.type==='withdraw'?'ใบเบิกวัสดุจากคลัง':'ใบขอซื้อ (Purchase Request)';
+  const hasPrice=mr.items.some(it=>(+it.price||0)>0);
   const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
 @page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
 body{color:#1f2937;font-size:13px}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
 .hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:10px;margin-bottom:10px}.hd .cn{font-weight:700;font-size:14px;color:#0A6EBD}
 .title{text-align:center;margin:10px 0}.title h1{font-size:20px;color:#0A6EBD;font-weight:800}
-.row{display:flex;font-size:12.5px;padding:2px 0;border-bottom:1px dashed #eef1f4}.row .k{color:#6b7280;width:130px;flex:none}.row .v{font-weight:600}
-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.5px}th{background:#0A6EBD;color:#fff;padding:6px}td{border:1px solid #e5e7eb;padding:6px}
-.sig{display:flex;justify-content:space-between;margin-top:30px;gap:20px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:6px;font-size:11.5px}
+.row{display:flex;font-size:12.5px;padding:3px 0;border-bottom:1px dashed #eef1f4}.row .k{color:#6b7280;width:130px;flex:none}.row .v{font-weight:600}
+table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}th{background:#0A6EBD;color:#fff;padding:6px;text-align:left}td{border:1px solid #e5e7eb;padding:6px}td.r{text-align:right}
+.total{margin-top:4px;display:flex;justify-content:flex-end;font-size:13px;font-weight:700;color:#0A6EBD}
+.sig{display:flex;justify-content:space-between;margin-top:28px;gap:20px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:50px;padding-top:6px;font-size:11.5px}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:12px;background:#FEF3C7;color:#D97706}
 </style></head><body><div class="frame">
   <div class="hd"><div class="cn">${esc(CO.name)}</div><div style="font-size:11px;color:#555;margin-top:2px">${esc(CO.addr)} · โทร.${esc(CO.tel)}</div></div>
-  <div class="title"><h1>${esc(typeLabel)}</h1></div>
+  <div class="title"><h1>${esc(typeLabel)}</h1><div style="margin-top:4px"><span class="badge">รออนุมัติ</span></div></div>
   <div class="row"><span class="k">เลขที่</span><span class="v">${esc(mr.id)}</span></div>
   <div class="row"><span class="k">วันที่</span><span class="v">${fmtD(mr.date)}</span></div>
   <div class="row"><span class="k">ผู้ขอ</span><span class="v">${esc(mr.reqby||'-')}</span></div>
   ${j?`<div class="row"><span class="k">สำหรับงาน</span><span class="v">${esc(j.title||j.id)}</span></div>`:''}
-  ${mr.note?`<div class="row"><span class="k">หมายเหตุ</span><span class="v">${esc(mr.note)}</span></div>`:''}
-  <table><thead><tr><th style="width:30px">#</th><th>รายการ</th><th style="width:70px;text-align:right">จำนวน</th><th style="width:60px">หน่วย</th><th style="width:100px">หมายเหตุ</th></tr></thead>
-  <tbody>${mr.items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${esc(it.desc)}</td><td style="text-align:right">${it.qty}</td><td>${esc(it.unit||'')}</td><td></td></tr>`).join('')}</tbody></table>
+  ${mr.note?`<div class="row"><span class="k">หมายเหตุ/เร่งด่วน</span><span class="v" style="color:#E53E3E">${esc(mr.note)}</span></div>`:''}
+  <table><thead><tr><th style="width:24px">#</th><th>ชื่อ / รายละเอียด</th><th style="width:120px">รุ่น/ยี่ห้อ/Spec</th><th style="width:55px;text-align:right">จำนวน</th><th style="width:45px">หน่วย</th>${hasPrice?'<th style="width:80px;text-align:right">ราคา/หน่วย</th><th style="width:80px;text-align:right">รวม</th>':''}<th style="width:80px">หมายเหตุ</th></tr></thead>
+  <tbody>${mr.items.map((it,i)=>{ const lineTotal=(+it.price||0)*(+it.qty||1); return `<tr><td style="text-align:center">${i+1}</td><td style="font-weight:600">${esc(it.desc)}</td><td style="color:#555">${esc(it.spec||'')}</td><td class="r">${it.qty}</td><td>${esc(it.unit||'')}</td>${hasPrice?`<td class="r">${it.price?fmt(it.price):''}</td><td class="r">${it.price?fmt(lineTotal):''}</td>`:''}<td style="font-size:11px;color:#555">${esc(it.note||'')}</td></tr>`; }).join('')}</tbody></table>
+  ${(hasPrice&&mr.totalEst>0)?`<div class="total">รวมค่าใช้จ่ายโดยประมาณ: ฿${fmt(mr.totalEst)}</div>`:''}
   <div class="sig">
     <div class="col"><div class="ln">ผู้ขอ<br>(${esc(mr.reqby||'____________________')})</div></div>
-    <div class="col"><div class="ln">ผู้อนุมัติ<br>(${esc(CO.seller||'____________________')})</div></div>
+    <div class="col"><div class="ln">ผู้อนุมัติ<br>(____________________)</div></div>
     ${mr.type==='withdraw'?`<div class="col"><div class="ln">ผู้จ่ายวัสดุ<br>(____________________)</div></div>`:''}
   </div>
 </div></body></html>`;
@@ -5940,7 +5997,8 @@ function openJobDrawer(id){
     +photoGrid(j.beforePhotos,'📸 รูปก่อนทำงาน')
     +photoGrid(j.afterPhotos,'✨ รูปหลังทำงาน')
     +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
-    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไข</button><button class="btn" style="flex:1;justify-content:center;background:#ECFDF5;color:#059669" onclick="openSignPad('${id}')">✍️ ${j.customerSig?'แก้ลายเซ็น':'ลายเซ็นรับงาน'}</button><button class="btn bo" style="flex:1;justify-content:center" onclick="jobNotifyLine('${id}')">📲 LINE</button></div>`;
+    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไข</button><button class="btn" style="flex:1;justify-content:center;background:#ECFDF5;color:#059669" onclick="openSignPad('${id}')">✍️ ${j.customerSig?'แก้ลายเซ็น':'ลายเซ็นรับงาน'}</button><button class="btn bo" style="flex:1;justify-content:center" onclick="jobNotifyLine('${id}')">📲 LINE</button></div>`
+    +`<div style="margin-top:8px"><button class="btn bo" style="width:100%;justify-content:center;font-size:12.5px" onclick="openMRFormForJob('${id}','${escHtml(j.assigneeId||'')}','${escHtml(j.assignee||'')}')">📦 สร้างใบขอซื้อ / เบิกวัสดุสำหรับงานนี้</button></div>`;
   openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra,'job');
 }
 // ── ใบรับประกันงาน (Warranty Certificate) ──
@@ -8931,6 +8989,7 @@ function openEmpDrawer(id){
     ${row('PIN เข้าระบบ',e.pin)}
   </div>
   <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:10px" onclick="empMonthView('${e.id}')">📅 ดูประวัติเข้า-ออกรายเดือน</button>
+  <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:10px;color:var(--p)" onclick="closeDrawer();setTimeout(()=>openMRFormForJob('','${e.id}','${escHtml(e.name)}'),120)">📦 สร้างใบขอซื้อ / เบิกวัสดุ</button>
   <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();empDocsMenu('${e.id}')">📄 เอกสาร</button><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEvalForm('${e.id}')">⭐ ประเมิน${(()=>{const av=empAvgEval(e);return av?` (${av.toFixed(1)})`:'';})()}</button></div>
   <div style="display:flex;gap:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEmpForm('${e.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="closeDrawer();nav('payroll')">💵 เงินเดือน</button></div>`;
   openDrawer(e.id,null,[['พนักงาน',e.name],['รหัส',e.id]],info);
@@ -9928,6 +9987,7 @@ function renderEmpPortal(){
             ${(j.status==='รอทำ'||j.status==='สำรวจ')?`<button class="btn bp" style="font-size:11px;padding:6px 10px" onclick="epJobStart('${j.id}')">🔧 เริ่มงาน (ถ่ายรูป)</button>`:''}
             ${j.status==='กำลังทำ'?`<button class="btn bp" style="font-size:11px;padding:6px 10px;background:var(--ac)" onclick="epJobFinish('${j.id}')">✅ เสร็จงาน (ถ่ายรูป)</button>`:''}
             ${j.status==='กำลังทำ'?`<button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="jobAddPhotos('${j.id}','before')">📷 +รูปก่อน</button>`:''}
+            ${j.status!=='ส่งมอบแล้ว'?`<button class="btn bo" style="font-size:11px;padding:6px 10px;color:#0A6EBD" onclick="empOpenMRForm('${j.id}','${escHtml(j.title||j.id)}','${escHtml(e.name||'')}')">📦 ขอเบิก/ซื้อ</button>`:''}
             ${j.gps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank">🗺️ แผนที่</a>`:''}
             <button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="epJobDetail('${j.id}')">📄 รายละเอียด</button>
           </div></div>`;
@@ -9939,6 +9999,18 @@ function renderEmpPortal(){
         <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="openLeaveForm('${e.id}',true)">+ ขอลา</button>
       </div>
       ${myLeaveRows||'<div style="text-align:center;color:var(--mu);font-size:12px;padding:10px">ยังไม่มีรายการลา</div>'}
+    </div>
+    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-weight:700;font-size:14px">📦 ใบขอซื้อ / เบิกวัสดุของฉัน</div>
+        <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="empOpenMRForm('','','${escHtml(e.name||'')}')">+ สร้าง</button>
+      </div>
+      ${(()=>{
+        const myMR=(DB.mreqs||[]).filter(m=>m.reqby&&e.name&&m.reqby===e.name).slice(0,10);
+        if(!myMR.length) return '<div style="text-align:center;color:var(--mu);font-size:12px;padding:10px">ยังไม่มีใบขอซื้อ/เบิก</div>';
+        const ST={pending:{bg:'#FEF3C7',c:'#D97706',lb:'รออนุมัติ'},approved:{bg:'#E8F8F0',c:'#0F9D58',lb:'อนุมัติแล้ว'},rejected:{bg:'#FEECEC',c:'#E53E3E',lb:'ปฏิเสธ'}};
+        return myMR.map(m=>{const st=ST[m.status]||ST.pending; return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12.5px"><div><div style="font-weight:600">${escHtml(m.id)} · ${m.type==='withdraw'?'เบิกจากคลัง':'ขอซื้อ'}</div><div style="color:var(--mu);font-size:11px">${fmtD(m.date)} · ${(m.items||[]).length} รายการ${m.note?' · '+escHtml(m.note):''}</div>${m.items&&m.items.length?`<div style="font-size:11px;color:var(--tx);margin-top:2px">${(m.items||[]).map(it=>escHtml(it.desc)+(it.qty?' x'+it.qty+' '+(it.unit||''):'')).join(' · ')}</div>`:''}</div><div style="text-align:right;flex:none"><span style="font-size:10.5px;font-weight:700;color:${st.c};background:${st.bg};padding:3px 9px;border-radius:20px;display:block;margin-bottom:4px">${st.lb}</span><button class="btn bo" style="font-size:10.5px;padding:3px 9px" onclick="printMR('${m.id}')">🖨️</button></div></div>`; }).join('');
+      })()}
     </div>
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
       <div style="font-weight:700;font-size:14px;margin-bottom:10px">📅 ประวัติเข้า-ออกงาน (14 วันล่าสุด)</div>
