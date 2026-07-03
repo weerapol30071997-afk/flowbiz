@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17l · 📦 ช่างขอเบิก/ซื้อจากงาน + ส่งแอดมินอนุมัติ</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17m · 📦 พนักงานส่งคำขอได้อย่างเดียว</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2534,7 +2534,7 @@ function empOpenMRForm(jobId, jobTitle, empName){
     <div id="mr-items-box"></div>
     <button class="btn bo" style="font-size:12px;margin-bottom:10px;width:100%;justify-content:center" onclick="_mrItems.push({desc:'',qty:1,unit:'',note:''});mrRenderItemsDetail()">+ เพิ่มรายการ</button>
     <div class="fg full"><label class="flb">หมายเหตุ / เหตุผลที่ขอ</label><input class="fi" id="mr-note" placeholder="เช่น ด่วน สายไฟขาด / ต้องใช้ภายในวันนี้"></div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveMR()">📤 ส่งขออนุมัติ</button>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="empSaveMR()">📤 ส่งคำขอ</button>`;
   document.getElementById('ml').classList.add('op');
   mrRenderItemsDetail();
 }
@@ -2607,6 +2607,22 @@ function mrRenderItems(){
 }
 function mrAddItem(){ _mrItems.push({desc:'',spec:'',qty:1,unit:'',price:0,note:'',fromStock:false}); mrRenderItems(); }
 function mrPickProd(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; _mrItems[i].price=+p.price||0; _mrItems[i].spec=''; mrRenderItems(); }
+function empSaveMR(){
+  const date=document.getElementById('mr-date').value||iso(new Date());
+  const reqby=document.getElementById('mr-reqby').value.trim();
+  const type=document.getElementById('mr-type').value;
+  const jobId=document.getElementById('mr-job').value;
+  const note=document.getElementById('mr-note').value.trim();
+  const items=_mrItems.filter(it=>it.desc&&String(it.desc).trim());
+  if(!items.length){ toast('⚠️ เพิ่มรายการอย่างน้อย 1 รายการ'); return; }
+  if(!DB.mreqs) DB.mreqs=[];
+  const id='MR-'+Date.now().toString(36).toUpperCase();
+  DB.mreqs.unshift({id,date,reqby,type,jobId,note,items,status:'pending'});
+  if(typeof saveData==='function') saveData();
+  if(typeof auditLog==='function') auditLog('save','mreq',id,items.length+' รายการ');
+  closeModal();
+  toast('✅ ส่งคำขอเรียบร้อยแล้ว');
+}
 function openMRManager(filter){
   const all=(DB.mreqs||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   const filt=filter||'pending';
@@ -9999,18 +10015,6 @@ function renderEmpPortal(){
         <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="openLeaveForm('${e.id}',true)">+ ขอลา</button>
       </div>
       ${myLeaveRows||'<div style="text-align:center;color:var(--mu);font-size:12px;padding:10px">ยังไม่มีรายการลา</div>'}
-    </div>
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-weight:700;font-size:14px">📦 ใบขอซื้อ / เบิกวัสดุของฉัน</div>
-        <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="empOpenMRForm('','','${escHtml(e.name||'')}')">+ สร้าง</button>
-      </div>
-      ${(()=>{
-        const myMR=(DB.mreqs||[]).filter(m=>m.reqby&&e.name&&m.reqby===e.name).slice(0,10);
-        if(!myMR.length) return '<div style="text-align:center;color:var(--mu);font-size:12px;padding:10px">ยังไม่มีใบขอซื้อ/เบิก</div>';
-        const ST={pending:{bg:'#FEF3C7',c:'#D97706',lb:'รออนุมัติ'},approved:{bg:'#E8F8F0',c:'#0F9D58',lb:'อนุมัติแล้ว'},rejected:{bg:'#FEECEC',c:'#E53E3E',lb:'ปฏิเสธ'}};
-        return myMR.map(m=>{const st=ST[m.status]||ST.pending; return `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12.5px"><div><div style="font-weight:600">${escHtml(m.id)} · ${m.type==='withdraw'?'เบิกจากคลัง':'ขอซื้อ'}</div><div style="color:var(--mu);font-size:11px">${fmtD(m.date)} · ${(m.items||[]).length} รายการ${m.note?' · '+escHtml(m.note):''}</div>${m.items&&m.items.length?`<div style="font-size:11px;color:var(--tx);margin-top:2px">${(m.items||[]).map(it=>escHtml(it.desc)+(it.qty?' x'+it.qty+' '+(it.unit||''):'')).join(' · ')}</div>`:''}</div><div style="text-align:right;flex:none"><span style="font-size:10.5px;font-weight:700;color:${st.c};background:${st.bg};padding:3px 9px;border-radius:20px;display:block;margin-bottom:4px">${st.lb}</span><button class="btn bo" style="font-size:10.5px;padding:3px 9px" onclick="printMR('${m.id}')">🖨️</button></div></div>`; }).join('');
-      })()}
     </div>
     <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
       <div style="font-weight:700;font-size:14px;margin-bottom:10px">📅 ประวัติเข้า-ออกงาน (14 วันล่าสุด)</div>
