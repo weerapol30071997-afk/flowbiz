@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17m · 📦 พนักงานส่งคำขอได้อย่างเดียว</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17m · ☁️ แก้ 403 Firebase Rules</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -6534,13 +6534,22 @@ async function cloudDailyBackup(force){
   }catch(e){ return false; }
 }
 async function cloudListBackups(){
-  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return [];
-  try{ const res=await fetchTimeout(bkCollURL(),{},15000); if(!res.ok) return []; const j=await res.json(); const out=[];
+  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return {list:[],err:null};
+  try{
+    const res=await fetchTimeout(bkCollURL(),{},15000);
+    if(!res.ok){
+      const txt=await res.text().catch(()=>'');
+      if(res.status===403) return {list:[],err:'403',txt};
+      if(res.status===401) return {list:[],err:'401',txt};
+      return {list:[],err:String(res.status),txt};
+    }
+    const j=await res.json(); const out=[];
     (j.documents||[]).forEach(d=>{ const nm=d.name.split('/').pop(); if(nm.indexOf('bk_')===0){ const f=d.fields||{}; out.push({name:nm,dateKey:nm.slice(3),date:(f.date&&f.date.stringValue)||'',count:(f.count&&f.count.integerValue)||'?'}); } });
-    out.sort((a,b)=>b.dateKey.localeCompare(a.dateKey)); return out; }catch(e){ return []; }
+    out.sort((a,b)=>b.dateKey.localeCompare(a.dateKey)); return {list:out,err:null};
+  }catch(e){ return {list:[],err:'network',txt:String(e)}; }
 }
 async function cloudPruneBackups(keep){
-  try{ const list=await cloudListBackups(); for(const b of list.slice(keep)){ try{ await fetch(bkURL(b.name),{method:'DELETE'}); }catch(e){} } }catch(e){}
+  try{ const r=await cloudListBackups(); const list=Array.isArray(r)?r:(r.list||[]); for(const b of list.slice(keep)){ try{ await fetch(bkURL(b.name),{method:'DELETE'}); }catch(e){} } }catch(e){}
 }
 async function openBackupHistory(){
   document.getElementById('ml-t').textContent='🗄️ สำรองข้อมูล (คลาวด์)';
@@ -6549,7 +6558,36 @@ async function openBackupHistory(){
   document.getElementById('ml-act').innerHTML='<button class="btn bo" onclick="closeModal()">ปิด</button>';
   document.getElementById('ml').classList.add('op');
   if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey){ document.getElementById('ml-bd').innerHTML='<div style="text-align:center;padding:24px;color:var(--mu)">⚠️ ยังไม่ได้เปิดใช้งานคลาวด์<br><span style="font-size:12px">ไปที่ ตั้งค่า → ☁️ คลาวด์ ก่อน แล้วระบบจะสำรองให้อัตโนมัติทุกวัน</span></div>'; return; }
-  const list=await cloudListBackups();
+  const {list,err}=await cloudListBackups();
+  if(err==='403'||err==='401'){
+    const rules=`rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /flowbiz/{document=**} {
+      allow read, write: if true;
+    }
+  }
+}`;
+    document.getElementById('ml-bd').innerHTML=`
+      <div style="background:#FEECEC;border-radius:12px;padding:14px;margin-bottom:14px">
+        <div style="font-weight:700;color:#E53E3E;margin-bottom:6px">❌ ข้อผิดพลาด ${err} — Firebase ปฏิเสธสิทธิ์</div>
+        <div style="font-size:12.5px;line-height:1.6">Firestore Security Rules ยังบล็อกการอ่าน/เขียนอยู่ แก้ไขด้วยตัวเองได้ดังนี้:</div>
+      </div>
+      <div style="font-size:12.5px;font-weight:700;margin-bottom:6px">📋 ขั้นตอนแก้ไข (ทำครั้งเดียว)</div>
+      <div style="font-size:12px;color:var(--tx);line-height:1.8;margin-bottom:12px">
+        1. เปิด <b>console.firebase.google.com</b><br>
+        2. เลือก Project: <b style="color:var(--p)">${cloudCfg.projectId}</b><br>
+        3. เมนูซ้าย → <b>Firestore Database</b> → แท็บ <b>Rules</b><br>
+        4. แทนที่ rules ทั้งหมดด้วยโค้ดด้านล่าง แล้วกด <b>Publish</b>
+      </div>
+      <div style="background:#1e293b;border-radius:10px;padding:12px;margin-bottom:10px;position:relative">
+        <pre style="color:#a5f3fc;font-size:11.5px;line-height:1.7;margin:0;white-space:pre-wrap">${rules}</pre>
+        <button class="btn bo" style="position:absolute;top:8px;right:8px;font-size:11px;padding:4px 10px" onclick="navigator.clipboard&&navigator.clipboard.writeText(\`${rules.replace(/`/g,'\\`')}\`).then(()=>toast('📋 คัดลอกแล้ว!'))">📋 คัดลอก</button>
+      </div>
+      <a href="https://console.firebase.google.com/project/${cloudCfg.projectId}/firestore/rules" target="_blank" class="btn bp" style="width:100%;justify-content:center;text-decoration:none;margin-bottom:10px">🔗 เปิด Firebase Rules ตรงนี้เลย</a>
+      <button class="btn bo" style="width:100%;justify-content:center" onclick="openBackupHistory()">🔄 ลองใหม่หลังแก้ Rules</button>`;
+    return;
+  }
   document.getElementById('ml-bd').innerHTML=`
     <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="manualBackup()">⬆️ สำรองข้อมูลตอนนี้</button>
     ${list.length?list.map(b=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:8px">
