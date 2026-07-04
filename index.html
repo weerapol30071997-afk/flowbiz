@@ -7443,14 +7443,7 @@ function loadData(){
 // ══════════════════════════════════
 // ระบบจัดเก็บข้อมูลบนคลาวด์ (Firebase Firestore REST — ไม่ต้องมีเซิร์ฟเวอร์)
 // ══════════════════════════════════
-let cloudCfg={
-  enabled: true, // เปลี่ยนจาก false เป็น true เพื่อเปิดระบบคลาวด์
-  projectId: 'flowbiz-2fdf5', // ใส่ Project ID จากหน้าจอของคุณ
-  apiKey: 'AIzaSyC2_F_V2496mZ14lY7qK6H8qB7rL3mN4oP', // ใส่ Web API Key จากหน้าจอของคุณ
-  docId: 'flowbiz',
-  autoRefresh: true,
-  msgSenderId: '367354964593', // ใส่ Messaging Sender ID จากหน้าจอของคุณ
-  appId: '1:367354964593:web:531ad6bda7d27e2f5ff580', // ใส่ App ID จากหน้าจอของคุณ,docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:'',storageBucket:'',autoStorage:false};
+let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:'',storageBucket:'',autoStorage:false};
 try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assign(cloudCfg,JSON.parse(cc)); }catch(e){}
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
@@ -11581,99 +11574,4 @@ try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch
 })();
 </script>
 </body>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
-
-<script>
-  // ค่า Config จริงจากหน้าจอโปรเจกต์ของคุณ
-  const firebaseConfig = {
-    apiKey: "AIzaSyCqgpfxxql_f9bm2mnGauisLvzc5fu8tfg", 
-    authDomain: "flowbiz-d91e9.firebaseapp.com",
-    projectId: "flowbiz-d91e9",
-    storageBucket: "flowbiz-d91e9.firebasestorage.app",
-    messagingSenderId: "768079006583",
-    appId: "1:768079006583:web:eda4e5e00598df1d71af72"
-  };
-
-  // สั่งเริ่มต้นระบบคลาวด์ Firebase หลังเปิดแอป
-  try {
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    var db = firebase.firestore();
-    var storage = firebase.storage();
-    console.log("✅ คลาวด์ Firebase เชื่อมต่อสำเร็จ!");
-  } catch(e) {
-    console.error("การตั้งค่า Firebase ผิดพลาด:", e);
-  }
-
-  // เขียนฟังก์ชันคลาวด์ทับฟังก์ชันเปล่าตัวเก่าของระบบ
-  // ── ปรับปรุงฟังก์ชันตัวนี้เพื่อแก้ปัญหาค้างบนมือถือ ──
- renderAll();
-  initCharts();
-  setupSyncInterval();
-  cloudInitDone = true;
-  
-  setTimeout(()=>{
-    const splash = document.getElementById('splash-screen');
-    if(splash){
-      splash.style.opacity='0';
-      setTimeout(()=>splash.remove(),500);
-    }
-  },1000); // บรรทัดที่ 510 เดิมจะขยับขึ้นมา
-  
-  setTimeout(()=>{
-    const splash = document.getElementById('splash-screen');
-  
-     
-      toast('🔄 กำลังเชื่อมข้อมูลบัญชีจากคลาวด์...');
-      
-      // ดึงข้อมูลแบบมีกำหนดเวลา (Timeout) ถ้าคลาวด์บนมือถือตอบช้า จะไม่ทำให้หน้าจอค้าง
-      const snapshot = await Promise.race([
-        db.collection("journals").orderBy("date", "desc").get(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
-      ]);
-      
-      let cloudJournals = [];
-      snapshot.forEach((doc) => {
-        cloudJournals.push(doc.data());
-      });
-
-      if (cloudJournals.length > 0) {
-        JOURNALS = cloudJournals;
-        localStorage.setItem('flowbiz_journals', JSON.stringify(JOURNALS));
-        toast('✅ ซิงค์ข้อมูลจากคลาวด์เสร็จสิ้น');
-      } else {
-        toast('💡 พร้อมใช้งานคลาวด์ เริ่มต้นบัญชีใหม่');
-      }
-    } catch (error) {
-      console.error("Firebase Sync Error:", error);
-      toast('⚠️ โหมดจำลองในเครื่อง (คลาวด์มือถือตอบสนองช้า)');
-    } finally {
-      // ตัวปลดล็อกหน้าจอค้าง: ไม่ว่าจะเชื่อมต่อสำเร็จหรือล้มเหลว ต้องสั่งคำสั่งนี้เสมอเพื่อให้หน้าจอมือถือกดได้
-      cloudInitDone = true; 
-    }
-  }
-  // ฟังก์ชันอัปโหลดรูปใบเสร็จไปเก็บไว้บนคลาวด์ Storage
-  async function uploadReceiptToCloud(fileInputElement) {
-    if (!fileInputElement || !fileInputElement.files || fileInputElement.files.length === 0) return null;
-    const file = fileInputElement.files[0];
-    try {
-      toast('📤 กำลังส่งรูปใบเสร็จขึ้นระบบคลาวด์...');
-      const fileName = 'receipts/' + Date.now() + '_' + file.name;
-      const storageRef = storage.ref().child(fileName);
-      
-      const uploadTask = await storageRef.put(file);
-      const downloadURL = await uploadTask.ref().getDownloadURL();
-      toast('✅ อัปโหลดรูปภาพใบเสร็จสำเร็จ');
-      return downloadURL; // ส่งลิงก์ภาพกลับไปบันทึก
-    } catch (error) {
-      console.error("Upload failed:", error);
-      toast('❌ อัปโหลดรูปล้มเหลว (เช็กสิทธิ์ Storage Rules)');
-      return null;
-    }
-  }
-</script>
 </html>
-
