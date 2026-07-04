@@ -11609,6 +11609,7 @@ try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch
   }
 
   // เขียนฟังก์ชันคลาวด์ทับฟังก์ชันเปล่าตัวเก่าของระบบ
+  // ── ปรับปรุงฟังก์ชันตัวนี้เพื่อแก้ปัญหาค้างบนมือถือ ──
   async function cloudStartupSync() {
     try {
       if (typeof db === 'undefined') {
@@ -11617,9 +11618,13 @@ try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch
       }
       toast('🔄 กำลังเชื่อมข้อมูลบัญชีจากคลาวด์...');
       
-      const snapshot = await db.collection("journals").orderBy("date", "desc").get();
-      let cloudJournals = [];
+      // ดึงข้อมูลแบบมีกำหนดเวลา (Timeout) ถ้าคลาวด์บนมือถือตอบช้า จะไม่ทำให้หน้าจอค้าง
+      const snapshot = await Promise.race([
+        db.collection("journals").orderBy("date", "desc").get(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 5000))
+      ]);
       
+      let cloudJournals = [];
       snapshot.forEach((doc) => {
         cloudJournals.push(doc.data());
       });
@@ -11631,14 +11636,14 @@ try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch
       } else {
         toast('💡 พร้อมใช้งานคลาวด์ เริ่มต้นบัญชีใหม่');
       }
-      cloudInitDone = true;
     } catch (error) {
       console.error("Firebase Sync Error:", error);
-      toast('⚠️ ระบบทำงานแบบเซฟลงเครื่องก่อนชั่วคราว');
-      cloudInitDone = true;
+      toast('⚠️ โหมดจำลองในเครื่อง (คลาวด์มือถือตอบสนองช้า)');
+    } finally {
+      // ตัวปลดล็อกหน้าจอค้าง: ไม่ว่าจะเชื่อมต่อสำเร็จหรือล้มเหลว ต้องสั่งคำสั่งนี้เสมอเพื่อให้หน้าจอมือถือกดได้
+      cloudInitDone = true; 
     }
   }
-
   // ฟังก์ชันอัปโหลดรูปใบเสร็จไปเก็บไว้บนคลาวด์ Storage
   async function uploadReceiptToCloud(fileInputElement) {
     if (!fileInputElement || !fileInputElement.files || fileInputElement.files.length === 0) return null;
