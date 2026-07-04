@@ -11610,12 +11610,23 @@ try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch
 
   // เขียนฟังก์ชันคลาวด์ทับฟังก์ชันเปล่าตัวเก่าของระบบ
   // ── ปรับปรุงฟังก์ชันตัวนี้เพื่อแก้ปัญหาค้างบนมือถือ ──
-  async function cloudStartupSync() {
-    try {
-      if (typeof db === 'undefined') {
-        cloudInitDone = true;
-        return;
-      }
+ renderAll();
+  initCharts();
+  setupSyncInterval();
+  cloudInitDone = true;
+  
+  setTimeout(()=>{
+    const splash = document.getElementById('splash-screen');
+    if(splash){
+      splash.style.opacity='0';
+      setTimeout(()=>splash.remove(),500);
+    }
+  },1000); // บรรทัดที่ 510 เดิมจะขยับขึ้นมา
+  
+  setTimeout(()=>{
+    const splash = document.getElementById('splash-screen');
+  
+     
       toast('🔄 กำลังเชื่อมข้อมูลบัญชีจากคลาวด์...');
       
       // ดึงข้อมูลแบบมีกำหนดเวลา (Timeout) ถ้าคลาวด์บนมือถือตอบช้า จะไม่ทำให้หน้าจอค้าง
