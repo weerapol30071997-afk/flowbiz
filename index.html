@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17o · 🐙 GitHub Gist Backup รูป+ข้อมูลทั้งหมด</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17g · 📜 สัญญาจ้างเหมางาน</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -794,7 +794,6 @@ tbody tr:hover td{background:#FAFBFD}
       <button class="btn bo" style="margin-left:auto" onclick="openWorkContracts()">📜 สัญญาจ้าง</button>
       <button class="btn bo" onclick="openMAContracts()">🔄 สัญญา MA</button>
       <button class="btn bo" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
-      <button class="btn bo" onclick="openMRManager()">📦 ขอซื้อ/เบิก</button>
       <button class="btn bo" onclick="openJobCalendar()">📅 ปฏิทิน</button>
       <button class="btn bp" onclick="openJobForm()">+ สร้างงานใหม่</button>
     </div>
@@ -970,7 +969,6 @@ tbody tr:hover td{background:#FAFBFD}
   <div id="pg-products" class="pg">
     <div class="fb">
       <input class="fi" placeholder="🔍 ค้นหาสินค้า / รหัส / บาร์โค้ด..." id="pr-search" oninput="renderProducts()">
-      <button class="btn bo" onclick="openMRManager()">📦 ขอซื้อ/เบิก</button>
       <button class="btn bo" onclick="openCoupons()">🎁 คูปอง</button>
       <button class="btn bo" onclick="openWarehouses()">🏭 คลัง</button>
       <button class="btn bp" onclick="openProductForm(null)">+ เพิ่มสินค้า</button>
@@ -1325,9 +1323,6 @@ const DB = {
   warehouses:[],
   coupons:[],
   workcontracts:[],
-  auditlog:[],
-  mreqs:[],
-  checklists:[],
   pettycash:[],
   pcClosings:[],
   stockMoves:[],
@@ -1846,7 +1841,6 @@ function collectNotifications(){
   (DB.contracts||[]).forEach(c=>{ const info=(typeof maInfo==='function')?maInfo(c):null; if(info&&info.status==='active'&&info.due&&info.nextStr) list.push({ic:'🔄',t:info.overdue?'เลยกำหนดเข้าบริการ MA':'ถึงกำหนดเข้าบริการ MA',s:(c.title||c.id)+' · '+(getCust(c.cust).name||'')+' · '+fmtD(info.nextStr),act:'closeModal();openMAContracts()',pri:info.overdue?1:2}); });
   (DB.recurring||[]).forEach(p=>{ const info=(typeof rcInfo==='function')?rcInfo(p):null; if(info&&info.due) list.push({ic:'🔁',t:'บิลซ้ำถึงกำหนดสร้าง',s:(p.name||'')+' · '+(getCust(p.cust).name||'')+' · ฿'+fmt(p.amt||0),act:'closeModal();openRecurring()',pri:2}); });
   (DB.leads||[]).forEach(l=>{ if(l.stage!=='ปิดได้'&&l.stage!=='ปิดไม่ได้'&&l.nextDate){ if(l.nextDate<today) list.push({ic:'🎯',t:'ติดตามดีลเลยกำหนด',s:(l.name||l.cust||'')+(l.nextAction?' · '+l.nextAction:''),act:'closeModal();openCRM()',pri:1}); else if(l.nextDate<=in7) list.push({ic:'🎯',t:'ถึงกำหนดติดตามดีล',s:(l.name||l.cust||'')+(l.nextAction?' · '+l.nextAction:'')+' · '+fmtD(l.nextDate),act:'closeModal();openCRM()',pri:2}); } });
-  const pendMR=(DB.mreqs||[]).filter(m=>m.status==='pending').length; if(pendMR) list.push({ic:'📦',t:'ใบขอซื้อ/เบิกรออนุมัติ '+pendMR+' ใบ',s:'แตะเพื่อดูและอนุมัติ',act:'closeModal();openMRManager()',pri:1});
   list.sort((a,b)=>a.pri-b.pri); return list;
 }
 function updateNotifDot(){ try{ const n=collectNotifications().length; const dot=document.getElementById('nt-dot'); if(dot) dot.style.display=n>0?'block':'none'; }catch(e){} }
@@ -2335,400 +2329,6 @@ function leadToQuote(id){
   toast('📝 สร้างใบเสนอราคาให้ '+(l.cust||l.name||'')+' ได้เลย');
   if(typeof nav==='function') nav('quotes');
   setTimeout(()=>{ if(typeof newQuote==='function') newQuote(); },180);
-}
-// ── Audit Log ──
-function auditLog(action,type,id,detail){
-  if(!DB.auditlog) DB.auditlog=[];
-  const who=(typeof companyInfo!=='undefined'&&companyInfo&&companyInfo.seller)||'ผู้ใช้งาน';
-  DB.auditlog.unshift({ts:new Date().toISOString(),action,type,id:String(id||''),detail:String(detail||''),who});
-  if(DB.auditlog.length>500) DB.auditlog.length=500;
-}
-function openAuditLog(){
-  const arr=(DB.auditlog||[]).slice(0,200);
-  const ACTION_LABEL={save:'💾 บันทึก',delete:'🗑️ ลบ',print:'🖨️ พิมพ์',pay:'💳 รับชำระ',status:'🔄 เปลี่ยนสถานะ'};
-  const rows=arr.length?arr.map(a=>`<div style="padding:8px 0;border-bottom:1px dashed var(--bd);font-size:12px"><div style="display:flex;justify-content:space-between"><span style="font-weight:600">${ACTION_LABEL[a.action]||a.action} <span style="color:var(--p)">${escHtml(a.type||'')}</span>${a.id?' #'+escHtml(a.id):''}</span><span style="color:var(--mu);font-size:10.5px">${fmtD(String(a.ts||'').slice(0,10))} ${String(a.ts||'').slice(11,16)}</span></div><div style="color:var(--mu);margin-top:2px">${escHtml(a.detail||'')}${a.who?' · '+escHtml(a.who):''}</div></div>`).join(''):'<div style="text-align:center;color:var(--mu);padding:22px">ยังไม่มีประวัติการดำเนินการ</div>';
-  document.getElementById('ml-t').textContent='📋 Audit Log — ประวัติการดำเนินการ';
-  document.getElementById('ml-s').textContent=arr.length+' รายการล่าสุด';
-  document.getElementById('ml-bd').innerHTML=`<div style="font-size:11px;color:var(--mu);margin-bottom:10px">บันทึกอัตโนมัติทุกครั้งที่มีการบันทึก/ลบ/พิมพ์เอกสาร (เก็บ 500 รายการล่าสุด)</div>${rows}`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="if(confirm('ล้างประวัติทั้งหมด?')){DB.auditlog=[];saveData();openAuditLog();}">ล้าง</button><button class="btn bo" onclick="closeModal()">ปิด</button>`;
-  document.getElementById('ml').classList.add('op');
-}
-// ── ใบตรวจรับงาน / Check List ──
-const DEFAULT_CHECKLIST=[
-  'ระบบไฟฟ้าทำงานได้ตามปกติทุกจุด','ตู้ควบคุมและ breaker ติดตั้งถูกต้องและมั่นคง','การต่อสายดินครบถ้วนและถูกต้อง','สายไฟเดินเรียบร้อย ไม่มีรอยขีดข่วน','ป้ายเตือนและฉลากติดตั้งครบ','พื้นที่ทำงานสะอาดเรียบร้อย ไม่มีเศษวัสดุหลงเหลือ','ตรวจสอบโดยช่างไฟฟ้าที่มีใบอนุญาต','ลูกค้าได้รับการสาธิตการใช้งานแล้ว'
-];
-function openChecklistForm(jobId){
-  const j=(DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId); if(!j){ toast('ไม่พบงาน'); return; }
-  const existing=(DB.checklists||[]).find(c=>c.refId===jobId)||{items:DEFAULT_CHECKLIST.map(t=>({text:t,ok:false}))};
-  document.getElementById('ml-t').textContent='✅ ใบตรวจรับงาน';
-  document.getElementById('ml-s').textContent=(j.title||j.id||'');
-  document.getElementById('ml-bd').innerHTML=`
-    <input type="hidden" id="cl-ref" value="${jobId}">
-    <div class="fl2" style="margin-bottom:10px">
-      <div class="fg"><label class="flb">วันที่ตรวจรับ</label><input class="fi" type="date" id="cl-date" value="${existing.date||iso(new Date())}"></div>
-      <div class="fg"><label class="flb">ผู้ตรวจ (ช่าง)</label><input class="fi" id="cl-inspector" value="${escHtml(existing.inspector||'')}" placeholder="ชื่อช่าง"></div>
-    </div>
-    <div style="font-size:12px;font-weight:700;margin-bottom:8px">รายการตรวจสอบ (ติ๊กที่ผ่านการตรวจ)</div>
-    <div id="cl-items">${existing.items.map((it,i)=>`<label style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px dashed var(--bd);cursor:pointer;font-size:12.5px"><input type="checkbox" id="cl-item-${i}" ${it.ok?'checked':''} style="width:18px;height:18px;flex:none"> <span style="flex:1">${escHtml(it.text)}</span></label>`).join('')}</div>
-    <button class="btn bo" style="font-size:12px;margin-top:8px" onclick="clAddItem()">+ เพิ่มรายการ</button>
-    <div class="fg" style="margin-top:10px"><label class="flb">ผลการตรวจรับ / หมายเหตุ</label><textarea class="fi" id="cl-note" rows="2" style="resize:vertical">${escHtml(existing.note||'')}</textarea></div>
-    <div style="font-size:12px;font-weight:700;margin-top:12px;margin-bottom:6px">✍️ ลายเซ็นลูกค้ารับทราบผลการตรวจรับ</div>
-    ${existing.sig?`<div style="text-align:center"><img src="${existing.sig}" style="max-height:80px;border:1px solid var(--bd);border-radius:8px;background:#fff"></div><div style="text-align:center;font-size:11px;color:var(--mu);margin-top:4px">${escHtml(existing.sigName||'')} · ${fmtD(existing.sigDate)}</div>`:`<canvas id="clSigCanvas" style="width:100%;height:150px;border:2px dashed var(--p);border-radius:10px;background:#fff;touch-action:none;display:block"></canvas><div class="fg" style="margin-top:6px"><input class="fi" id="cl-signame" placeholder="ชื่อผู้รับมอบงาน (ลูกค้า)"></div>`}`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">← ปิด</button>${!existing.sig?`<button class="btn bo" onclick="printChecklist('${jobId}')">🖨️ พิมพ์</button>`:''}<button class="btn bp" onclick="saveChecklist('${jobId}')">💾 บันทึก${existing.sig?'':' + พิมพ์'}</button>`;
-  document.getElementById('ml').classList.add('op');
-  if(!existing.sig) setTimeout(clSigInit,60);
-}
-let _clItems=null;
-function clAddItem(){ const box=document.getElementById('cl-items'); if(!box) return; const i=box.querySelectorAll('label').length; box.innerHTML+=`<label style="display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px dashed var(--bd);cursor:pointer;font-size:12.5px"><input type="checkbox" id="cl-item-${i}" style="width:18px;height:18px;flex:none"> <input class="fi" style="flex:1;padding:4px 8px" placeholder="รายการตรวจ..."></label>`; }
-function clSigInit(){
-  const c=document.getElementById('clSigCanvas'); if(!c) return;
-  const r=c.getBoundingClientRect(); c.width=r.width*2; c.height=r.height*2;
-  _sigCtx=c.getContext('2d'); _sigCtx.scale(2,2); _sigCtx.lineWidth=2.5; _sigCtx.lineCap='round'; _sigCtx.lineJoin='round'; _sigCtx.strokeStyle='#0D1B2A'; _sigEmpty=true; _sigDrawing=false;
-  const pos=e=>{ const rt=c.getBoundingClientRect(); const t=(e.touches&&e.touches[0])||e; return {x:t.clientX-rt.left,y:t.clientY-rt.top}; };
-  const start=e=>{e.preventDefault();_sigDrawing=true;const p=pos(e);_sigCtx.beginPath();_sigCtx.moveTo(p.x,p.y);};
-  const move=e=>{if(!_sigDrawing)return;e.preventDefault();const p=pos(e);_sigCtx.lineTo(p.x,p.y);_sigCtx.stroke();_sigEmpty=false;};
-  const end=()=>{_sigDrawing=false;};
-  c.onmousedown=start;c.onmousemove=move;c.onmouseup=end;c.onmouseleave=end;c.ontouchstart=start;c.ontouchmove=move;c.ontouchend=end;
-}
-function saveChecklist(jobId){
-  const date=document.getElementById('cl-date').value||iso(new Date());
-  const inspector=document.getElementById('cl-inspector').value.trim();
-  const note=document.getElementById('cl-note').value.trim();
-  const sigEl=document.getElementById('clSigCanvas'); let sig=null;
-  if(sigEl&&!_sigEmpty){ try{sig=sigEl.toDataURL('image/png');}catch(e){} }
-  const sigName=(document.getElementById('cl-signame')||{}).value||'';
-  const box=document.getElementById('cl-items'); const items=[];
-  if(box) box.querySelectorAll('label').forEach((lbl,i)=>{ const cb=lbl.querySelector('input[type=checkbox]'); const txt=lbl.querySelector('input[type=text]'); const span=lbl.querySelector('span'); items.push({text:txt?txt.value.trim():(span?span.textContent:''),ok:cb?cb.checked:false}); });
-  if(!DB.checklists) DB.checklists=[];
-  const existing=DB.checklists.find(c=>c.refId===jobId);
-  const data={refId:jobId,date,inspector,items,note,sig:sig||existing&&existing.sig,sigName:sigName||existing&&existing.sigName,sigDate:sig?iso(new Date()):existing&&existing.sigDate};
-  if(existing) Object.assign(existing,data); else DB.checklists.push(data);
-  if(typeof saveData==='function') saveData();
-  if(typeof auditLog==='function') auditLog('save','checklist',jobId,'ตรวจรับงาน');
-  toast('✅ บันทึกใบตรวจรับงานแล้ว');
-  printChecklist(jobId);
-}
-function printChecklist(jobId){
-  const j=(DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId); if(!j){ toast('ไม่พบงาน'); return; }
-  const cl=(DB.checklists||[]).find(c=>c.refId===jobId)||{items:DEFAULT_CHECKLIST.map(t=>({text:t,ok:false})),date:iso(new Date())};
-  const cust=getCust(j.cust||''); const cn=(cust&&cust.name)||j.cust||'';
-  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
-  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
-  const passed=(cl.items||[]).filter(i=>i.ok).length; const total=(cl.items||[]).length;
-  const allPass=passed===total;
-  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
-@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
-body{color:#1f2937;font-size:13px;line-height:1.55}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
-.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:8px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
-.title{text-align:center;margin:12px 0}.title h1{font-size:20px;color:#0A6EBD;font-weight:800}
-.info{display:flex;gap:14px;margin:8px 0 14px}.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:9px 11px}.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:700}
-.row{display:flex;font-size:12px;padding:2px 0}.row .k{color:#6b7280;width:120px;flex:none}.row .v{font-weight:600}
-.cl-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed #e5e7eb;font-size:12.5px}
-.cl-box{width:18px;height:18px;border:2px solid #94a3b8;border-radius:4px;flex:none;display:flex;align-items:center;justify-content:center;font-size:14px;color:#0F9D58;font-weight:700}
-.cl-box.ok{border-color:#0F9D58;background:#f0fdf4}
-.result{text-align:center;margin:12px 0;padding:10px;border-radius:10px;font-weight:800;font-size:15px}
-.result.pass{background:#f0fdf4;color:#0F9D58}.result.fail{background:#fff1f2;color:#E53E3E}
-.sig{display:flex;justify-content:space-between;margin-top:28px;gap:24px}.sig .col{flex:1;text-align:center}
-.sig img{max-height:70px;max-width:180px}.sig .ln{border-top:1px dotted #94a3b8;margin-top:44px;padding-top:6px;font-size:12px}
-</style></head><body><div class="frame">
-  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}</div></div>
-  <div class="title"><h1>ใบตรวจรับงาน</h1></div>
-  <div class="info">
-    <div class="box"><div class="t">งาน</div><div class="row"><span class="k">ชื่องาน</span><span class="v">${esc(j.title||j.id)}</span></div><div class="row"><span class="k">เลขที่</span><span class="v">${esc(jobId)}</span></div></div>
-    <div class="box"><div class="t">ผู้ว่าจ้าง</div><div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div><div class="row"><span class="k">วันที่ตรวจ</span><span class="v">${fmtD(cl.date)}</span></div>${cl.inspector?`<div class="row"><span class="k">ผู้ตรวจ</span><span class="v">${esc(cl.inspector)}</span></div>`:''}</div>
-  </div>
-  ${(cl.items||[]).map(it=>`<div class="cl-item"><div class="cl-box ${it.ok?'ok':''}">${it.ok?'✓':''}</div><span>${esc(it.text)}</span></div>`).join('')}
-  <div class="result ${allPass?'pass':'fail'}">${allPass?'✅ ผ่านการตรวจรับงานครบทุกรายการ':'⚠️ ผ่าน '+passed+'/'+total+' รายการ — กรุณาแก้ไขรายการที่ยังไม่ผ่าน'}</div>
-  ${cl.note?`<div style="background:#f8fafc;border-radius:8px;padding:9px 12px;font-size:12px;margin-bottom:12px"><b>หมายเหตุ:</b> ${esc(cl.note)}</div>`:''}
-  <div class="sig">
-    <div class="col">${cl.sig?`<img src="${cl.sig}">`:''}${cl.sig?'':`<div style="height:60px"></div>`}<div class="ln">ผู้รับมอบงาน (ลูกค้า)<br>(${esc(cl.sigName||cn||'____________________')})</div></div>
-    <div class="col"><div style="height:60px"></div><div class="ln">ผู้ส่งมอบงาน (ผู้รับจ้าง)<br>(${esc(CO.seller||'____________________')})</div></div>
-  </div>
-</div></body></html>`;
-  closeModal();
-  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบตรวจรับงาน '+jobId,{});
-  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
-}
-// ── ใบมอบอำนาจ (Power of Attorney) ──
-function openPoaForm(){
-  document.getElementById('ml-t').textContent='📜 ใบมอบอำนาจ';
-  document.getElementById('ml-s').textContent='ยื่นต่อ กฟน./กฟภ./หน่วยงาน';
-  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
-  document.getElementById('ml-bd').innerHTML=`
-    <div class="fg" style="margin-bottom:8px"><label class="flb">วันที่</label><input class="fi" type="date" id="poa-date" value="${iso(new Date())}"></div>
-    <div class="fg"><label class="flb">หน่วยงานที่ยื่น</label><input class="fi" id="poa-to" placeholder="เช่น การไฟฟ้าส่วนภูมิภาค สาขาหาดใหญ่"></div>
-    <div style="font-size:12px;font-weight:700;margin:10px 0 6px">ผู้มอบอำนาจ</div>
-    <div class="fl2">
-      <div class="fg"><label class="flb">ชื่อ-นามสกุล</label><input class="fi" id="poa-grantor" value="${escHtml(CO.name)}" placeholder="ชื่อบริษัท/บุคคล"></div>
-      <div class="fg"><label class="flb">เลขบัตร/นิติบุคคล</label><input class="fi" id="poa-grantortax" value="${escHtml(CO.tax)}" placeholder="เลขประจำตัว"></div>
-    </div>
-    <div class="fg" style="margin-top:6px"><label class="flb">ที่อยู่ผู้มอบอำนาจ</label><input class="fi" id="poa-grantoraddr" value="${escHtml(CO.addr)}"></div>
-    <div style="font-size:12px;font-weight:700;margin:10px 0 6px">ผู้รับมอบอำนาจ</div>
-    <div class="fl2">
-      <div class="fg"><label class="flb">ชื่อ-นามสกุล</label><input class="fi" id="poa-agent" placeholder="ชื่อผู้รับมอบอำนาจ"></div>
-      <div class="fg"><label class="flb">เลขบัตรประชาชน</label><input class="fi" id="poa-agentid" placeholder="1xxxx-xxxxx-xx-x"></div>
-    </div>
-    <div class="fg" style="margin-top:6px"><label class="flb">ที่อยู่ผู้รับมอบอำนาจ</label><input class="fi" id="poa-agentaddr" placeholder="ที่อยู่"></div>
-    <div class="fg full" style="margin-top:8px"><label class="flb">วัตถุประสงค์การมอบอำนาจ</label><textarea class="fi" id="poa-purpose" rows="3" style="resize:vertical" placeholder="เช่น ยื่นขอใบอนุญาตติดตั้งระบบไฟฟ้า / ยื่นเอกสารแก้ไขมิเตอร์ไฟฟ้า"></textarea></div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="printPoa()">🖨️ พิมพ์ใบมอบอำนาจ</button>`;
-  document.getElementById('ml').classList.add('op');
-}
-function printPoa(){
-  const date=document.getElementById('poa-date').value||iso(new Date());
-  const to=document.getElementById('poa-to').value.trim();
-  const grantor=document.getElementById('poa-grantor').value.trim();
-  const grantorTax=document.getElementById('poa-grantortax').value.trim();
-  const grantorAddr=document.getElementById('poa-grantoraddr').value.trim();
-  const agent=document.getElementById('poa-agent').value.trim();
-  const agentId=document.getElementById('poa-agentid').value.trim();
-  const agentAddr=document.getElementById('poa-agentaddr').value.trim();
-  const purpose=document.getElementById('poa-purpose').value.trim();
-  if(!agent||!purpose){ toast('⚠️ ใส่ชื่อผู้รับมอบอำนาจ + วัตถุประสงค์'); return; }
-  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
-  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
-@page{size:A4 portrait;margin:18mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
-body{color:#1f2937;font-size:14px;line-height:1.8}
-h1{text-align:center;font-size:22px;font-weight:800;border-bottom:2px solid #000;padding-bottom:8px;margin-bottom:20px}
-.block{margin-bottom:14px}.label{font-weight:700;display:inline-block;min-width:160px}
-.line{border-bottom:1px dotted #94a3b8;display:inline-block;min-width:280px;vertical-align:bottom}
-.sig{display:flex;justify-content:space-between;margin-top:50px;gap:30px}.sig .col{flex:1;text-align:center}
-.sig .ln{border-top:1px solid #000;margin-top:60px;padding-top:6px}.sub{font-size:11px;color:#555}
-</style></head><body>
-<h1>หนังสือมอบอำนาจ</h1>
-${to?`<div style="text-align:right;margin-bottom:16px">เรียน: ${esc(to)}</div>`:''}
-<div class="block">วันที่ <span class="line">&nbsp;&nbsp;${esc(fmtD(date))}&nbsp;&nbsp;</span></div>
-<div class="block">ข้าพเจ้า <span class="line">&nbsp;&nbsp;${esc(grantor)}&nbsp;&nbsp;</span> เลขที่ <span class="line">&nbsp;&nbsp;${esc(grantorTax)}&nbsp;&nbsp;</span></div>
-<div class="block">ที่อยู่ <span class="line" style="min-width:360px">&nbsp;&nbsp;${esc(grantorAddr)}&nbsp;&nbsp;</span></div>
-<div style="margin:16px 0">ขอมอบอำนาจให้</div>
-<div class="block"><span class="label">ชื่อผู้รับมอบอำนาจ</span><span class="line">&nbsp;&nbsp;${esc(agent)}&nbsp;&nbsp;</span></div>
-<div class="block"><span class="label">เลขบัตรประชาชน</span><span class="line">&nbsp;&nbsp;${esc(agentId)}&nbsp;&nbsp;</span></div>
-<div class="block"><span class="label">ที่อยู่</span><span class="line" style="min-width:320px">&nbsp;&nbsp;${esc(agentAddr)}&nbsp;&nbsp;</span></div>
-<div style="margin:16px 0">เป็นผู้มีอำนาจกระทำการแทนข้าพเจ้าในการ</div>
-<div style="border:1px solid #94a3b8;border-radius:8px;padding:12px 16px;margin-bottom:16px;min-height:80px">${esc(purpose)}</div>
-<p>ทั้งนี้ การกระทำใด ๆ ที่ผู้รับมอบอำนาจได้กระทำไปตามขอบเขตที่ระบุไว้ข้างต้น ให้ถือว่าผู้มอบอำนาจรับรู้และยินยอมทุกประการ</p>
-<div class="sig">
-  <div class="col"><div class="ln">ผู้มอบอำนาจ<br><span class="sub">(${esc(grantor)})</span></div></div>
-  <div class="col"><div class="ln">ผู้รับมอบอำนาจ<br><span class="sub">(${esc(agent)})</span></div></div>
-</div>
-</body></html>`;
-  closeModal();
-  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบมอบอำนาจ',{});
-  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
-}
-// ── ใบเบิกวัสดุ / ใบขอซื้อ (Material Request / PR) ──
-let _mrItems=[];
-function empOpenMRForm(jobId, jobTitle, empName){
-  _mrItems=[{desc:'',qty:1,unit:'',note:''},{desc:'',qty:1,unit:'',note:''},{desc:'',qty:1,unit:'',note:''}];
-  const j=jobId?((DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId)):null;
-  document.getElementById('ml-t').textContent='📦 ขอเบิก / ขอซื้อวัสดุ';
-  document.getElementById('ml-s').textContent=jobTitle||(j?j.title||j.id:'ทั่วไป');
-  document.getElementById('ml-bd').innerHTML=`
-    <input type="hidden" id="mr-job" value="${escHtml(jobId||'')}">
-    ${j?`<div style="background:#EAF4FF;border-radius:10px;padding:9px 12px;margin-bottom:10px;font-size:12.5px">🛠️ <b>${escHtml(j.title||j.id)}</b>${j.due?' · กำหนด '+fmtD(j.due):''}${getCust(j.cust||'').name?' · '+escHtml(getCust(j.cust||'').name):''}</div>`:''}
-    <div class="fl2" style="margin-bottom:10px">
-      <div class="fg"><label class="flb">วันที่ขอ</label><input class="fi" type="date" id="mr-date" value="${iso(new Date())}"></div>
-      <div class="fg"><label class="flb">ผู้ขอ</label><input class="fi" id="mr-reqby" value="${escHtml(empName||'')}" placeholder="ชื่อช่าง/พนักงาน"></div>
-    </div>
-    <div class="fg" style="margin-bottom:10px"><label class="flb">ประเภท</label><select class="fi" id="mr-type"><option value="req">ใบขอซื้อ (PR) — ซื้อวัสดุใหม่</option><option value="withdraw">ใบเบิกจากคลัง — เบิกของในคลัง</option></select></div>
-    <div style="font-size:12px;font-weight:700;margin-bottom:6px">รายการวัสดุ / อุปกรณ์ที่ต้องการ</div>
-    <div id="mr-items-box"></div>
-    <button class="btn bo" style="font-size:12px;margin-bottom:10px;width:100%;justify-content:center" onclick="_mrItems.push({desc:'',qty:1,unit:'',note:''});mrRenderItemsDetail()">+ เพิ่มรายการ</button>
-    <div class="fg full"><label class="flb">หมายเหตุ / เหตุผลที่ขอ</label><input class="fi" id="mr-note" placeholder="เช่น ด่วน สายไฟขาด / ต้องใช้ภายในวันนี้"></div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="empSaveMR()">📤 ส่งคำขอ</button>`;
-  document.getElementById('ml').classList.add('op');
-  mrRenderItemsDetail();
-}
-function mrRenderItemsDetail(){
-  const box=document.getElementById('mr-items-box'); if(!box) return;
-  const prods=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
-  const prodOpts='<option value="">— เลือกจากคลัง (ไม่บังคับ) —</option>'+prods.map(p=>`<option value="${p.id}">${escHtml(p.name)} (คลัง ${p.stock||0} ${p.unit||''})</option>`).join('');
-  box.innerHTML=_mrItems.map((it,i)=>`<div style="background:var(--bg);border-radius:9px;padding:9px;margin-bottom:7px">
-    <div style="font-size:11px;color:var(--mu);font-weight:600;margin-bottom:5px">รายการที่ ${i+1}</div>
-    <select class="fi" style="width:100%;margin-bottom:6px" onchange="mrPickProdD(${i},this.value)">${prodOpts}</select>
-    <input class="fi" value="${escHtml(it.desc)}" placeholder="ชื่อ/รายละเอียดวัสดุ (กรอกเองหรือเลือกจากคลัง)" style="margin-bottom:6px;width:100%" oninput="_mrItems[${i}].desc=this.value">
-    <div style="display:flex;gap:6px;align-items:center">
-      <div style="flex:none"><div style="font-size:10.5px;color:var(--mu);margin-bottom:2px">จำนวน</div><input class="fi" type="number" value="${it.qty}" style="width:80px;text-align:center" min="1" step="any" oninput="_mrItems[${i}].qty=+this.value"></div>
-      <div style="flex:1"><div style="font-size:10.5px;color:var(--mu);margin-bottom:2px">หน่วย</div><input class="fi" value="${escHtml(it.unit)}" placeholder="เมตร/ตัว/ชุด/ม้วน" oninput="_mrItems[${i}].unit=this.value"></div>
-      <div style="flex:1"><div style="font-size:10.5px;color:var(--mu);margin-bottom:2px">หมายเหตุ</div><input class="fi" value="${escHtml(it.note||'')}" placeholder="หมายเหตุ" oninput="_mrItems[${i}].note=this.value"></div>
-      ${_mrItems.length>1?`<button class="btn bo" style="padding:6px 9px;flex:none;margin-top:16px" onclick="_mrItems.splice(${i},1);mrRenderItemsDetail()">✕</button>`:''}
-    </div>
-  </div>`).join('');
-}
-function mrPickProdD(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; mrRenderItemsDetail(); }
-function openMRFormForJob(jobId, empId, empName){
-  const j=(DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId);
-  const emp=empId?(DB.employees||[]).find(e=>e.id===empId):null;
-  const reqby=(emp&&emp.name)||empName||'';
-  openMRForm(jobId, reqby);
-}
-function openMRForm(jobId, reqbyHint){
-  const j=jobId?((DB.jobs||[]).find(x=>x.id===jobId)||(DB.workcontracts||[]).find(x=>x.id===jobId)):null;
-  _mrItems=[{desc:'',spec:'',qty:1,unit:'',price:'',note:'',fromStock:false}];
-  const jobs=[...(DB.jobs||[]),...(DB.workcontracts||[])].filter(x=>x.title||x.id);
-  const jobOpts='<option value="">— ไม่ระบุงาน —</option>'+jobs.map(x=>`<option value="${x.id}"${x.id===jobId?' selected':''}>${escHtml(x.title||x.id)}</option>`).join('');
-  document.getElementById('ml-t').textContent='📦 ใบขอซื้อ / ใบเบิกวัสดุ';
-  document.getElementById('ml-s').textContent=j?(j.title||j.id):'สร้างเอกสารใหม่';
-  document.getElementById('ml-bd').innerHTML=`
-    <div class="fl2" style="margin-bottom:8px">
-      <div class="fg"><label class="flb">วันที่ขอ</label><input class="fi" type="date" id="mr-date" value="${iso(new Date())}"></div>
-      <div class="fg"><label class="flb">ผู้ขอ (ชื่อช่าง/พนักงาน)</label><input class="fi" id="mr-reqby" value="${escHtml(reqbyHint||'')}" placeholder="ชื่อช่าง/ผู้ขอ" list="mr-emp-list"><datalist id="mr-emp-list">${(DB.employees||[]).filter(e=>e.active!==false).map(e=>`<option value="${escHtml(e.name)}">`).join('')}</datalist></div>
-    </div>
-    <div class="fl2" style="margin-bottom:8px">
-      <div class="fg"><label class="flb">ประเภทเอกสาร</label><select class="fi" id="mr-type"><option value="req">📋 ใบขอซื้อ (PR)</option><option value="withdraw">📤 ใบเบิกจากคลัง</option></select></div>
-      <div class="fg"><label class="flb">งาน / โครงการ</label><select class="fi" id="mr-job">${jobOpts}</select></div>
-    </div>
-    <div style="font-size:12px;font-weight:700;margin:10px 0 6px;color:var(--mu)">📋 รายการวัสดุ/อุปกรณ์ที่ขอ</div>
-    <div id="mr-items-box"></div>
-    <button class="btn bo" style="font-size:12px;padding:6px 12px;margin-bottom:10px" onclick="mrAddItem()">+ เพิ่มรายการ</button>
-    <div class="fg full"><label class="flb">หมายเหตุ / ความเร่งด่วน</label><input class="fi" id="mr-note" placeholder="เช่น ด่วนมาก — ต้องการก่อน 10.00 น."></div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveMR()">💾 ส่งขออนุมัติ</button>`;
-  document.getElementById('ml').classList.add('op');
-  mrRenderItems();
-}
-function mrRenderItems(){
-  const box=document.getElementById('mr-items-box'); if(!box) return;
-  const prods=(DB.products||[]).filter(p=>p.track!==false&&p.type!=='บริการ');
-  const prodOpts='<option value="">— เลือกจากสต็อก —</option>'+prods.map(p=>`<option value="${p.id}">${escHtml(p.name)} (คงเหลือ ${p.stock||0} ${p.unit||''})</option>`).join('');
-  box.innerHTML=_mrItems.map((it,i)=>`<div style="background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px;margin-bottom:8px">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
-      <span style="font-size:11.5px;font-weight:700;color:var(--p);min-width:20px">รายการ ${i+1}</span>
-      ${prods.length?`<select class="fi" style="flex:1;font-size:12px" onchange="mrPickProd(${i},this.value)">${prodOpts}</select>`:''}
-      <button class="btn bo" style="padding:5px 9px;flex:none;font-size:12px" onclick="_mrItems.splice(${i},1);mrRenderItems()">✕</button>
-    </div>
-    <div class="fg full" style="margin-bottom:6px"><input class="fi" value="${escHtml(it.desc)}" placeholder="ชื่อสินค้า / วัสดุ / อุปกรณ์ *" style="font-weight:600" oninput="_mrItems[${i}].desc=this.value"></div>
-    <div class="fg full" style="margin-bottom:6px"><input class="fi" value="${escHtml(it.spec||'')}" placeholder="รุ่น / ยี่ห้อ / ขนาด / spec (ถ้ามี)" oninput="_mrItems[${i}].spec=this.value"></div>
-    <div style="display:flex;gap:6px;margin-bottom:6px">
-      <div style="flex:1"><label style="font-size:10.5px;color:var(--mu)">จำนวน *</label><input class="fi" type="number" value="${it.qty||1}" min="1" step="any" style="text-align:center" oninput="_mrItems[${i}].qty=+this.value||1"></div>
-      <div style="flex:1"><label style="font-size:10.5px;color:var(--mu)">หน่วย</label><input class="fi" value="${escHtml(it.unit||'')}" placeholder="ม./ตัว/ชุด/ก้อน" oninput="_mrItems[${i}].unit=this.value"></div>
-      <div style="flex:1"><label style="font-size:10.5px;color:var(--mu)">ราคาโดยประมาณ</label><input class="fi" type="number" value="${it.price||''}" step="0.01" placeholder="0.00" oninput="_mrItems[${i}].price=+this.value||0"></div>
-    </div>
-    <div class="fg full"><input class="fi" value="${escHtml(it.note||'')}" placeholder="หมายเหตุรายการนี้ เช่น ต้องการสีขาว / ยี่ห้อ A เท่านั้น" oninput="_mrItems[${i}].note=this.value"></div>
-  </div>`).join('');
-}
-function mrAddItem(){ _mrItems.push({desc:'',spec:'',qty:1,unit:'',price:0,note:'',fromStock:false}); mrRenderItems(); }
-function mrPickProd(i,pid){ const p=(DB.products||[]).find(x=>x.id===pid); if(!p) return; _mrItems[i].desc=p.name; _mrItems[i].unit=p.unit||''; _mrItems[i].price=+p.price||0; _mrItems[i].spec=''; mrRenderItems(); }
-function empSaveMR(){
-  const date=document.getElementById('mr-date').value||iso(new Date());
-  const reqby=document.getElementById('mr-reqby').value.trim();
-  const type=document.getElementById('mr-type').value;
-  const jobId=document.getElementById('mr-job').value;
-  const note=document.getElementById('mr-note').value.trim();
-  const items=_mrItems.filter(it=>it.desc&&String(it.desc).trim());
-  if(!items.length){ toast('⚠️ เพิ่มรายการอย่างน้อย 1 รายการ'); return; }
-  if(!DB.mreqs) DB.mreqs=[];
-  const id='MR-'+Date.now().toString(36).toUpperCase();
-  DB.mreqs.unshift({id,date,reqby,type,jobId,note,items,status:'pending'});
-  if(typeof saveData==='function') saveData();
-  if(typeof auditLog==='function') auditLog('save','mreq',id,items.length+' รายการ');
-  closeModal();
-  toast('✅ ส่งคำขอเรียบร้อยแล้ว');
-}
-function openMRManager(filter){
-  const all=(DB.mreqs||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const filt=filter||'pending';
-  const pending=all.filter(m=>m.status==='pending');
-  const approved=all.filter(m=>m.status==='approved');
-  const rejected=all.filter(m=>m.status==='rejected');
-  const shown=filt==='all'?all:all.filter(m=>m.status===filt);
-  const STATUS_STYLE={pending:{bg:'#FEF3C7',c:'#D97706',lb:'รออนุมัติ'},approved:{bg:'#E8F8F0',c:'#0F9D58',lb:'อนุมัติแล้ว'},rejected:{bg:'#FEECEC',c:'#E53E3E',lb:'ปฏิเสธ'}};
-  const chip=(k,lbl,cnt)=>`<button class="btn ${filt===k?'bp':'bo'}" style="font-size:11.5px;padding:5px 10px" onclick="openMRManager('${k}')">${lbl}${cnt?' ('+cnt+')':''}</button>`;
-  const rows=shown.length?shown.map(m=>{
-    const st=STATUS_STYLE[m.status]||STATUS_STYLE.pending; const j=m.jobId?((DB.jobs||[]).find(x=>x.id===m.jobId)||(DB.workcontracts||[]).find(x=>x.id===m.jobId)):null;
-    const typeLabel=m.type==='withdraw'?'ใบเบิกจากคลัง':'ใบขอซื้อ (PR)';
-    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:11px;padding:12px 13px;margin-bottom:9px">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-        <div><div style="font-weight:600;font-size:13px">${escHtml(typeLabel)} · ${escHtml(m.id)}</div>
-          <div style="font-size:11.5px;color:var(--mu);margin-top:3px">ขอโดย ${escHtml(m.reqby||'-')} · ${fmtD(m.date)}${j?' · งาน '+escHtml(j.title||j.id):''}${m.note?' · '+escHtml(m.note):''}</div>
-          <div style="font-size:11.5px;margin-top:3px">${(m.items||[]).map(it=>escHtml(it.desc)+(it.qty?' x'+it.qty:'')).join(', ')}</div>
-        </div>
-        <span style="font-size:10.5px;font-weight:700;color:${st.c};background:${st.bg};padding:3px 10px;border-radius:20px;white-space:nowrap">${st.lb}</span>
-      </div>
-      <div style="display:flex;gap:6px;margin-top:9px;flex-wrap:wrap">
-        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="printMR('${m.id}')">🖨️ พิมพ์</button>
-        ${m.status==='pending'?`<button class="btn bo" style="font-size:12px;padding:6px 10px;color:#0F9D58;flex:1;justify-content:center" onclick="mrApprove('${m.id}',true)">✅ อนุมัติ</button><button class="btn bo" style="font-size:12px;padding:6px 10px;color:#E53E3E;flex:1;justify-content:center" onclick="mrApprove('${m.id}',false)">❌ ปฏิเสธ</button>`:''}
-        ${m.status!=='pending'?`<span style="font-size:11px;color:var(--mu);align-self:center">${m.approvedBy?('โดย '+escHtml(m.approvedBy)+' · '+fmtD(String(m.approvedAt||'').slice(0,10))):''}</span>`:''}
-      </div>
-    </div>`; }).join('') : `<div style="text-align:center;color:var(--mu);padding:22px;font-size:13px">ไม่มีรายการ</div>`;
-  document.getElementById('ml-t').textContent='📦 จัดการใบขอซื้อ / ใบเบิกวัสดุ';
-  document.getElementById('ml-s').textContent=all.length+' ใบทั้งหมด';
-  document.getElementById('ml-bd').innerHTML=`
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:10px">
-      <div style="background:#FEF3C7;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#D97706">${pending.length}</div><div style="font-size:10px;color:var(--mu)">รออนุมัติ</div></div>
-      <div style="background:#E8F8F0;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#0F9D58">${approved.length}</div><div style="font-size:10px;color:var(--mu)">อนุมัติแล้ว</div></div>
-      <div style="background:#FEECEC;border-radius:11px;padding:10px;text-align:center"><div style="font-size:20px;font-weight:800;color:#E53E3E">${rejected.length}</div><div style="font-size:10px;color:var(--mu)">ปฏิเสธ</div></div>
-    </div>
-    <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">${chip('pending','รออนุมัติ',pending.length)}${chip('approved','อนุมัติแล้ว','')}${chip('rejected','ปฏิเสธ','')}${chip('all','ทั้งหมด','')}</div>
-    <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="openMRForm('')">+ สร้างใบขอซื้อ/เบิกใหม่</button>
-    ${rows}`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
-  document.getElementById('ml').classList.add('op');
-}
-function mrApprove(id, approve){
-  const m=(DB.mreqs||[]).find(x=>x.id===id); if(!m) return;
-  const who=(companyInfo&&companyInfo.seller)||'ผู้อนุมัติ';
-  m.status=approve?'approved':'rejected';
-  m.approvedBy=who; m.approvedAt=new Date().toISOString();
-  if(typeof saveData==='function') saveData();
-  if(typeof auditLog==='function') auditLog(approve?'approve':'reject','mreq',id,m.items&&m.items.length?m.items[0].desc:'');
-  toast(approve?'✅ อนุมัติแล้ว — แจ้งผู้ขอได้เลย':'❌ ปฏิเสธแล้ว');
-  openMRManager(approve?'approved':'rejected');
-}
-function saveMR(){
-  const date=document.getElementById('mr-date').value||iso(new Date());
-  const reqby=document.getElementById('mr-reqby').value.trim();
-  const type=document.getElementById('mr-type').value;
-  const jobId=(document.getElementById('mr-job')||{}).value||'';
-  const note=document.getElementById('mr-note').value.trim();
-  const items=_mrItems.filter(it=>it.desc&&String(it.desc).trim());
-  if(!items.length){ toast('⚠️ เพิ่มรายการอย่างน้อย 1 รายการ'); return; }
-  if(!reqby){ toast('⚠️ ใส่ชื่อผู้ขอ'); return; }
-  if(!DB.mreqs) DB.mreqs=[];
-  const id='MR-'+Date.now().toString(36).toUpperCase();
-  const totalEst=items.reduce((s,it)=>s+(+it.price||0)*(+it.qty||1),0);
-  DB.mreqs.unshift({id,date,reqby,type,jobId,note,items:items.map(it=>({desc:String(it.desc||'').trim(),spec:String(it.spec||'').trim(),qty:+it.qty||1,unit:String(it.unit||'').trim(),price:+it.price||0,note:String(it.note||'').trim()})),totalEst,status:'pending'});
-  if(typeof saveData==='function') saveData();
-  if(typeof auditLog==='function') auditLog('save','mreq',id,reqby+' · '+items.length+' รายการ');
-  toast('✅ ส่งใบขอซื้อ/เบิกวัสดุแล้ว — รอแอดมินอนุมัติ');
-  printMR(id);
-  setTimeout(()=>openMRManager('pending'),600);
-}
-function printMR(id){
-  const mr=(DB.mreqs||[]).find(x=>x.id===id); if(!mr){ toast('ไม่พบเอกสาร'); return; }
-  const j=mr.jobId?((DB.jobs||[]).find(x=>x.id===mr.jobId)||(DB.workcontracts||[]).find(x=>x.id===mr.jobId)):null;
-  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tel:'074896293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
-  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
-  const typeLabel=mr.type==='withdraw'?'ใบเบิกวัสดุจากคลัง':'ใบขอซื้อ (Purchase Request)';
-  const hasPrice=mr.items.some(it=>(+it.price||0)>0);
-  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
-@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
-body{color:#1f2937;font-size:13px}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
-.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:10px;margin-bottom:10px}.hd .cn{font-weight:700;font-size:14px;color:#0A6EBD}
-.title{text-align:center;margin:10px 0}.title h1{font-size:20px;color:#0A6EBD;font-weight:800}
-.row{display:flex;font-size:12.5px;padding:3px 0;border-bottom:1px dashed #eef1f4}.row .k{color:#6b7280;width:130px;flex:none}.row .v{font-weight:600}
-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12px}th{background:#0A6EBD;color:#fff;padding:6px;text-align:left}td{border:1px solid #e5e7eb;padding:6px}td.r{text-align:right}
-.total{margin-top:4px;display:flex;justify-content:flex-end;font-size:13px;font-weight:700;color:#0A6EBD}
-.sig{display:flex;justify-content:space-between;margin-top:28px;gap:20px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:50px;padding-top:6px;font-size:11.5px}
-.badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:12px;background:#FEF3C7;color:#D97706}
-</style></head><body><div class="frame">
-  <div class="hd"><div class="cn">${esc(CO.name)}</div><div style="font-size:11px;color:#555;margin-top:2px">${esc(CO.addr)} · โทร.${esc(CO.tel)}</div></div>
-  <div class="title"><h1>${esc(typeLabel)}</h1><div style="margin-top:4px"><span class="badge">รออนุมัติ</span></div></div>
-  <div class="row"><span class="k">เลขที่</span><span class="v">${esc(mr.id)}</span></div>
-  <div class="row"><span class="k">วันที่</span><span class="v">${fmtD(mr.date)}</span></div>
-  <div class="row"><span class="k">ผู้ขอ</span><span class="v">${esc(mr.reqby||'-')}</span></div>
-  ${j?`<div class="row"><span class="k">สำหรับงาน</span><span class="v">${esc(j.title||j.id)}</span></div>`:''}
-  ${mr.note?`<div class="row"><span class="k">หมายเหตุ/เร่งด่วน</span><span class="v" style="color:#E53E3E">${esc(mr.note)}</span></div>`:''}
-  <table><thead><tr><th style="width:24px">#</th><th>ชื่อ / รายละเอียด</th><th style="width:120px">รุ่น/ยี่ห้อ/Spec</th><th style="width:55px;text-align:right">จำนวน</th><th style="width:45px">หน่วย</th>${hasPrice?'<th style="width:80px;text-align:right">ราคา/หน่วย</th><th style="width:80px;text-align:right">รวม</th>':''}<th style="width:80px">หมายเหตุ</th></tr></thead>
-  <tbody>${mr.items.map((it,i)=>{ const lineTotal=(+it.price||0)*(+it.qty||1); return `<tr><td style="text-align:center">${i+1}</td><td style="font-weight:600">${esc(it.desc)}</td><td style="color:#555">${esc(it.spec||'')}</td><td class="r">${it.qty}</td><td>${esc(it.unit||'')}</td>${hasPrice?`<td class="r">${it.price?fmt(it.price):''}</td><td class="r">${it.price?fmt(lineTotal):''}</td>`:''}<td style="font-size:11px;color:#555">${esc(it.note||'')}</td></tr>`; }).join('')}</tbody></table>
-  ${(hasPrice&&mr.totalEst>0)?`<div class="total">รวมค่าใช้จ่ายโดยประมาณ: ฿${fmt(mr.totalEst)}</div>`:''}
-  <div class="sig">
-    <div class="col"><div class="ln">ผู้ขอ<br>(${esc(mr.reqby||'____________________')})</div></div>
-    <div class="col"><div class="ln">ผู้อนุมัติ<br>(____________________)</div></div>
-    ${mr.type==='withdraw'?`<div class="col"><div class="ln">ผู้จ่ายวัสดุ<br>(____________________)</div></div>`:''}
-  </div>
-</div></body></html>`;
-  closeModal();
-  if(typeof showPrintPreview==='function') showPrintPreview(html,typeLabel+' '+mr.id,{});
-  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
 }
 // ── กระทบยอดธนาคาร (Bank Reconciliation) ──
 function bankAccounts(){
@@ -3528,7 +3128,7 @@ function workContractForm(id){
     <div class="fl2" style="margin-top:8px">
       <div class="fg"><label class="flb">วันเริ่มงาน</label><input class="fi" type="date" id="wc-start" value="${v.startDate||iso(new Date())}"></div>
       <div class="fg"><label class="flb">วันแล้วเสร็จตามสัญญา</label><input class="fi" type="date" id="wc-end" value="${v.endDate||''}"></div>
-      <div class="fg"><label class="flb">รับประกันผลงาน</label><div style="display:flex;gap:6px;align-items:center"><input class="fi" type="number" id="wc-warranty" value="${v.warrantyMonths!=null?v.warrantyMonths:0}" min="0" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">เดือน</span> <input class="fi" type="number" id="wc-warrantydays" value="${v.warrantyDays!=null?v.warrantyDays:0}" min="0" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">วัน</span></div></div>
+      <div class="fg"><label class="flb">รับประกันผลงาน (เดือน)</label><input class="fi" type="number" id="wc-warranty" value="${v.warrantyMonths!=null?v.warrantyMonths:12}" min="0"></div>
       <div class="fg"><label class="flb">ค่าปรับล่าช้า (% ของมูลค่างาน/วัน)</label><input class="fi" type="number" id="wc-penalty" value="${v.delayPenaltyPct||''}" step="0.01" placeholder="0 = ไม่มี"></div>
     </div>
     <div class="fg" style="margin-top:8px"><label class="flb">เพดานค่าปรับล่าช้าสูงสุด (% ของมูลค่างาน, ไม่บังคับ)</label><input class="fi" type="number" id="wc-penaltycap" value="${v.delayPenaltyCapPct||''}" step="0.01" placeholder="เช่น 10"></div>
@@ -3568,9 +3168,7 @@ function workContractSave(){
     cust, title, contact:document.getElementById('wc-contact').value.trim(), site:document.getElementById('wc-site').value.trim(),
     items:wcItems.filter(it=>it.desc&&it.desc.trim()), priceType:document.getElementById('wc-pricetype').value, amount,
     paymentTerms:document.getElementById('wc-payterms').value, startDate:document.getElementById('wc-start').value, endDate:document.getElementById('wc-end').value,
-    warrantyMonths:+document.getElementById('wc-warranty').value||0,
-    warrantyDays:+document.getElementById('wc-warrantydays').value||0,
-    delayPenaltyPct:+document.getElementById('wc-penalty').value||0, delayPenaltyCapPct:+document.getElementById('wc-penaltycap').value||0,
+    warrantyMonths:+document.getElementById('wc-warranty').value||0, delayPenaltyPct:+document.getElementById('wc-penalty').value||0, delayPenaltyCapPct:+document.getElementById('wc-penaltycap').value||0,
     extraWorkTerms:document.getElementById('wc-extraterms').value, liabilityTerms:document.getElementById('wc-liability').value, terminationTerms:document.getElementById('wc-termination').value, disputeTerms:document.getElementById('wc-dispute').value
   };
   if(!DB.workcontracts) DB.workcontracts=[];
@@ -3702,7 +3300,7 @@ table.it{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0}table
 
   <div class="sec"><h3>3. งานเพิ่มเติมและการเปลี่ยนแปลงงาน</h3><div class="clause">${br(c.extraWorkTerms||DEFAULT_WC_EXTRA)}</div></div>
 
-  <div class="sec"><h3>4. การรับประกันผลงาน</h3><div class="clause">ผู้รับจ้างรับประกันผลงานตามสัญญานี้เป็นระยะเวลา ${(()=>{ const mo=+c.warrantyMonths||0; const dy=+c.warrantyDays||0; const parts=[]; if(mo) parts.push(mo+' เดือน'); if(dy) parts.push(dy+' วัน'); return parts.length?parts.join(' '):('0 เดือน'); })()} นับจากวันที่ส่งมอบงานและตรวจรับเรียบร้อย โดยรับผิดชอบแก้ไขความชำรุดบกพร่องอันเกิดจากการทำงานของผู้รับจ้างโดยไม่คิดค่าใช้จ่าย</div></div>
+  <div class="sec"><h3>4. การรับประกันผลงาน</h3><div class="clause">ผู้รับจ้างรับประกันผลงานตามสัญญานี้เป็นระยะเวลา ${c.warrantyMonths||0} เดือน นับจากวันที่ส่งมอบงานและตรวจรับเรียบร้อย โดยรับผิดชอบแก้ไขความชำรุดบกพร่องอันเกิดจากการทำงานของผู้รับจ้างโดยไม่คิดค่าใช้จ่าย</div></div>
 
   ${(c.delayPenaltyPct>0)?`<div class="sec"><h3>5. ค่าปรับกรณีล่าช้า</h3><div class="clause">หากผู้รับจ้างส่งมอบงานล่าช้ากว่ากำหนดโดยมิใช่เหตุสุดวิสัยหรือความผิดของผู้ว่าจ้าง ผู้รับจ้างยินยอมชำระค่าปรับในอัตราร้อยละ ${c.delayPenaltyPct} ของมูลค่างานตามสัญญานี้ต่อวัน นับแต่วันถัดจากวันครบกำหนดจนถึงวันที่ส่งมอบงานจริง${c.delayPenaltyCapPct>0?(' ทั้งนี้ค่าปรับรวมทั้งสิ้นจะไม่เกินร้อยละ '+c.delayPenaltyCapPct+' ของมูลค่างานตามสัญญานี้'):''}</div></div>`:''}
 
@@ -4362,88 +3960,51 @@ function cdNoteForm(kind, id, refId){
   const isC=kind==='credit';
   const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
   const preRef=v.refId||refId||'';
-  const preRefType=v.refType||'invoices';
   const invs=(DB.invoices||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const qts=(DB.quotes||[]).slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const refOpts='<option value="">— เลือกเอกสารอ้างอิง —</option>'+
-    '<optgroup label="📋 ใบวางบิล / ใบแจ้งหนี้">'+invs.map(x=>`<option value="invoices:${x.id}"${(preRefType==='invoices'&&x.id===preRef)?' selected':''}>${x.id} · ${escHtml(getCust(x.cust).name||x.cust||'')} · ฿${fmt(x.amt)}</option>`).join('')+'</optgroup>'+
-    '<optgroup label="📄 ใบเสนอราคา">'+qts.map(x=>`<option value="quotes:${x.id}"${(preRefType==='quotes'&&x.id===preRef)?' selected':''}>${x.id} · ${escHtml(getCust(x.cust).name||x.cust||'')} · ฿${fmt(x.amt)}</option>`).join('')+'</optgroup>';
+  const invOpts='<option value="">— เลือกใบกำกับ/ใบแจ้งหนี้อ้างอิง —</option>'+invs.map(x=>`<option value="${x.id}"${x.id===preRef?' selected':''}>${x.id} · ${escHtml(getCust(x.cust).name||x.cust||'')} · ฿${fmt(x.amt)}</option>`).join('');
   document.getElementById('ml-t').textContent=n?('✏️ แก้ไข'+(isC?'ใบลดหนี้':'ใบเพิ่มหนี้')):(isC?'🔻 สร้างใบลดหนี้':'🔺 สร้างใบเพิ่มหนี้');
-  document.getElementById('ml-s').textContent=n?n.id:(isC?'ลดยอดหนี้ตามเอกสารเดิม':'เพิ่มยอดหนี้ตามเอกสารเดิม');
+  document.getElementById('ml-s').textContent=n?n.id:(isC?'ลดยอดหนี้ตามใบกำกับเดิม':'เพิ่มยอดหนี้ตามใบกำกับเดิม');
   document.getElementById('ml-bd').innerHTML=`
     <input type="hidden" id="cd-id" value="${qa(id||'')}"><input type="hidden" id="cd-kind" value="${kind}">
-    <div class="fg" style="margin-bottom:10px"><label class="flb">อ้างอิงเอกสารเดิม (ใบแจ้งหนี้ หรือ ใบเสนอราคา)</label>
-      <select class="fi" id="cd-ref" onchange="cdRefPick()">${refOpts}</select>
-    </div>
-    <div id="cd-refinfo" style="font-size:11.5px;color:var(--mu);margin:-4px 0 8px"></div>
-    <div id="cd-items-section" style="display:none;margin-bottom:10px">
-      <label class="flb" style="margin-bottom:4px;display:block">เลือกรายการที่${isC?'ลด':'เพิ่ม'} (ไม่บังคับ — ติ๊กเพื่อดึงยอดอัตโนมัติ)</label>
-      <div id="cd-items-list"></div>
-    </div>
+    <div class="fg" style="margin-bottom:10px"><label class="flb">อ้างอิงใบกำกับภาษี/ใบแจ้งหนี้เดิม</label><select class="fi" id="cd-ref" onchange="cdRefPick()">${invOpts}</select></div>
+    <div id="cd-refinfo" style="font-size:11.5px;color:var(--mu);margin:-4px 0 10px"></div>
     <div class="fl2">
       <div class="fg"><label class="flb">วันที่ออก</label><input class="fi" type="date" id="cd-date" value="${v.date||iso(new Date())}"></div>
       <div class="fg"><label class="flb">${isC?'จำนวนเงินที่ลด':'จำนวนเงินที่เพิ่ม'} (ก่อน VAT)</label><input class="fi" type="number" id="cd-amt" value="${v.amt||''}" step="0.01" oninput="cdCalc()"></div>
     </div>
     <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin:10px 0;cursor:pointer"><input type="checkbox" id="cd-vat" ${v.hasVat!==false?'checked':''} style="width:17px;height:17px" onchange="cdCalc()"> มี VAT 7%</label>
     <div id="cd-calc" style="font-size:13px;font-weight:700;color:var(--p);margin-bottom:10px"></div>
-    <div class="fg full" style="margin-bottom:10px"><label class="flb">รายการ/รายละเอียดที่${isC?'ลด':'เพิ่ม'}</label><input class="fi" id="cd-desc" value="${qa(v.desc||'')}" placeholder="${isC?'เช่น ส่วนลดตามตกลง / รับคืนสินค้า':'เช่น ค่างานเพิ่มเติม'}"></div>
-    <div class="fg full"><label class="flb">เหตุผลการออก${isC?'ใบลดหนี้':'ใบเพิ่มหนี้'} (จำเป็นตามกฎหมาย VAT)</label><textarea class="fi" id="cd-reason" rows="3" style="resize:vertical" placeholder="${isC?'เช่น ลดราคาสินค้าเนื่องจากชำรุด / รับคืนสินค้าบางส่วน':'เช่น คิดราคาต่ำกว่าที่เป็นจริง / ส่งมอบสินค้าเพิ่ม'}">${escHtml(v.reason||'')}</textarea></div>`;
-  document.getElementById('ml-act').innerHTML=`${n?`<button class="btn bo" onclick="cdDelete('${id}')">🗑️ ลบ</button>`:''}<button class="btn bo" onclick="openCDNotes()">← กลับ</button><button class="btn bp" onclick="cdSaveNote()">💾 บันทึก</button>`;
+    <div class="fg full" style="margin-bottom:10px"><label class="flb">รายการ/รายละเอียดที่${isC?'ลด':'เพิ่ม'}</label><input class="fi" id="cd-desc" value="${qa(v.desc)}" placeholder="${isC?'เช่น ส่วนลดตามตกลง / รับคืนสินค้า':'เช่น ค่างานเพิ่มเติม'}"></div>
+    <div class="fg full"><label class="flb">เหตุผลการออก${isC?'ใบลดหนี้':'ใบเพิ่มหนี้'} (จำเป็นตามกฎหมาย)</label><textarea class="fi" id="cd-reason" rows="3" style="resize:vertical" placeholder="${isC?'เช่น ลดราคาสินค้าเนื่องจากชำรุด / รับคืนสินค้าบางส่วน':'เช่น คิดราคาต่ำกว่าที่เป็นจริง / ส่งมอบสินค้าเพิ่ม'}">${escHtml(v.reason||'')}</textarea></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openCDNotes()">← กลับ</button><button class="btn bp" onclick="cdSaveNote()">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
   cdRefPick(); cdCalc();
 }
 function cdRefPick(){
-  const sel=document.getElementById('cd-ref'); if(!sel) return;
-  const val=sel.value;
-  const el=document.getElementById('cd-refinfo'); const sec=document.getElementById('cd-items-section');
-  if(!val){ if(el) el.textContent=''; if(sec) sec.style.display='none'; return; }
-  const parts=val.split(':'); const rtype=parts[0]; const rid=parts.slice(1).join(':');
-  const arr=rtype==='quotes'?(DB.quotes||[]):(DB.invoices||[]);
-  const doc=arr.find(x=>x.id===rid);
-  if(!doc){ if(el) el.textContent=''; if(sec) sec.style.display='none'; return; }
-  const cn=getCust(doc.cust).name||doc.cust||'';
-  const typeLabel=rtype==='quotes'?'ใบเสนอราคา':'ใบแจ้งหนี้';
-  if(el) el.innerHTML=typeLabel+': <b>'+doc.id+'</b> · '+fmtD(doc.date)+' · ยอด ฿'+fmt(doc.amt)+' · '+escHtml(cn);
-  const items=(doc.items||[]).filter(it=>it.name||it.desc);
-  if(sec){
-    if(items.length){
-      sec.style.display='block';
-      const box=document.getElementById('cd-items-list');
-      if(box) box.innerHTML=items.map((it,i)=>{
-        const lineTotal=Math.round((+it.price||0)*(+it.qty||1)*(1-((+it.disc||0)/100))*100)/100;
-        return `<label style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--bd);cursor:pointer;font-size:12.5px"><input type="checkbox" data-idx="${i}" data-amt="${lineTotal.toFixed(2)}" data-name="${String(it.name||it.desc||'').replace(/"/g,'&quot;')}" style="width:16px;height:16px" onchange="cdItemsCalc()"> <span style="flex:1">${escHtml(it.name||it.desc||'')}${it.qty?' x'+it.qty:''}</span> <span style="font-weight:700">฿${fmt(lineTotal)}</span></label>`;
-      }).join('');
-    } else sec.style.display='none';
-  }
+  const id=document.getElementById('cd-ref')?document.getElementById('cd-ref').value:''; const el=document.getElementById('cd-refinfo'); if(!el) return;
+  const inv=(DB.invoices||[]).find(x=>x.id===id);
+  if(inv){ el.innerHTML='ใบกำกับเดิม: <b>'+inv.id+'</b> · '+fmtD(inv.date)+' · ยอด ฿'+fmt(inv.amt)+' · ลูกค้า '+escHtml(getCust(inv.cust).name||inv.cust||''); }
+  else el.textContent='';
 }
-function cdItemsCalc(){
-  let total=0; const names=[];
-  const cbs=document.querySelectorAll ? document.querySelectorAll('#cd-items-list input[type=checkbox]:checked') : [];
-  (cbs||[]).forEach(cb=>{ total+=parseFloat(cb.dataset.amt)||0; if(cb.dataset.name) names.push(cb.dataset.name); });
-  if(total>0){
-    const a=document.getElementById('cd-amt'); if(a) a.value=total.toFixed(2);
-    const d=document.getElementById('cd-desc'); if(d&&names.length) d.value=names.join(', ');
-    cdCalc();
-  }
+function cdCalc(){
+  const amt=+(document.getElementById('cd-amt')?document.getElementById('cd-amt').value:0)||0; const hasVat=document.getElementById('cd-vat')?document.getElementById('cd-vat').checked:false; const el=document.getElementById('cd-calc'); if(!el) return;
+  const vat=hasVat?Math.round(amt*0.07*100)/100:0; const total=Math.round((amt+vat)*100)/100;
+  el.innerHTML=amt>0?('มูลค่า ฿'+fmt(amt)+(hasVat?(' + VAT ฿'+fmt(vat)):'')+' = รวม ฿'+fmt(total)):'';
 }
 function cdSaveNote(){
   const id=document.getElementById('cd-id').value; const kind=document.getElementById('cd-kind').value||'credit';
-  const refVal=document.getElementById('cd-ref').value;
-  if(!refVal){ toast('⚠️ เลือกเอกสารอ้างอิงก่อน'); return; }
-  const parts=refVal.split(':'); const refType=parts[0]; const refId=parts.slice(1).join(':');
-  const date=document.getElementById('cd-date').value||iso(new Date());
+  const refId=document.getElementById('cd-ref').value; const date=document.getElementById('cd-date').value||iso(new Date());
   const amt=+document.getElementById('cd-amt').value||0; const hasVat=document.getElementById('cd-vat').checked;
   const desc=document.getElementById('cd-desc').value.trim(); const reason=document.getElementById('cd-reason').value.trim();
+  if(!refId){ toast('⚠️ เลือกใบกำกับ/ใบแจ้งหนี้อ้างอิงก่อน'); return; }
   if(amt<=0){ toast('⚠️ ใส่จำนวนเงิน'); return; }
   if(!reason){ toast('⚠️ ใส่เหตุผลการออก (จำเป็นตามกฎหมาย)'); return; }
-  const arr=refType==='quotes'?(DB.quotes||[]):(DB.invoices||[]);
-  const doc=arr.find(x=>x.id===refId);
+  const inv=(DB.invoices||[]).find(x=>x.id===refId);
   if(!DB.cdnotes) DB.cdnotes=[];
-  const data={ kind, refType, cust:doc?doc.cust:'', refId, refDate:doc?doc.date:'', refAmt:doc?(+doc.amt||0):0, date, amt, hasVat, desc, reason };
+  const data={ kind, cust:inv?inv.cust:'', refId, refDate:inv?inv.date:'', refAmt:inv?(+inv.amt||0):0, date, amt, hasVat, desc, reason };
   if(id){ const n=DB.cdnotes.find(x=>x.id===id); if(n) Object.assign(n,data); }
   else { DB.cdnotes.unshift(Object.assign({id:nextId(kind==='credit'?'creditnote':'debitnote')},data)); }
   if(typeof saveData==='function') saveData();
-  if(typeof auditLog==='function') auditLog('save',kind==='credit'?'creditnote':'debitnote',id||'new','ยอด ฿'+amt);
   toast('✅ บันทึก'+(kind==='credit'?'ใบลดหนี้':'ใบเพิ่มหนี้')+'แล้ว');
   openCDNotes();
 }
@@ -5997,7 +5558,7 @@ function openJobDrawer(id){
   else if(j.status==='อนุมัติแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:#00897B" onclick="jobDeliver('${id}')">📦 ทำใบส่งมอบงาน</button>`;
   else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
   else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
-  if(j.status==='ส่งมอบแล้ว'||j.status==='อนุมัติแล้ว') actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();setTimeout(()=>warrantyForm('${id}'),120)">🛡️ ใบรับประกัน</button><button class="btn bo" style="flex:1;justify-content:center" onclick="openChecklistForm('${id}')">✅ ตรวจรับงาน</button>`;
+  if(j.status==='ส่งมอบแล้ว'||j.status==='อนุมัติแล้ว') actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();setTimeout(()=>warrantyForm('${id}'),120)">🛡️ ใบรับประกัน</button>`;
   const inspectBox=j.inspectNote?`<div style="background:${j.approved?'#E8F8F0':'#FEE'};border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="font-weight:700;color:${j.approved?'var(--ok)':'var(--dg)'};margin-bottom:4px">${j.approved?'✅ ผลการตรวจ: อนุมัติ':'❌ ผลการตรวจ: ไม่อนุมัติ'}</div>${j.inspectNote}</div>`:'';
   const gLink=g=>g?` · <a href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank" style="color:var(--p);font-weight:600">📍 ดูตำแหน่ง</a>`:' · <span style="color:var(--mu)">ไม่มี GPS</span>';
   const timeBox=(j.startedAt||j.finishedAt)?`<div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px">
@@ -6013,8 +5574,7 @@ function openJobDrawer(id){
     +photoGrid(j.beforePhotos,'📸 รูปก่อนทำงาน')
     +photoGrid(j.afterPhotos,'✨ รูปหลังทำงาน')
     +`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">${actionBtns}</div>`
-    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไข</button><button class="btn" style="flex:1;justify-content:center;background:#ECFDF5;color:#059669" onclick="openSignPad('${id}')">✍️ ${j.customerSig?'แก้ลายเซ็น':'ลายเซ็นรับงาน'}</button><button class="btn bo" style="flex:1;justify-content:center" onclick="jobNotifyLine('${id}')">📲 LINE</button></div>`
-    +`<div style="margin-top:8px"><button class="btn bo" style="width:100%;justify-content:center;font-size:12.5px" onclick="openMRFormForJob('${id}','${escHtml(j.assigneeId||'')}','${escHtml(j.assignee||'')}')">📦 สร้างใบขอซื้อ / เบิกวัสดุสำหรับงานนี้</button></div>`;
+    +`<div style="display:flex;gap:8px;margin-top:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openJobForm('${id}')">✏️ แก้ไข</button><button class="btn" style="flex:1;justify-content:center;background:#ECFDF5;color:#059669" onclick="openSignPad('${id}')">✍️ ${j.customerSig?'แก้ลายเซ็น':'ลายเซ็นรับงาน'}</button><button class="btn bo" style="flex:1;justify-content:center" onclick="jobNotifyLine('${id}')">📲 LINE</button></div>`;
   openDrawer(j.id,null,[['งาน',j.title],['เลขที่',j.id]],extra,'job');
 }
 // ── ใบรับประกันงาน (Warranty Certificate) ──
@@ -6029,8 +5589,7 @@ function warrantyForm(id){
   const w=j.warranty||{};
   const defDate=w.date||(j.finishedAt?String(j.finishedAt).slice(0,10):(j.due||j.date||iso(new Date())));
   const defNo=w.no||('WR-'+String(j.id||'').replace(/[^0-9]/g,'').slice(-7));
-  const defMonths=w.value!=null&&w.unit!=='day'?(+w.value||0):(w.months||0);
-  const defDays=w.value!=null&&w.unit==='day'?(+w.value||0):(w.days||0);
+  const defMonths=w.months||12;
   const defTerms=w.terms||DEFAULT_WARRANTY_TERMS;
   const qa=s=>String(s==null?'':s).replace(/"/g,'&quot;');
   document.getElementById('ml-t').textContent='🛡️ ออกใบรับประกันงาน';
@@ -6040,9 +5599,7 @@ function warrantyForm(id){
     <div class="fl2">
       <div class="fg"><label class="flb">เลขที่ใบรับประกัน</label><input class="fi" id="wr-no" value="${qa(defNo)}"></div>
       <div class="fg"><label class="flb">วันที่ส่งมอบ / เริ่มประกัน</label><input class="fi" type="date" id="wr-date" value="${defDate}" onchange="wrEndHint()"></div>
-      <div class="fg full"><label class="flb">ระยะเวลารับประกัน</label>
-        <div style="display:flex;gap:6px;align-items:center"><input class="fi" type="number" id="wr-months" value="${defMonths}" min="0" max="120" oninput="wrEndHint()" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">เดือน</span> <input class="fi" type="number" id="wr-days" value="${defDays}" min="0" max="365" oninput="wrEndHint()" style="width:70px;text-align:center"> <span style="font-size:12px;color:var(--mu);white-space:nowrap">วัน</span></div>
-      </div>
+      <div class="fg full"><label class="flb">ระยะเวลารับประกัน (เดือน)</label><input class="fi" type="number" id="wr-months" value="${defMonths}" min="1" max="120" oninput="wrEndHint()"></div>
     </div>
     <div id="wr-end-hint" style="font-size:12.5px;color:var(--p);font-weight:600;margin:2px 0 12px"></div>
     <div class="fg full"><label class="flb">ขอบเขต / เงื่อนไขการรับประกัน</label><textarea class="fi" id="wr-terms" rows="7" style="line-height:1.65;resize:vertical">${escHtml(defTerms)}</textarea></div>`;
@@ -6051,30 +5608,20 @@ function warrantyForm(id){
   wrEndHint();
 }
 function wrEndHint(){
-  const d=document.getElementById('wr-date')?.value;
-  const m=+(document.getElementById('wr-months')?.value)||0;
-  const dy=+(document.getElementById('wr-days')?.value)||0;
+  const d=document.getElementById('wr-date')?.value; const m=+(document.getElementById('wr-months')?.value)||0;
   const el=document.getElementById('wr-end-hint'); if(!el) return;
-  if(d&&(m>0||dy>0)){
-    const end=new Date(d+'T00:00:00'); end.setMonth(end.getMonth()+m); end.setDate(end.getDate()+dy);
-    const parts=[]; if(m) parts.push(m%12===0?(m/12)+' ปี':m+' เดือน'); if(dy) parts.push(dy+' วัน');
-    el.innerHTML='ครบกำหนดรับประกัน: '+fmtD(iso(end))+' ('+parts.join(' ')+')';
-  } else el.textContent='';
+  if(d&&m>0){ const end=new Date(d); end.setMonth(end.getMonth()+m); el.innerHTML='ครบกำหนดรับประกัน: '+fmtD(iso(end))+' ('+(m%12===0?(m/12)+' ปี':m+' เดือน')+')'; }
+  else el.textContent='';
 }
 function doPrintWarranty(){
   const id=document.getElementById('wr-job').value; const j=DB.jobs.find(x=>x.id===id); if(!j){ toast('ไม่พบงาน'); return; }
   const no=(document.getElementById('wr-no').value||'').trim()||('WR-'+id);
   const date=document.getElementById('wr-date').value||iso(new Date());
-  const months=+(document.getElementById('wr-months')?.value)||0;
-  const days=+(document.getElementById('wr-days')?.value)||0;
+  const months=+document.getElementById('wr-months').value||12;
   const terms=document.getElementById('wr-terms').value||'';
-  const totalDays=months*30+days;
-  const unit=months>0?'mixed':'day';
-  j.warranty={no,date,months,days,value:months>0?months:days,unit:months>0?(days>0?'mixed':'month'):'day',terms};
-  if(typeof saveData==='function') saveData();
-  const end=new Date(date+'T00:00:00'); end.setMonth(end.getMonth()+months); end.setDate(end.getDate()+days); const endStr=iso(end);
-  const parts=[]; if(months) parts.push(months%12===0?(months/12)+' ปี':months+' เดือน'); if(days) parts.push(days+' วัน');
-  const periodLabel=parts.length?parts.join(' '):'0 เดือน';
+  j.warranty={no,date,months,terms}; if(typeof saveData==='function') saveData();
+  const end=new Date(date); end.setMonth(end.getMonth()+months); const endStr=iso(end);
+  const periodLabel=months%12===0?(months/12)+' ปี':months+' เดือน';
   const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
   const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
   const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
@@ -6530,28 +6077,17 @@ async function cloudDailyBackup(force){
     if(!res.ok) return false;
     try{ localStorage.setItem('flowbiz_last_bk',today); }catch(e){}
     cloudPruneBackups(14);
-  gistAutoBackup();
     return true;
   }catch(e){ return false; }
 }
-async function gistAutoBackup(){ try{ if(typeof gistCfg!=='undefined'&&gistCfg.enabled&&gistCfg.token) await gistBackupFull(false); }catch(e){} }
 async function cloudListBackups(){
-  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return {list:[],err:null};
-  try{
-    const res=await fetchTimeout(bkCollURL(),{},15000);
-    if(!res.ok){
-      const txt=await res.text().catch(()=>'');
-      if(res.status===403) return {list:[],err:'403',txt};
-      if(res.status===401) return {list:[],err:'401',txt};
-      return {list:[],err:String(res.status),txt};
-    }
-    const j=await res.json(); const out=[];
+  if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return [];
+  try{ const res=await fetchTimeout(bkCollURL(),{},15000); if(!res.ok) return []; const j=await res.json(); const out=[];
     (j.documents||[]).forEach(d=>{ const nm=d.name.split('/').pop(); if(nm.indexOf('bk_')===0){ const f=d.fields||{}; out.push({name:nm,dateKey:nm.slice(3),date:(f.date&&f.date.stringValue)||'',count:(f.count&&f.count.integerValue)||'?'}); } });
-    out.sort((a,b)=>b.dateKey.localeCompare(a.dateKey)); return {list:out,err:null};
-  }catch(e){ return {list:[],err:'network',txt:String(e)}; }
+    out.sort((a,b)=>b.dateKey.localeCompare(a.dateKey)); return out; }catch(e){ return []; }
 }
 async function cloudPruneBackups(keep){
-  try{ const r=await cloudListBackups(); const list=Array.isArray(r)?r:(r.list||[]); for(const b of list.slice(keep)){ try{ await fetch(bkURL(b.name),{method:'DELETE'}); }catch(e){} } }catch(e){}
+  try{ const list=await cloudListBackups(); for(const b of list.slice(keep)){ try{ await fetch(bkURL(b.name),{method:'DELETE'}); }catch(e){} } }catch(e){}
 }
 async function openBackupHistory(){
   document.getElementById('ml-t').textContent='🗄️ สำรองข้อมูล (คลาวด์)';
@@ -6560,31 +6096,7 @@ async function openBackupHistory(){
   document.getElementById('ml-act').innerHTML='<button class="btn bo" onclick="closeModal()">ปิด</button>';
   document.getElementById('ml').classList.add('op');
   if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey){ document.getElementById('ml-bd').innerHTML='<div style="text-align:center;padding:24px;color:var(--mu)">⚠️ ยังไม่ได้เปิดใช้งานคลาวด์<br><span style="font-size:12px">ไปที่ ตั้งค่า → ☁️ คลาวด์ ก่อน แล้วระบบจะสำรองให้อัตโนมัติทุกวัน</span></div>'; return; }
-  const {list,err}=await cloudListBackups();
-  if(err==='403'||err==='401'){
-    const rules="rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /flowbiz/{document=**} {\n      allow read, write: if true;\n    }\n  }\n}";
-    const rulesB64=btoa(unescape(encodeURIComponent(rules)));
-    document.getElementById('ml-bd').innerHTML=`
-      <div style="background:#FEECEC;border-radius:12px;padding:14px;margin-bottom:14px">
-        <div style="font-weight:700;color:#E53E3E;margin-bottom:6px">❌ ข้อผิดพลาด ${err} — Firebase ปฏิเสธสิทธิ์</div>
-        <div style="font-size:12.5px;line-height:1.6">Firestore Security Rules ยังบล็อกการอ่าน/เขียนอยู่</div>
-      </div>
-      <div style="font-size:12.5px;font-weight:700;margin-bottom:6px">📋 ขั้นตอนแก้ไข (ทำครั้งเดียว)</div>
-      <div style="font-size:12px;color:var(--tx);line-height:1.8;margin-bottom:12px">
-        1. เปิด <b>console.firebase.google.com</b><br>
-        2. เลือก Project: <b style="color:var(--p)">${cloudCfg.projectId}</b><br>
-        3. เมนูซ้าย → <b>Firestore Database</b> → แท็บ <b>Rules</b><br>
-        4. <b>ลบ rules เดิมทั้งหมด</b> แล้วพิมพ์โค้ดด้านล่างแทน → กด <b>Publish</b>
-      </div>
-      <div style="background:#1e293b;border-radius:10px;padding:12px;margin-bottom:10px">
-        <textarea id="rules-txt" readonly style="width:100%;background:transparent;border:none;color:#a5f3fc;font-size:12px;font-family:monospace;line-height:1.7;resize:none;height:140px;outline:none" onclick="this.select()"></textarea>
-        <button class="btn bo" style="width:100%;justify-content:center;margin-top:6px" onclick="(function(){try{const t=document.getElementById('rules-txt');t.select();document.execCommand('copy');toast('📋 คัดลอกแล้ว!');}catch(e){toast('ลองแตะค้างในกล่องสีดำ → เลือกทั้งหมด → คัดลอก');}})()">📋 คัดลอก Rules</button>
-      </div>
-      <a href="https://console.firebase.google.com/project/${cloudCfg.projectId}/firestore/rules" target="_blank" class="btn bp" style="width:100%;justify-content:center;text-decoration:none;margin-bottom:10px">🔗 เปิด Firebase Rules ตรงนี้เลย</a>
-      <button class="btn bo" style="width:100%;justify-content:center" onclick="openBackupHistory()">🔄 ลองใหม่หลังแก้ Rules แล้ว</button>`;
-    setTimeout(()=>{ const t=document.getElementById('rules-txt'); if(t){ try{ t.value=decodeURIComponent(escape(atob(rulesB64))); }catch(e){ t.value=rules; } } },80);
-    return;
-  }
+  const list=await cloudListBackups();
   document.getElementById('ml-bd').innerHTML=`
     <button class="btn bp" style="width:100%;justify-content:center;margin-bottom:12px" onclick="manualBackup()">⬆️ สำรองข้อมูลตอนนี้</button>
     ${list.length?list.map(b=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--bd);border-radius:10px;margin-bottom:8px">
@@ -7563,112 +7075,6 @@ function openReport(id,title){
 // ══════════════════════════════════
 let settingsState={notif:true,vat:true,autonum:true,multiuser:false,backup:true};
 let companyInfo={};
-// ── GitHub Gist Backup (สำรองข้อมูล+รูปทั้งหมด) ──
-let gistCfg={enabled:false,token:'',gistId:'',lastSaved:''};
-function gistLoad(){ try{ const s=localStorage.getItem('flowbiz_gist'); if(s) gistCfg=Object.assign(gistCfg,JSON.parse(s)); }catch(e){} }
-function gistSaveCfg(){ try{ localStorage.setItem('flowbiz_gist',JSON.stringify(gistCfg)); }catch(e){} }
-function gistHeaders(){ return {'Authorization':'token '+gistCfg.token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'}; }
-async function gistBackupFull(showToast){
-  if(!gistCfg.enabled||!gistCfg.token){ if(showToast) toast('⚠️ ยังไม่ได้ตั้งค่า GitHub Gist'); return false; }
-  try{
-    const full={DB,idCounters,docNumbering,settingsState,companyInfo};
-    const content=JSON.stringify(full); const byteSize=new Blob([content]).size;
-    if(byteSize>15*1024*1024){ if(showToast) toast('⚠️ ข้อมูลใหญ่เกิน 15MB — ลองลดรูปภาพก่อน'); return false; }
-    const now=new Date(); const ts=now.toISOString();
-    const body={description:'FlowBiz Backup '+(companyInfo.name||'')+ ' '+ts.slice(0,10),public:false,files:{'flowbiz_backup.json':{content},'flowbiz_meta.json':{content:JSON.stringify({savedAt:ts,version:'v1',company:companyInfo.name||'',size:byteSize})}}};
-    let res;
-    if(gistCfg.gistId){ res=await fetch('https://api.github.com/gists/'+gistCfg.gistId,{method:'PATCH',headers:gistHeaders(),body:JSON.stringify(body)}); }
-    else { res=await fetch('https://api.github.com/gists',{method:'POST',headers:gistHeaders(),body:JSON.stringify(body)}); }
-    if(!res.ok){ const e=await res.json().catch(()=>{}); throw new Error((e&&e.message)||('HTTP '+res.status)); }
-    const j=await res.json(); gistCfg.gistId=j.id; gistCfg.lastSaved=ts; gistSaveCfg();
-    if(showToast) toast('☁️ สำรองข้อมูลไปยัง GitHub Gist แล้ว ('+Math.round(byteSize/1024)+'KB)');
-    return true;
-  }catch(e){ if(showToast) toast('❌ Gist Backup ล้มเหลว: '+String(e).slice(0,60)); return false; }
-}
-async function gistRestoreFull(gistId, token){
-  const gid=gistId||gistCfg.gistId; const tok=token||gistCfg.token;
-  if(!gid||!tok){ toast('⚠️ ใส่ Gist ID + Token ก่อน'); return false; }
-  try{
-    const res=await fetch('https://api.github.com/gists/'+gid,{headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'}});
-    if(!res.ok){ const e=await res.json().catch(()=>{}); throw new Error((e&&e.message)||('HTTP '+res.status)); }
-    const gist=await res.json();
-    const file=gist.files&&(gist.files['flowbiz_backup.json']||Object.values(gist.files).find(f=>f.filename.endsWith('.json')&&!f.filename.includes('meta')));
-    if(!file) throw new Error('ไม่พบไฟล์ข้อมูลใน Gist');
-    let raw=file.content;
-    if(!raw||file.truncated){ const r2=await fetch(file.raw_url); raw=await r2.text(); }
-    const d=JSON.parse(raw);
-    if(!d||!d.DB) throw new Error('ไฟล์ข้อมูลไม่ถูกต้อง');
-    Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].length=0; });
-    Object.keys(d.DB).forEach(k=>{ DB[k]=d.DB[k]; });
-    if(d.idCounters) Object.assign(idCounters,d.idCounters);
-    if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
-    if(d.settingsState) Object.assign(settingsState,d.settingsState);
-    if(d.companyInfo) { Object.assign(companyInfo,d.companyInfo); if(typeof syncPromptPay==='function') syncPromptPay(); }
-    if(typeof saveData==='function') saveData();
-    gistCfg.gistId=gid; gistCfg.token=tok; gistCfg.enabled=true; gistSaveCfg();
-    toast('✅ กู้คืนข้อมูลทั้งหมดจาก GitHub Gist แล้ว!');
-    setTimeout(()=>location.reload(),1500);
-    return true;
-  }catch(e){ toast('❌ กู้คืนล้มเหลว: '+String(e).slice(0,80)); return false; }
-}
-async function gistTest(tok){
-  try{
-    const res=await fetch('https://api.github.com/user',{headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json'}});
-    if(!res.ok) return {ok:false,msg:'Token ไม่ถูกต้อง ('+res.status+')'};
-    const u=await res.json(); return {ok:true,msg:'✅ ยืนยันแล้ว: @'+u.login};
-  }catch(e){ return {ok:false,msg:'เชื่อมต่อไม่ได้: '+String(e).slice(0,50)}; }
-}
-function openGistForm(){
-  gistLoad();
-  document.getElementById('ml-t').textContent='☁️ GitHub Gist Backup';
-  document.getElementById('ml-s').textContent='สำรองข้อมูล+รูปทั้งหมด ดึงจากเครื่องอื่นได้';
-  const qa=s=>String(s||'').replace(/"/g,'&quot;');
-  document.getElementById('ml-bd').innerHTML=`
-    <div style="background:#EAF4FF;border-radius:11px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
-      <b>GitHub Gist</b> = พื้นที่เก็บข้อมูลบน GitHub — <b>ฟรี ไม่ต้องสร้าง project</b><br>
-      สำรองข้อมูลทุกอย่างรวมรูปภาพ · ดึงข้อมูลจากเครื่องอื่นได้ด้วย Gist ID + Token
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label class="flb">GitHub Personal Access Token <span style="font-size:10.5px;color:var(--mu)">(github.com → Settings → Developer settings → Tokens)</span></label>
-      <input class="fi" id="gist-token" type="password" value="${qa(gistCfg.token)}" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
-      <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;margin-top:6px" onclick="(async()=>{const t=document.getElementById('gist-token').value.trim();if(!t){toast('⚠️ ใส่ Token ก่อน');return;}const el=document.getElementById('gist-test-result');el.textContent='กำลังทดสอบ...';const r=await gistTest(t);el.textContent=r.msg;el.style.color=r.ok?'var(--ok)':'var(--dg)';})()">🔑 ทดสอบ Token</button>
-      <div id="gist-test-result" style="font-size:12px;margin-top:5px;font-weight:600"></div>
-    </div>
-    <div class="fg" style="margin-bottom:10px">
-      <label class="flb">Gist ID <span style="font-size:10.5px;color:var(--mu)">(สร้างอัตโนมัติตอนสำรองครั้งแรก — หรือใส่ ID ของเครื่องอื่น)</span></label>
-      <input class="fi" id="gist-id" value="${qa(gistCfg.gistId)}" placeholder="จะได้รับหลังสำรองครั้งแรก">
-    </div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;cursor:pointer">
-      <input type="checkbox" id="gist-enabled" ${gistCfg.enabled?'checked':''} style="width:17px;height:17px"> เปิดใช้งาน Gist Backup (สำรองอัตโนมัติร่วมกับ Firebase)
-    </label>
-    ${gistCfg.lastSaved?`<div style="font-size:11.5px;color:var(--mu);margin-bottom:10px">สำรองล่าสุด: ${fmtD(gistCfg.lastSaved.slice(0,10))} ${gistCfg.lastSaved.slice(11,16)} น.</div>`:''}
-    <div style="font-size:12.5px;font-weight:700;margin-bottom:8px;border-top:1px solid var(--bd);padding-top:10px">📥 กู้คืนข้อมูลจากเครื่องอื่น</div>
-    <div style="font-size:12px;color:var(--mu);margin-bottom:8px">ใส่ Gist ID + Token ของเครื่องต้นทาง แล้วกดกู้คืน (จะโหลดหน้าใหม่)</div>
-    <div class="fl2" style="margin-bottom:8px">
-      <div class="fg"><label class="flb">Token เครื่องต้นทาง</label><input class="fi" id="gist-restore-token" placeholder="ghp_... (หรือใช้ Token เดิม)"></div>
-      <div class="fg"><label class="flb">Gist ID เครื่องต้นทาง</label><input class="fi" id="gist-restore-id" placeholder="xxxxxxxxxxxxxxxx"></div>
-    </div>
-    <button class="btn bo" style="width:100%;justify-content:center;color:#E53E3E;margin-bottom:4px" onclick="(async()=>{const tok=document.getElementById('gist-restore-token').value.trim()||document.getElementById('gist-token').value.trim();const gid=document.getElementById('gist-restore-id').value.trim()||document.getElementById('gist-id').value.trim();if(!gid||!tok){toast('⚠️ ใส่ Gist ID + Token ก่อน');return;}if(!confirm('กู้คืนข้อมูลทั้งหมดจาก Gist?\\n(ข้อมูลในเครื่องนี้จะถูกแทนที่ด้วยข้อมูลจากคลาวด์)')) return; toast('⏳ กำลังดึงข้อมูล...'); await gistRestoreFull(gid,tok);})()">📥 กู้คืนจาก Gist</button>
-    <div style="background:#FFF7E6;border-radius:9px;padding:10px 12px;font-size:11.5px;margin-top:10px">
-      💡 <b>วิธีสร้าง Token:</b> github.com → คลิกรูปโปรไฟล์ → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → ติ๊ก <b>gist</b> → Generate → คัดลอก
-    </div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="gistFormSave()">💾 บันทึกตั้งค่า</button>`;
-  document.getElementById('ml').classList.add('op');
-}
-async function gistFormSave(){
-  const token=document.getElementById('gist-token').value.trim();
-  const gistId=document.getElementById('gist-id').value.trim();
-  const enabled=document.getElementById('gist-enabled').checked;
-  if(enabled&&!token){ toast('⚠️ ใส่ Token ก่อนเปิดใช้งาน'); return; }
-  gistCfg.token=token; gistCfg.gistId=gistId; gistCfg.enabled=enabled; gistSaveCfg();
-  toast('✅ บันทึกตั้งค่า Gist Backup แล้ว');
-  if(enabled&&token){
-    toast('⏳ กำลังสำรองข้อมูล...');
-    await gistBackupFull(true);
-    const idEl=document.getElementById('gist-id'); if(idEl&&gistCfg.gistId) idEl.value=gistCfg.gistId;
-  }
-  closeModal();
-}
 function renderSettings(){
   const items=[
     {ic:'🏢',t:'ข้อมูลบริษัท',s:'ชื่อ, ที่อยู่, เลขภาษี, โลโก้',key:null,action:'editCompany'},
@@ -7676,12 +7082,8 @@ function renderSettings(){
     {ic:'💰',t:'ภาษีมูลค่าเพิ่ม (VAT)',s:'คำนวณ VAT 7% อัตโนมัติ',key:'vat'},
     {ic:'🔢',t:'เลขที่เอกสารอัตโนมัติ',s:'กำหนดคำนำหน้าและเลขเริ่มต้นของแต่ละเอกสาร',key:null,action:'docnum'},
     {ic:'👥',t:'ผู้ใช้หลายคน',s:'เพิ่มพนักงานเข้าสู่ระบบ',key:'multiuser'},
-    {ic:'📋',t:'Audit Log',s:'ประวัติการบันทึก/ลบ/พิมพ์เอกสาร',key:null,action:'auditlog'},
-    {ic:'📜',t:'ใบมอบอำนาจ',s:'พิมพ์หนังสือมอบอำนาจ กฟน./กฟภ./หน่วยงาน',key:null,action:'poa'},
     {ic:'☁️',t:'สำรองข้อมูลอัตโนมัติ',s:'สำรองทุกวันเที่ยงคืน',key:'backup'},
     {ic:'🌐',t:'จัดเก็บข้อมูลบนคลาวด์',s:'ซิงค์ข้อมูลข้ามอุปกรณ์ (Firebase)',key:null,action:'cloud'},
-    {ic:'🐙',t:'GitHub Gist Backup',s:'สำรองข้อมูล+รูปทั้งหมด ดึงจากเครื่องอื่นได้',key:null,action:'gist'},
-    {ic:'🐙',t:'สำรองข้อมูล GitHub Gist',s:'ฟรี · ตั้งค่าง่าย · ไม่ต้องสร้าง Project',key:null,action:'gist'},
     {ic:'🎨',t:'ธีมและการแสดงผล',s:'ปรับสี, ขนาดตัวอักษร',key:null,action:'theme'},
     {ic:'💾',t:'สำรอง / กู้คืนข้อมูล',s:'ดาวน์โหลดข้อมูลทั้งหมด หรือกู้คืนจากไฟล์ (กันข้อมูลหาย)',key:null,action:'backup'},
     {ic:'🗑️',t:'ล้างข้อมูลทั้งหมด',s:'รีเซ็ตกลับเป็นข้อมูลตัวอย่าง',key:null,action:'reset'},
@@ -7691,7 +7093,7 @@ function renderSettings(){
     const div=document.createElement('div'); div.className='set-row';
     const right=item.key!=null
       ? `<button class="sw ${settingsState[item.key]?'on':''}" id="sw-${item.key}" onclick="toggleSetting('${item.key}')"></button>`
-      : (()=>{ const map={reset:["bd2","ล้างข้อมูل","resetData()"],backup:["bp","เปิด","openBackupRestore()"],export:["bp","ดาวน์โหลด","exportBackup()"],import:["bo","เลือกไฟล์","importBackup()"],editCompany:["bp","แก้ไขหัวบิล","openCompanyForm()"],cloud:["bp","ตั้งค่าคลาวด์","openCloudForm()"],gist:["bo","ตั้งค่า","openGistForm()"],docnum:["bp","ตั้งค่าเลขที่","openDocNumForm()"],auditlog:["bo","ดู Log","openAuditLog()"],poa:["bo","สร้าง","openPoaForm()"]}; const m=map[item.action]||["bo","ตั้งค่า","toast('⚙️ เปิดหน้า"+item.t+"แล้ว')"]; return `<button class="btn ${m[0]}" style="font-size:12px" onclick="${m[2]}">${m[1]}</button>`; })();
+      : (()=>{ const map={reset:["bd2","ล้างข้อมูل","resetData()"],backup:["bp","เปิด","openBackupRestore()"],export:["bp","ดาวน์โหลด","exportBackup()"],import:["bo","เลือกไฟล์","importBackup()"],editCompany:["bp","แก้ไขหัวบิล","openCompanyForm()"],cloud:["bp","ตั้งค่าคลาวด์","openCloudForm()"],docnum:["bp","ตั้งค่าเลขที่","openDocNumForm()"]}; const m=map[item.action]||["bo","ตั้งค่า","toast('⚙️ เปิดหน้า"+item.t+"แล้ว')"]; return `<button class="btn ${m[0]}" style="font-size:12px" onclick="${m[2]}">${m[1]}</button>`; })();
     div.innerHTML=`<div class="set-ic">${item.ic}</div><div style="flex:1"><div class="set-t">${item.t}</div><div class="set-s">${item.s}</div></div>${right}`;
     g.appendChild(div);
   });
@@ -8041,9 +7443,15 @@ function loadData(){
 // ══════════════════════════════════
 // ระบบจัดเก็บข้อมูลบนคลาวด์ (Firebase Firestore REST — ไม่ต้องมีเซิร์ฟเวอร์)
 // ══════════════════════════════════
-let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:'',storageBucket:'',autoStorage:false};
+let cloudCfg={
+  enabled: true, // เปลี่ยนจาก false เป็น true เพื่อเปิดระบบคลาวด์
+  projectId: 'flowbiz-2fdf5', // ใส่ Project ID จากหน้าจอของคุณ
+  apiKey: 'AIzaSyC2_F_V2496mZ14lY7qK6H8qB7rL3mN4oP', // ใส่ Web API Key จากหน้าจอของคุณ
+  docId: 'flowbiz',
+  autoRefresh: true,
+  msgSenderId: '367354964593', // ใส่ Messaging Sender ID จากหน้าจอของคุณ
+  appId: '1:367354964593:web:531ad6bda7d27e2f5ff580', // ใส่ App ID จากหน้าจอของคุณ,docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:'',storageBucket:'',autoStorage:false};
 try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assign(cloudCfg,JSON.parse(cc)); }catch(e){}
-
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
 
@@ -8452,8 +7860,7 @@ function openBackupRestore(){
     </div>
     <button class="btn bp" style="width:100%;justify-content:center;padding:14px;margin-bottom:10px" onclick="exportBackup()">⬇️ ดาวน์โหลดไฟล์สำรอง (.json)</button>
     <button class="btn bo" style="width:100%;justify-content:center;padding:14px;margin-bottom:10px" onclick="importBackup()">⬆️ กู้คืนจากไฟล์สำรอง</button>
-    <button class="btn bo" style="width:100%;justify-content:center;padding:13px;margin-bottom:8px;color:#1f2937;border-color:#6e5494" onclick="openGistForm()">🐙 GitHub Gist — สำรอง/กู้คืนคลาวด์ <span style="font-size:10px;background:#6e5494;color:#fff;padding:1px 6px;border-radius:10px;margin-left:6px">แนะนำ</span></button>
-    <button class="btn bo" style="width:100%;justify-content:center;padding:13px" onclick="closeModal();openBackupHistory()">🗄️ Firebase Cloud Backup</button>`;
+    <button class="btn bo" style="width:100%;justify-content:center;padding:13px" onclick="closeModal();openBackupHistory()">🗄️ สำรอง/กู้คืนบนคลาวด์</button>`;
   document.getElementById('ml-act').innerHTML=`<button class="btn bp" onclick="closeModal()">ปิด</button>`;
   document.getElementById('ml').classList.add('op');
 }
@@ -9150,7 +8557,6 @@ function openEmpDrawer(id){
     ${row('PIN เข้าระบบ',e.pin)}
   </div>
   <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:10px" onclick="empMonthView('${e.id}')">📅 ดูประวัติเข้า-ออกรายเดือน</button>
-  <button class="btn bo" style="width:100%;justify-content:center;margin-bottom:10px;color:var(--p)" onclick="closeDrawer();setTimeout(()=>openMRFormForJob('','${e.id}','${escHtml(e.name)}'),120)">📦 สร้างใบขอซื้อ / เบิกวัสดุ</button>
   <div style="display:flex;gap:8px;margin-bottom:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();empDocsMenu('${e.id}')">📄 เอกสาร</button><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEvalForm('${e.id}')">⭐ ประเมิน${(()=>{const av=empAvgEval(e);return av?` (${av.toFixed(1)})`:'';})()}</button></div>
   <div style="display:flex;gap:8px"><button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();openEmpForm('${e.id}')">✏️ แก้ไข</button><button class="btn bp" style="flex:1;justify-content:center" onclick="closeDrawer();nav('payroll')">💵 เงินเดือน</button></div>`;
   openDrawer(e.id,null,[['พนักงาน',e.name],['รหัส',e.id]],info);
@@ -10148,7 +9554,6 @@ function renderEmpPortal(){
             ${(j.status==='รอทำ'||j.status==='สำรวจ')?`<button class="btn bp" style="font-size:11px;padding:6px 10px" onclick="epJobStart('${j.id}')">🔧 เริ่มงาน (ถ่ายรูป)</button>`:''}
             ${j.status==='กำลังทำ'?`<button class="btn bp" style="font-size:11px;padding:6px 10px;background:var(--ac)" onclick="epJobFinish('${j.id}')">✅ เสร็จงาน (ถ่ายรูป)</button>`:''}
             ${j.status==='กำลังทำ'?`<button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="jobAddPhotos('${j.id}','before')">📷 +รูปก่อน</button>`:''}
-            ${j.status!=='ส่งมอบแล้ว'?`<button class="btn bo" style="font-size:11px;padding:6px 10px;color:#0A6EBD" onclick="empOpenMRForm('${j.id}','${escHtml(j.title||j.id)}','${escHtml(e.name||'')}')">📦 ขอเบิก/ซื้อ</button>`:''}
             ${j.gps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank">🗺️ แผนที่</a>`:''}
             <button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="epJobDetail('${j.id}')">📄 รายละเอียด</button>
           </div></div>`;
@@ -12127,7 +11532,7 @@ function backfillJournals(){
 }
 
 
-loadData(); try{ if(typeof gistLoad==='function') gistLoad(); }catch(e){}
+loadData();
 // ── PWA: inline manifest + offline service worker (เฉพาะเมื่อรันบนเว็บเซิร์ฟเวอร์จริง) ──
 (function(){
   try{
@@ -12176,4 +11581,83 @@ try{ cloudStartupSync().then(()=>{ try{ cloudDailyBackup(); }catch(e){} }).catch
 })();
 </script>
 </body>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+
+<script>
+  // ค่า Config จริงจากหน้าจอโปรเจกต์ของคุณ
+  const firebaseConfig = {
+    apiKey: "AIzaSyCqgpfxxql_f9bm2mnGauisLvzc5fu8tfg", 
+    authDomain: "flowbiz-d91e9.firebaseapp.com",
+    projectId: "flowbiz-d91e9",
+    storageBucket: "flowbiz-d91e9.firebasestorage.app",
+    messagingSenderId: "768079006583",
+    appId: "1:768079006583:web:eda4e5e00598df1d71af72"
+  };
+
+  // สั่งเริ่มต้นระบบคลาวด์ Firebase หลังเปิดแอป
+  try {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    var db = firebase.firestore();
+    var storage = firebase.storage();
+    console.log("✅ คลาวด์ Firebase เชื่อมต่อสำเร็จ!");
+  } catch(e) {
+    console.error("การตั้งค่า Firebase ผิดพลาด:", e);
+  }
+
+  // เขียนฟังก์ชันคลาวด์ทับฟังก์ชันเปล่าตัวเก่าของระบบ
+  async function cloudStartupSync() {
+    try {
+      if (typeof db === 'undefined') {
+        cloudInitDone = true;
+        return;
+      }
+      toast('🔄 กำลังเชื่อมข้อมูลบัญชีจากคลาวด์...');
+      
+      const snapshot = await db.collection("journals").orderBy("date", "desc").get();
+      let cloudJournals = [];
+      
+      snapshot.forEach((doc) => {
+        cloudJournals.push(doc.data());
+      });
+
+      if (cloudJournals.length > 0) {
+        JOURNALS = cloudJournals;
+        localStorage.setItem('flowbiz_journals', JSON.stringify(JOURNALS));
+        toast('✅ ซิงค์ข้อมูลจากคลาวด์เสร็จสิ้น');
+      } else {
+        toast('💡 พร้อมใช้งานคลาวด์ เริ่มต้นบัญชีใหม่');
+      }
+      cloudInitDone = true;
+    } catch (error) {
+      console.error("Firebase Sync Error:", error);
+      toast('⚠️ ระบบทำงานแบบเซฟลงเครื่องก่อนชั่วคราว');
+      cloudInitDone = true;
+    }
+  }
+
+  // ฟังก์ชันอัปโหลดรูปใบเสร็จไปเก็บไว้บนคลาวด์ Storage
+  async function uploadReceiptToCloud(fileInputElement) {
+    if (!fileInputElement || !fileInputElement.files || fileInputElement.files.length === 0) return null;
+    const file = fileInputElement.files[0];
+    try {
+      toast('📤 กำลังส่งรูปใบเสร็จขึ้นระบบคลาวด์...');
+      const fileName = 'receipts/' + Date.now() + '_' + file.name;
+      const storageRef = storage.ref().child(fileName);
+      
+      const uploadTask = await storageRef.put(file);
+      const downloadURL = await uploadTask.ref().getDownloadURL();
+      toast('✅ อัปโหลดรูปภาพใบเสร็จสำเร็จ');
+      return downloadURL; // ส่งลิงก์ภาพกลับไปบันทึก
+    } catch (error) {
+      console.error("Upload failed:", error);
+      toast('❌ อัปโหลดรูปล้มเหลว (เช็กสิทธิ์ Storage Rules)');
+      return null;
+    }
+  }
+</script>
 </html>
+
