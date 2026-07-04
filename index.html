@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17o · 🐙 GitHub Gist Backup</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17o · 🐙 GitHub Gist Backup รูป+ข้อมูลทั้งหมด</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -6534,6 +6534,7 @@ async function cloudDailyBackup(force){
     return true;
   }catch(e){ return false; }
 }
+async function gistAutoBackup(){ try{ if(typeof gistCfg!=='undefined'&&gistCfg.enabled&&gistCfg.token) await gistBackupFull(false); }catch(e){} }
 async function cloudListBackups(){
   if(!cloudCfg.enabled||!cloudCfg.projectId||!cloudCfg.apiKey) return {list:[],err:null};
   try{
@@ -7562,6 +7563,112 @@ function openReport(id,title){
 // ══════════════════════════════════
 let settingsState={notif:true,vat:true,autonum:true,multiuser:false,backup:true};
 let companyInfo={};
+// ── GitHub Gist Backup (สำรองข้อมูล+รูปทั้งหมด) ──
+let gistCfg={enabled:false,token:'',gistId:'',lastSaved:''};
+function gistLoad(){ try{ const s=localStorage.getItem('flowbiz_gist'); if(s) gistCfg=Object.assign(gistCfg,JSON.parse(s)); }catch(e){} }
+function gistSaveCfg(){ try{ localStorage.setItem('flowbiz_gist',JSON.stringify(gistCfg)); }catch(e){} }
+function gistHeaders(){ return {'Authorization':'token '+gistCfg.token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'}; }
+async function gistBackupFull(showToast){
+  if(!gistCfg.enabled||!gistCfg.token){ if(showToast) toast('⚠️ ยังไม่ได้ตั้งค่า GitHub Gist'); return false; }
+  try{
+    const full={DB,idCounters,docNumbering,settingsState,companyInfo};
+    const content=JSON.stringify(full); const byteSize=new Blob([content]).size;
+    if(byteSize>15*1024*1024){ if(showToast) toast('⚠️ ข้อมูลใหญ่เกิน 15MB — ลองลดรูปภาพก่อน'); return false; }
+    const now=new Date(); const ts=now.toISOString();
+    const body={description:'FlowBiz Backup '+(companyInfo.name||'')+ ' '+ts.slice(0,10),public:false,files:{'flowbiz_backup.json':{content},'flowbiz_meta.json':{content:JSON.stringify({savedAt:ts,version:'v1',company:companyInfo.name||'',size:byteSize})}}};
+    let res;
+    if(gistCfg.gistId){ res=await fetch('https://api.github.com/gists/'+gistCfg.gistId,{method:'PATCH',headers:gistHeaders(),body:JSON.stringify(body)}); }
+    else { res=await fetch('https://api.github.com/gists',{method:'POST',headers:gistHeaders(),body:JSON.stringify(body)}); }
+    if(!res.ok){ const e=await res.json().catch(()=>{}); throw new Error((e&&e.message)||('HTTP '+res.status)); }
+    const j=await res.json(); gistCfg.gistId=j.id; gistCfg.lastSaved=ts; gistSaveCfg();
+    if(showToast) toast('☁️ สำรองข้อมูลไปยัง GitHub Gist แล้ว ('+Math.round(byteSize/1024)+'KB)');
+    return true;
+  }catch(e){ if(showToast) toast('❌ Gist Backup ล้มเหลว: '+String(e).slice(0,60)); return false; }
+}
+async function gistRestoreFull(gistId, token){
+  const gid=gistId||gistCfg.gistId; const tok=token||gistCfg.token;
+  if(!gid||!tok){ toast('⚠️ ใส่ Gist ID + Token ก่อน'); return false; }
+  try{
+    const res=await fetch('https://api.github.com/gists/'+gid,{headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json','X-GitHub-Api-Version':'2022-11-28'}});
+    if(!res.ok){ const e=await res.json().catch(()=>{}); throw new Error((e&&e.message)||('HTTP '+res.status)); }
+    const gist=await res.json();
+    const file=gist.files&&(gist.files['flowbiz_backup.json']||Object.values(gist.files).find(f=>f.filename.endsWith('.json')&&!f.filename.includes('meta')));
+    if(!file) throw new Error('ไม่พบไฟล์ข้อมูลใน Gist');
+    let raw=file.content;
+    if(!raw||file.truncated){ const r2=await fetch(file.raw_url); raw=await r2.text(); }
+    const d=JSON.parse(raw);
+    if(!d||!d.DB) throw new Error('ไฟล์ข้อมูลไม่ถูกต้อง');
+    Object.keys(DB).forEach(k=>{ if(Array.isArray(DB[k])) DB[k].length=0; });
+    Object.keys(d.DB).forEach(k=>{ DB[k]=d.DB[k]; });
+    if(d.idCounters) Object.assign(idCounters,d.idCounters);
+    if(d.docNumbering) Object.assign(docNumbering,d.docNumbering);
+    if(d.settingsState) Object.assign(settingsState,d.settingsState);
+    if(d.companyInfo) { Object.assign(companyInfo,d.companyInfo); if(typeof syncPromptPay==='function') syncPromptPay(); }
+    if(typeof saveData==='function') saveData();
+    gistCfg.gistId=gid; gistCfg.token=tok; gistCfg.enabled=true; gistSaveCfg();
+    toast('✅ กู้คืนข้อมูลทั้งหมดจาก GitHub Gist แล้ว!');
+    setTimeout(()=>location.reload(),1500);
+    return true;
+  }catch(e){ toast('❌ กู้คืนล้มเหลว: '+String(e).slice(0,80)); return false; }
+}
+async function gistTest(tok){
+  try{
+    const res=await fetch('https://api.github.com/user',{headers:{'Authorization':'token '+tok,'Accept':'application/vnd.github.v3+json'}});
+    if(!res.ok) return {ok:false,msg:'Token ไม่ถูกต้อง ('+res.status+')'};
+    const u=await res.json(); return {ok:true,msg:'✅ ยืนยันแล้ว: @'+u.login};
+  }catch(e){ return {ok:false,msg:'เชื่อมต่อไม่ได้: '+String(e).slice(0,50)}; }
+}
+function openGistForm(){
+  gistLoad();
+  document.getElementById('ml-t').textContent='☁️ GitHub Gist Backup';
+  document.getElementById('ml-s').textContent='สำรองข้อมูล+รูปทั้งหมด ดึงจากเครื่องอื่นได้';
+  const qa=s=>String(s||'').replace(/"/g,'&quot;');
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="background:#EAF4FF;border-radius:11px;padding:12px 14px;margin-bottom:12px;font-size:12.5px;line-height:1.7">
+      <b>GitHub Gist</b> = พื้นที่เก็บข้อมูลบน GitHub — <b>ฟรี ไม่ต้องสร้าง project</b><br>
+      สำรองข้อมูลทุกอย่างรวมรูปภาพ · ดึงข้อมูลจากเครื่องอื่นได้ด้วย Gist ID + Token
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="flb">GitHub Personal Access Token <span style="font-size:10.5px;color:var(--mu)">(github.com → Settings → Developer settings → Tokens)</span></label>
+      <input class="fi" id="gist-token" type="password" value="${qa(gistCfg.token)}" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+      <button class="btn bo" style="width:100%;justify-content:center;font-size:12px;margin-top:6px" onclick="(async()=>{const t=document.getElementById('gist-token').value.trim();if(!t){toast('⚠️ ใส่ Token ก่อน');return;}const el=document.getElementById('gist-test-result');el.textContent='กำลังทดสอบ...';const r=await gistTest(t);el.textContent=r.msg;el.style.color=r.ok?'var(--ok)':'var(--dg)';})()">🔑 ทดสอบ Token</button>
+      <div id="gist-test-result" style="font-size:12px;margin-top:5px;font-weight:600"></div>
+    </div>
+    <div class="fg" style="margin-bottom:10px">
+      <label class="flb">Gist ID <span style="font-size:10.5px;color:var(--mu)">(สร้างอัตโนมัติตอนสำรองครั้งแรก — หรือใส่ ID ของเครื่องอื่น)</span></label>
+      <input class="fi" id="gist-id" value="${qa(gistCfg.gistId)}" placeholder="จะได้รับหลังสำรองครั้งแรก">
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:12px;cursor:pointer">
+      <input type="checkbox" id="gist-enabled" ${gistCfg.enabled?'checked':''} style="width:17px;height:17px"> เปิดใช้งาน Gist Backup (สำรองอัตโนมัติร่วมกับ Firebase)
+    </label>
+    ${gistCfg.lastSaved?`<div style="font-size:11.5px;color:var(--mu);margin-bottom:10px">สำรองล่าสุด: ${fmtD(gistCfg.lastSaved.slice(0,10))} ${gistCfg.lastSaved.slice(11,16)} น.</div>`:''}
+    <div style="font-size:12.5px;font-weight:700;margin-bottom:8px;border-top:1px solid var(--bd);padding-top:10px">📥 กู้คืนข้อมูลจากเครื่องอื่น</div>
+    <div style="font-size:12px;color:var(--mu);margin-bottom:8px">ใส่ Gist ID + Token ของเครื่องต้นทาง แล้วกดกู้คืน (จะโหลดหน้าใหม่)</div>
+    <div class="fl2" style="margin-bottom:8px">
+      <div class="fg"><label class="flb">Token เครื่องต้นทาง</label><input class="fi" id="gist-restore-token" placeholder="ghp_... (หรือใช้ Token เดิม)"></div>
+      <div class="fg"><label class="flb">Gist ID เครื่องต้นทาง</label><input class="fi" id="gist-restore-id" placeholder="xxxxxxxxxxxxxxxx"></div>
+    </div>
+    <button class="btn bo" style="width:100%;justify-content:center;color:#E53E3E;margin-bottom:4px" onclick="(async()=>{const tok=document.getElementById('gist-restore-token').value.trim()||document.getElementById('gist-token').value.trim();const gid=document.getElementById('gist-restore-id').value.trim()||document.getElementById('gist-id').value.trim();if(!gid||!tok){toast('⚠️ ใส่ Gist ID + Token ก่อน');return;}if(!confirm('กู้คืนข้อมูลทั้งหมดจาก Gist?\\n(ข้อมูลในเครื่องนี้จะถูกแทนที่ด้วยข้อมูลจากคลาวด์)')) return; toast('⏳ กำลังดึงข้อมูล...'); await gistRestoreFull(gid,tok);})()">📥 กู้คืนจาก Gist</button>
+    <div style="background:#FFF7E6;border-radius:9px;padding:10px 12px;font-size:11.5px;margin-top:10px">
+      💡 <b>วิธีสร้าง Token:</b> github.com → คลิกรูปโปรไฟล์ → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new token → ติ๊ก <b>gist</b> → Generate → คัดลอก
+    </div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="gistFormSave()">💾 บันทึกตั้งค่า</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+async function gistFormSave(){
+  const token=document.getElementById('gist-token').value.trim();
+  const gistId=document.getElementById('gist-id').value.trim();
+  const enabled=document.getElementById('gist-enabled').checked;
+  if(enabled&&!token){ toast('⚠️ ใส่ Token ก่อนเปิดใช้งาน'); return; }
+  gistCfg.token=token; gistCfg.gistId=gistId; gistCfg.enabled=enabled; gistSaveCfg();
+  toast('✅ บันทึกตั้งค่า Gist Backup แล้ว');
+  if(enabled&&token){
+    toast('⏳ กำลังสำรองข้อมูล...');
+    await gistBackupFull(true);
+    const idEl=document.getElementById('gist-id'); if(idEl&&gistCfg.gistId) idEl.value=gistCfg.gistId;
+  }
+  closeModal();
+}
 function renderSettings(){
   const items=[
     {ic:'🏢',t:'ข้อมูลบริษัท',s:'ชื่อ, ที่อยู่, เลขภาษี, โลโก้',key:null,action:'editCompany'},
@@ -7573,6 +7680,7 @@ function renderSettings(){
     {ic:'📜',t:'ใบมอบอำนาจ',s:'พิมพ์หนังสือมอบอำนาจ กฟน./กฟภ./หน่วยงาน',key:null,action:'poa'},
     {ic:'☁️',t:'สำรองข้อมูลอัตโนมัติ',s:'สำรองทุกวันเที่ยงคืน',key:'backup'},
     {ic:'🌐',t:'จัดเก็บข้อมูลบนคลาวด์',s:'ซิงค์ข้อมูลข้ามอุปกรณ์ (Firebase)',key:null,action:'cloud'},
+    {ic:'🐙',t:'GitHub Gist Backup',s:'สำรองข้อมูล+รูปทั้งหมด ดึงจากเครื่องอื่นได้',key:null,action:'gist'},
     {ic:'🐙',t:'สำรองข้อมูล GitHub Gist',s:'ฟรี · ตั้งค่าง่าย · ไม่ต้องสร้าง Project',key:null,action:'gist'},
     {ic:'🎨',t:'ธีมและการแสดงผล',s:'ปรับสี, ขนาดตัวอักษร',key:null,action:'theme'},
     {ic:'💾',t:'สำรอง / กู้คืนข้อมูล',s:'ดาวน์โหลดข้อมูลทั้งหมด หรือกู้คืนจากไฟล์ (กันข้อมูลหาย)',key:null,action:'backup'},
@@ -7936,109 +8044,6 @@ function loadData(){
 let cloudCfg={enabled:false,projectId:'',apiKey:'',docId:'flowbiz',autoRefresh:true,msgSenderId:'',appId:'',vapidKey:'',storageBucket:'',autoStorage:false};
 try{ const cc=localStorage.getItem('flowbiz_cloud'); if(cc) cloudCfg=Object.assign(cloudCfg,JSON.parse(cc)); }catch(e){}
 
-// ── GitHub Gist Cloud Backup ──
-let gistCfg={enabled:false,token:'',gistId:''};
-try{ const gc=localStorage.getItem('flowbiz_gist'); if(gc) gistCfg=Object.assign(gistCfg,JSON.parse(gc)); }catch(e){}
-function saveGistCfg(){ try{ localStorage.setItem('flowbiz_gist',JSON.stringify(gistCfg)); }catch(e){} }
-function gistHeaders(){ return {'Authorization':'Bearer '+gistCfg.token,'Content-Type':'application/json','Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}; }
-
-function openGistForm(){
-  const v=gistCfg;
-  document.getElementById('ml-t').textContent='🐙 GitHub Gist — สำรองข้อมูลคลาวด์';
-  document.getElementById('ml-s').textContent='ฟรี · ตั้งค่าง่าย · ไม่ต้องสร้าง Project';
-  document.getElementById('ml-bd').innerHTML=`
-    <div style="background:#EAF4FF;border-radius:11px;padding:12px 14px;margin-bottom:14px;font-size:12px;line-height:1.7">
-      <b>วิธีสร้าง Token (ทำครั้งเดียว 3 นาที)</b><br>
-      1. เปิด <a href="https://github.com/settings/tokens/new" target="_blank" style="color:var(--p)">github.com/settings/tokens/new</a><br>
-      2. ตั้งชื่อ: <b>FlowBiz Backup</b><br>
-      3. Expiration: <b>No expiration</b><br>
-      4. เลือก scope: <b>✅ gist</b> อย่างเดียวพอ<br>
-      5. กด <b>Generate token</b> → คัดลอกมาวาง
-    </div>
-    <div class="fg" style="margin-bottom:10px"><label class="flb">GitHub Personal Access Token</label>
-      <input class="fi" id="gist-token" type="password" value="${v.token?'••••••••':''}" placeholder="ghp_xxxxxxxxxxxxxxxx" autocomplete="off"></div>
-    <div class="fg" style="margin-bottom:14px"><label class="flb">Gist ID (ว่างไว้ = สร้างใหม่อัตโนมัติ)</label>
-      <input class="fi" id="gist-id" value="${escHtml(v.gistId)}" placeholder="ปล่อยว่าง — ระบบจะสร้างให้เมื่อสำรองครั้งแรก"></div>
-    <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:14px;cursor:pointer">
-      <input type="checkbox" id="gist-enabled" ${v.enabled?'checked':''} style="width:17px;height:17px"> เปิดใช้งานสำรองข้อมูลผ่าน GitHub Gist</label>
-    <div style="display:flex;gap:8px">
-      <button class="btn bo" style="flex:1;justify-content:center" onclick="gistTestConn()">🔗 ทดสอบ Token</button>
-      <button class="btn bp" style="flex:1;justify-content:center" onclick="gistSaveCfg()">💾 บันทึก</button>
-    </div>
-    <div id="gist-status" style="margin-top:10px;font-size:12.5px;text-align:center"></div>`;
-  document.getElementById('ml-act').innerHTML=`
-    <button class="btn bo" onclick="closeModal()">ปิด</button>
-    <button class="btn bo" onclick="gistBackupNow()">⬆️ สำรองทันที</button>
-    <button class="btn bp" onclick="gistRestoreForm()">⬇️ กู้คืน</button>`;
-  document.getElementById('ml').classList.add('op');
-}
-function gistSaveCfg(){
-  const tok=document.getElementById('gist-token').value.trim();
-  if(tok&&tok!=='••••••••') gistCfg.token=tok;
-  gistCfg.gistId=document.getElementById('gist-id').value.trim();
-  gistCfg.enabled=document.getElementById('gist-enabled').checked;
-  saveGistCfg();
-  toast('✅ บันทึกตั้งค่า Gist แล้ว');
-  openGistForm();
-}
-async function gistTestConn(){
-  const st=document.getElementById('gist-status'); if(st) st.textContent='⏳ กำลังทดสอบ...';
-  const tok=(document.getElementById('gist-token')||{}).value||gistCfg.token;
-  if(!tok||tok==='••••••••'){ if(st) st.textContent='⚠️ ใส่ Token ก่อน'; return; }
-  try{
-    const res=await fetch('https://api.github.com/user',{headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.github+json'}});
-    if(res.ok){ const u=await res.json(); if(st) st.innerHTML='✅ เชื่อมต่อสำเร็จ · GitHub: <b>@'+escHtml(u.login)+'</b>'; }
-    else{ if(st) st.innerHTML='❌ Token ไม่ถูกต้อง ('+res.status+') — ตรวจสอบและสร้างใหม่'; }
-  }catch(e){ if(st) st.textContent='❌ เชื่อมต่อไม่ได้ — ตรวจสอบอินเทอร์เน็ต'; }
-}
-async function gistBackupNow(){
-  if(!gistCfg.token){ toast('⚠️ ตั้งค่า Token ก่อน'); openGistForm(); return; }
-  toast('⏳ กำลังสำรองข้อมูล...');
-  try{
-    const payload=JSON.stringify({DB,idCounters,docNumbering,settingsState,companyInfo},null,2);
-    const ts=new Date().toISOString().slice(0,16).replace('T',' ');
-    const body=JSON.stringify({description:'FlowBiz Backup '+ts,public:false,files:{'flowbiz_backup.json':{content:payload}}});
-    let res,rid=gistCfg.gistId;
-    if(rid){ res=await fetch('https://api.github.com/gists/'+rid,{method:'PATCH',headers:gistHeaders(),body}); }
-    else { res=await fetch('https://api.github.com/gists',{method:'POST',headers:gistHeaders(),body}); }
-    if(!res.ok){ const e=await res.text(); toast('❌ สำรองไม่สำเร็จ ('+res.status+')'); console.error(e); return; }
-    const j=await res.json(); if(!rid){ gistCfg.gistId=j.id; saveGistCfg(); }
-    toast('✅ สำรองข้อมูล Gist สำเร็จ · '+ts+' ('+Math.round(payload.length/1024)+'KB)');
-    if(typeof auditLog==='function') auditLog('save','gist-backup','','GitHub Gist '+gistCfg.gistId);
-  }catch(e){ toast('❌ เชื่อมต่อ GitHub ไม่ได้'); }
-}
-async function gistRestoreForm(){
-  if(!gistCfg.token){ toast('⚠️ ตั้งค่า Token ก่อน'); return; }
-  document.getElementById('ml-t').textContent='⬇️ กู้คืนจาก GitHub Gist';
-  document.getElementById('ml-s').textContent='Gist ID: '+(gistCfg.gistId||'ยังไม่มี');
-  document.getElementById('ml-bd').innerHTML=`
-    <div class="fg" style="margin-bottom:12px"><label class="flb">Gist ID (ถ้าต้องการกู้จาก Gist อื่น)</label>
-      <input class="fi" id="gist-restore-id" value="${escHtml(gistCfg.gistId)}" placeholder="ใส่ Gist ID หรือปล่อยว่างใช้ที่บันทึกไว้"></div>
-    <div style="background:#FEF3C7;border-radius:10px;padding:12px;font-size:12.5px;margin-bottom:12px">⚠️ ข้อมูลปัจจุบันจะถูกแทนที่ทั้งหมด — แนะนำสำรองก่อนกู้คืน</div>
-    <div id="gist-r-status" style="font-size:12.5px;text-align:center;min-height:24px"></div>`;
-  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="openGistForm()">← กลับ</button><button class="btn bp" onclick="gistRestoreNow()">⬇️ กู้คืนข้อมูล</button>`;
-}
-async function gistRestoreNow(){
-  const rid=(document.getElementById('gist-restore-id')||{}).value||gistCfg.gistId;
-  if(!rid){ toast('⚠️ ใส่ Gist ID ก่อน'); return; }
-  const st=document.getElementById('gist-r-status'); if(st) st.textContent='⏳ กำลังดึงข้อมูล...';
-  try{
-    const res=await fetch('https://api.github.com/gists/'+rid,{headers:gistHeaders()});
-    if(!res.ok){ const msg=res.status===404?'ไม่พบ Gist ID นี้':'ดึงข้อมูลไม่ได้ ('+res.status+')'; if(st) st.textContent='❌ '+msg; return; }
-    const j=await res.json(); const f=j.files&&(j.files['flowbiz_backup.json']||Object.values(j.files)[0]);
-    if(!f||!f.content){ if(st) st.textContent='❌ ไม่พบไฟล์ข้อมูลใน Gist'; return; }
-    let d; try{ d=JSON.parse(f.content); }catch(e){ if(st) st.textContent='❌ ไฟล์ข้อมูลเสียหาย'; return; }
-    if(!d.DB){ if(st) st.textContent='❌ ไม่ใช่ไฟล์สำรองของ FlowBiz'; return; }
-    if(st) st.textContent='⏳ กำลังกู้คืน...';
-    if(typeof loadFromObj==='function') loadFromObj(d);
-    else if(typeof loadData==='function'){ localStorage.setItem('flowbizData',JSON.stringify(d)); loadData(); }
-    toast('✅ กู้คืนข้อมูลจาก Gist สำเร็จ'); closeModal(); if(typeof renderAll==='function') renderAll();
-  }catch(e){ if(st) st.textContent='❌ เชื่อมต่อ GitHub ไม่ได้'; }
-}
-async function gistAutoBackup(){
-  if(!gistCfg.enabled||!gistCfg.token) return;
-  try{ await gistBackupNow(); }catch(e){}
-}
 function saveCloudCfg(){ try{ localStorage.setItem('flowbiz_cloud',JSON.stringify(cloudCfg)); }catch(e){} }
 function cloudURL(){ return `https://firestore.googleapis.com/v1/projects/${cloudCfg.projectId}/databases/(default)/documents/flowbiz/${cloudCfg.docId}?key=${cloudCfg.apiKey}`; }
 
@@ -12122,7 +12127,7 @@ function backfillJournals(){
 }
 
 
-loadData();
+loadData(); try{ if(typeof gistLoad==='function') gistLoad(); }catch(e){}
 // ── PWA: inline manifest + offline service worker (เฉพาะเมื่อรันบนเว็บเซิร์ฟเวอร์จริง) ──
 (function(){
   try{
