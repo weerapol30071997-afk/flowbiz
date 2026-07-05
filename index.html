@@ -344,7 +344,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17o · 🐙 GitHub Gist Backup รูป+ข้อมูลทั้งหมด</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17p · 🛡️ ดูใบรับประกันได้ทุกสถานะ</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -2353,7 +2353,175 @@ function openAuditLog(){
   document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="if(confirm('ล้างประวัติทั้งหมด?')){DB.auditlog=[];saveData();openAuditLog();}">ล้าง</button><button class="btn bo" onclick="closeModal()">ปิด</button>`;
   document.getElementById('ml').classList.add('op');
 }
-// ── ใบตรวจรับงาน / Check List ──
+// ── ดูใบรับประกัน (reprint) ──
+function reprintWarranty(id){
+  const j=(DB.jobs||[]).find(x=>x.id===id); if(!j||!j.warranty||!j.warranty.date){ closeDrawer(); setTimeout(()=>warrantyForm(id),120); return; }
+  // reuse doPrintWarranty logic: fill fake form values then print
+  const w=j.warranty;
+  const F_orig=document.getElementById; // keep ref
+  // build temp mock then call doPrintWarranty via direct print
+  const ws=(typeof warrantyStatus==='function')?warrantyStatus(j):null; if(!ws) return;
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const terms=w.terms||'ผู้รับจ้างรับประกันผลงานและวัสดุอุปกรณ์ที่ใช้ในการติดตั้งตามสัญญา ภายในระยะเวลาที่กำหนดนับจากวันที่ส่งมอบงาน';
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.6}.frame{border:3px solid #0A6EBD;border-radius:12px;padding:24px 28px;min-height:900px;position:relative}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:14px;margin-bottom:10px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:14px 0}.title h1{font-size:26px;color:#0A6EBD;font-weight:800;letter-spacing:1px}.title .en{font-size:11px;color:#94a3b8;letter-spacing:3px}
+.badge{text-align:center;background:#0A6EBD;color:#fff;padding:8px 30px;border-radius:30px;display:inline-block;font-size:13px;font-weight:700;margin:8px auto;letter-spacing:.5px}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0}.box{border:1px solid #cfe4fa;border-radius:10px;padding:11px 14px}.box .t{font-size:10.5px;color:#6b7280;font-weight:700;margin-bottom:5px}
+.row{display:flex;font-size:12.5px;padding:2px 0}.row .k{color:#6b7280;width:110px;flex:none}.row .v{font-weight:600}
+.terms{background:#f5faff;border:1px solid #cfe4fa;border-radius:10px;padding:14px;margin:14px 0;font-size:12.5px;line-height:1.7}
+.sig{display:flex;justify-content:space-between;margin-top:36px;gap:30px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:50px;padding-top:6px;font-size:12px}
+.qrbox{text-align:center;margin-top:10px;font-size:11px;color:var(--mu)}
+.stamp{position:absolute;right:30px;bottom:120px;opacity:.15;font-size:72px;transform:rotate(-20deg)}
+</style></head><body><div class="frame">
+  <div class="stamp">🛡️</div>
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' / '+esc(CO.mobile):''}</div></div>
+  <div class="title"><h1>ใบรับประกันผลงาน</h1><div class="en">QUALITY WARRANTY CERTIFICATE</div></div>
+  <div style="text-align:center"><span class="badge">เลขที่ ${esc(w.no||id)}</span></div>
+  <div class="info">
+    <div class="box"><div class="t">ผู้ว่าจ้าง / ลูกค้า</div>
+      <div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>
+      ${cust&&cust.phone?`<div class="row"><span class="k">โทร</span><span class="v">${esc(cust.phone)}</span></div>`:''}
+      ${cust&&cust.addr?`<div class="row"><span class="k">ที่อยู่</span><span class="v">${esc(cust.addr)}</span></div>`:''}
+    </div>
+    <div class="box"><div class="t">รายละเอียดงาน</div>
+      <div class="row"><span class="k">ใบงาน</span><span class="v">${esc(j.id)}</span></div>
+      <div class="row"><span class="k">ชื่องาน</span><span class="v">${esc(j.title||'')}</span></div>
+      ${j.location?`<div class="row"><span class="k">สถานที่</span><span class="v">${esc(j.location)}</span></div>`:''}
+    </div>
+  </div>
+  <div class="info">
+    <div class="box"><div class="t">ระยะเวลารับประกัน</div>
+      <div style="font-size:22px;font-weight:800;color:#0A6EBD;margin:4px 0">${esc(ws.periodLabel)}</div>
+    </div>
+    <div class="box"><div class="t">ช่วงเวลาคุ้มครอง</div>
+      <div class="row"><span class="k">เริ่ม</span><span class="v">${fmtD(ws.startStr)}</span></div>
+      <div class="row"><span class="k">หมดอายุ</span><span class="v" style="color:${ws.status==='expired'?'#E53E3E':'#0F9D58'}">${fmtD(ws.endStr)}</span></div>
+      <div class="row"><span class="k">สถานะ</span><span class="v" style="color:${ws.status==='active'?'#0F9D58':ws.status==='expiring'?'#D97706':'#E53E3E'}">${ws.status==='active'?'✅ คุ้มครองอยู่':ws.status==='expiring'?'⚠️ ใกล้หมดอายุ':'❌ หมดอายุแล้ว'}</span></div>
+    </div>
+  </div>
+  <div class="terms"><b>เงื่อนไขการรับประกัน:</b><br>${esc(terms).replace(/\n/g,'<br>')}</div>
+  <div class="sig">
+    <div class="col"><div class="ln">ผู้ว่าจ้าง / ลูกค้า<br>(${esc(cn)})</div></div>
+    <div class="col"><div class="ln">ผู้รับจ้าง / ผู้ออกใบรับประกัน<br>(${esc(CO.seller||'____________________')})<br>${esc(CO.name)}</div></div>
+  </div>
+</div></body></html>`;
+  closeDrawer();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบรับประกัน '+id,{});
+  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
+}
+// ── ใบรับสินค้าจากงานซ่อม ──
+function openRepairReceiptForm(jobId){
+  const j=(DB.jobs||[]).find(x=>x.id===jobId); if(!j){ toast('ไม่พบงาน'); return; }
+  const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
+  const existing=j.repairItems||[];
+  document.getElementById('ml-t').textContent='📋 ใบรับสินค้าจากงานซ่อม';
+  document.getElementById('ml-s').textContent=(j.title||j.id)+' · '+cn;
+  document.getElementById('ml-bd').innerHTML=`
+    <input type="hidden" id="rr-job" value="${jobId}">
+    <div style="background:#EAF4FF;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12.5px">
+      🛠️ <b>${escHtml(j.title||j.id)}</b> · ${escHtml(cn)}
+      ${cust&&cust.phone?' · '+escHtml(cust.phone):''}
+    </div>
+    <div class="fl2" style="margin-bottom:10px">
+      <div class="fg"><label class="flb">วันที่รับสินค้า</label><input class="fi" type="date" id="rr-date" value="${iso(new Date())}"></div>
+      <div class="fg"><label class="flb">ผู้รับ (ช่าง/พนักงาน)</label><input class="fi" id="rr-receiver" value="${escHtml(companyInfo&&companyInfo.seller||'')}" placeholder="ชื่อผู้รับ"></div>
+    </div>
+    <div style="font-size:12px;font-weight:700;margin-bottom:6px">รายการสินค้าที่รับเข้ามาซ่อม</div>
+    <div id="rr-items">${existing.length?existing.map((it,i)=>rrItemRow(it,i)).join(''):rrItemRow({name:'',serial:'',condition:'',qty:1},0)}</div>
+    <button class="btn bo" style="font-size:12px;width:100%;justify-content:center;margin-bottom:10px" onclick="rrAddItem()">+ เพิ่มรายการ</button>
+    <div class="fg full"><label class="flb">อาการเสีย / งานที่ต้องการ</label><textarea class="fi" id="rr-symptom" rows="2" style="resize:vertical" placeholder="เช่น ไฟไม่ติด / ควบคุมไม่ได้">${escHtml(j.symptom||j.desc||'')}</textarea></div>
+    <div class="fg" style="margin-top:8px"><label class="flb">กำหนดส่งคืน (ถ้ามี)</label><input class="fi" type="date" id="rr-returndate" value="${j.due||''}"></div>`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button><button class="btn bp" onclick="saveRepairReceipt('${jobId}')">💾 บันทึก + พิมพ์ใบรับ</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function rrItemRow(it,i){
+  return `<div style="background:var(--bg);border-radius:9px;padding:9px;margin-bottom:7px" id="rr-row-${i}">
+    <div style="display:flex;gap:6px;margin-bottom:6px">
+      <input class="fi" style="flex:2" id="rr-name-${i}" value="${escHtml(it.name||'')}" placeholder="ชื่อ/รายละเอียดสินค้า เช่น ตู้ MDB / มอเตอร์ปั๊ม">
+      <input class="fi" style="width:55px;text-align:center" id="rr-qty-${i}" type="number" value="${it.qty||1}" min="1" placeholder="จำนวน">
+    </div>
+    <div style="display:flex;gap:6px">
+      <input class="fi" style="flex:1" id="rr-serial-${i}" value="${escHtml(it.serial||'')}" placeholder="Serial No. / รหัส (ถ้ามี)">
+      <select class="fi" style="flex:1" id="rr-cond-${i}"><option value="ชำรุด" ${it.condition==='ชำรุด'?'selected':''}>ชำรุด</option><option value="ใช้งานได้บางส่วน" ${it.condition==='ใช้งานได้บางส่วน'?'selected':''}>ใช้งานได้บางส่วน</option><option value="ไม่ทราบ" ${!it.condition||it.condition==='ไม่ทราบ'?'selected':''}>ไม่ทราบอาการ</option></select>
+    </div>
+  </div>`;
+}
+let _rrCount=1;
+function rrAddItem(){
+  const box=document.getElementById('rr-items'); if(!box) return;
+  const i=box.querySelectorAll('[id^="rr-row-"]').length;
+  box.innerHTML+=rrItemRow({name:'',serial:'',condition:'',qty:1},i); _rrCount=i+1;
+}
+function saveRepairReceipt(jobId){
+  const j=(DB.jobs||[]).find(x=>x.id===jobId); if(!j) return;
+  const date=document.getElementById('rr-date').value||iso(new Date());
+  const receiver=document.getElementById('rr-receiver').value.trim();
+  const symptom=document.getElementById('rr-symptom').value.trim();
+  const returnDate=document.getElementById('rr-returndate').value;
+  const items=[]; let i=0;
+  while(document.getElementById('rr-name-'+i)){
+    const name=(document.getElementById('rr-name-'+i).value||'').trim();
+    if(name) items.push({name,qty:+document.getElementById('rr-qty-'+i).value||1,serial:(document.getElementById('rr-serial-'+i).value||'').trim(),condition:document.getElementById('rr-cond-'+i).value});
+    i++;
+  }
+  if(!items.length){ toast('⚠️ เพิ่มรายการสินค้าอย่างน้อย 1 รายการ'); return; }
+  j.repairItems=items; j.repairDate=date; j.repairReceiver=receiver; if(symptom) j.symptom=symptom; if(returnDate) j.due=returnDate;
+  if(typeof saveData==='function') saveData();
+  toast('✅ บันทึกใบรับสินค้าซ่อมแล้ว');
+  printRepairReceipt(jobId);
+}
+function printRepairReceipt(jobId){
+  const j=(DB.jobs||[]).find(x=>x.id===jobId); if(!j){ toast('ไม่พบงาน'); return; }
+  const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,ch=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[ch]));
+  const items=j.repairItems||[];
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:10px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:12px 0}.title h1{font-size:22px;color:#0A6EBD;font-weight:800}
+.party{display:flex;gap:14px;margin:10px 0 14px}.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:10px 12px}.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:700}
+.row{display:flex;font-size:12.5px;padding:2px 0}.row .k{color:#6b7280;width:100px;flex:none}.row .v{font-weight:600}
+table{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}th{background:#0A6EBD;color:#fff;padding:7px 8px;text-align:left}td{border:1px solid #e5e7eb;padding:7px 8px}
+.symptom{background:#FFF7E6;border:1px solid #FDE68A;border-radius:9px;padding:11px 13px;margin:10px 0;font-size:12.5px}
+.sig{display:flex;justify-content:space-between;margin-top:30px;gap:24px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:50px;padding-top:6px;font-size:12px}
+.note{font-size:11px;color:#9ca3af;text-align:center;margin-top:14px;border-top:1px solid #f0f0f0;padding-top:8px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>โทร. ${esc(CO.tel)}${CO.mobile?' / '+esc(CO.mobile):''}  ·  เลขผู้เสียภาษี ${esc(CO.tax)}</div></div>
+  <div class="title"><h1>ใบรับสินค้าจากงานซ่อม</h1></div>
+  <div class="party">
+    <div class="box"><div class="t">ลูกค้า / ผู้ฝากซ่อม</div>
+      <div class="row"><span class="k">ชื่อ</span><span class="v">${esc(cn)}</span></div>
+      ${cust&&cust.phone?`<div class="row"><span class="k">โทร</span><span class="v">${esc(cust.phone)}</span></div>`:''}
+      ${cust&&cust.addr?`<div class="row"><span class="k">ที่อยู่</span><span class="v">${esc(cust.addr)}</span></div>`:''}
+    </div>
+    <div class="box"><div class="t">รายละเอียดงาน</div>
+      <div class="row"><span class="k">เลขที่งาน</span><span class="v">${esc(j.id)}</span></div>
+      <div class="row"><span class="k">วันที่รับ</span><span class="v">${fmtD(j.repairDate||iso(new Date()))}</span></div>
+      <div class="row"><span class="k">ผู้รับ</span><span class="v">${esc(j.repairReceiver||CO.seller||'')}</span></div>
+      ${j.due?`<div class="row"><span class="k">กำหนดคืน</span><span class="v" style="color:#0A6EBD;font-weight:700">${fmtD(j.due)}</span></div>`:''}
+    </div>
+  </div>
+  <table><thead><tr><th style="width:30px">#</th><th>รายการสินค้า / อุปกรณ์</th><th style="width:90px">Serial No.</th><th style="width:60px;text-align:center">จำนวน</th><th style="width:110px">สภาพเมื่อรับ</th></tr></thead>
+  <tbody>${items.map((it,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${esc(it.name)}</td><td style="font-size:11px">${esc(it.serial||'-')}</td><td style="text-align:center">${it.qty||1}</td><td>${esc(it.condition||'ไม่ทราบ')}</td></tr>`).join('')}</tbody></table>
+  ${j.symptom?`<div class="symptom"><b>อาการเสีย / งานที่ต้องการ:</b> ${esc(j.symptom)}</div>`:''}
+  <div style="font-size:11.5px;color:#52606d;margin:10px 0;padding:8px;background:#f8fafc;border-radius:8px">⚠️ กรุณาตรวจสอบรายการสินค้าก่อนลงนาม — ทางบริษัทจะรับผิดชอบเฉพาะรายการที่ระบุไว้ในใบรับนี้เท่านั้น</div>
+  <div class="sig">
+    <div class="col"><div class="ln">ลูกค้า / ผู้ฝากซ่อม<br>(${esc(cn)})</div></div>
+    <div class="col"><div class="ln">ผู้รับสินค้า<br>(${esc(j.repairReceiver||CO.seller||'____________________')})<br>${esc(CO.name)}</div></div>
+  </div>
+  <div class="note">ออกโดยระบบ FlowBiz · ใบรับสินค้าซ่อมเลขที่ ${esc(j.id)} · วันที่ ${fmtD(j.repairDate||iso(new Date()))}</div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบรับสินค้าซ่อม '+j.id,{});
+  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
+}
 const DEFAULT_CHECKLIST=[
   'ระบบไฟฟ้าทำงานได้ตามปกติทุกจุด','ตู้ควบคุมและ breaker ติดตั้งถูกต้องและมั่นคง','การต่อสายดินครบถ้วนและถูกต้อง','สายไฟเดินเรียบร้อย ไม่มีรอยขีดข่วน','ป้ายเตือนและฉลากติดตั้งครบ','พื้นที่ทำงานสะอาดเรียบร้อย ไม่มีเศษวัสดุหลงเหลือ','ตรวจสอบโดยช่างไฟฟ้าที่มีใบอนุญาต','ลูกค้าได้รับการสาธิตการใช้งานแล้ว'
 ];
@@ -5997,7 +6165,17 @@ function openJobDrawer(id){
   else if(j.status==='อนุมัติแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:#00897B" onclick="jobDeliver('${id}')">📦 ทำใบส่งมอบงาน</button>`;
   else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
   else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
-  if(j.status==='ส่งมอบแล้ว'||j.status==='อนุมัติแล้ว') actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();setTimeout(()=>warrantyForm('${id}'),120)">🛡️ ใบรับประกัน</button><button class="btn bo" style="flex:1;justify-content:center" onclick="openChecklistForm('${id}')">✅ ตรวจรับงาน</button>`;
+  if(j.status==='ส่งมอบแล้ว'||j.status==='อนุมัติแล้ว'){
+    const ws=(typeof warrantyStatus==='function')?warrantyStatus(j):null;
+    if(ws){ actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="reprintWarranty('${id}')">🛡️ ดูใบรับประกัน</button>`; }
+    else { actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="closeDrawer();setTimeout(()=>warrantyForm('${id}'),120)">🛡️ ออกใบรับประกัน</button>`; }
+    actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="openChecklistForm('${id}')">✅ ตรวจรับงาน</button>`;
+  } else {
+    const ws=(typeof warrantyStatus==='function')?warrantyStatus(j):null;
+    if(ws) actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="reprintWarranty('${id}')">🛡️ ดูใบรับประกัน</button>`;
+  }
+  if(j.repairItems&&j.repairItems.length) actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="printRepairReceipt('${id}')">🖨️ ใบรับสินค้าซ่อม</button>`;
+  else actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="openRepairReceiptForm('${id}')">📋 ใบรับสินค้าซ่อม</button>`;
   const inspectBox=j.inspectNote?`<div style="background:${j.approved?'#E8F8F0':'#FEE'};border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px"><div style="font-weight:700;color:${j.approved?'var(--ok)':'var(--dg)'};margin-bottom:4px">${j.approved?'✅ ผลการตรวจ: อนุมัติ':'❌ ผลการตรวจ: ไม่อนุมัติ'}</div>${j.inspectNote}</div>`:'';
   const gLink=g=>g?` · <a href="https://maps.google.com/?q=${g.lat},${g.lng}" target="_blank" style="color:var(--p);font-weight:600">📍 ดูตำแหน่ง</a>`:' · <span style="color:var(--mu)">ไม่มี GPS</span>';
   const timeBox=(j.startedAt||j.finishedAt)?`<div style="background:#EAF4FF;border:1px solid #cfe4fa;border-radius:12px;padding:12px;margin-bottom:14px;font-size:12px">
@@ -8690,106 +8868,185 @@ function openEmployeeForm(id){
   const off=(e&&Array.isArray(e.offDays))?e.offDays:[0];
   const days=[['อา',0],['จ',1],['อ',2],['พ',3],['พฤ',4],['ศ',5],['ส',6]];
   const dayStyle=d=>`flex:1;min-width:40px;text-align:center;padding:11px 3px;border:1.5px solid ${off.includes(d)?'var(--dg)':'var(--bd)'};border-radius:10px;cursor:pointer;font-size:13px;font-weight:700;user-select:none;background:${off.includes(d)?'#FFE9E6':'#fff'};color:${off.includes(d)?'var(--dg)':'var(--tx)'}`;
-  document.getElementById('ml-t').textContent=id?'แก้ไขข้อมูลพนักงาน':'เพิ่มพนักงาน';
-  document.getElementById('ml-s').textContent=id?e.id:'กรอกข้อมูลให้ครบถ้วน';
+  document.getElementById('ml-t').textContent=id?'✏️ แก้ไขข้อมูลพนักงาน':'👤 เพิ่มพนักงานใหม่';
+  document.getElementById('ml-s').textContent=id?(e.name||e.id):'กรอกข้อมูลให้ครบถ้วน';
   document.getElementById('ml-bd').innerHTML=`
-   <div style="display:flex;gap:4px;overflow-x:auto;background:var(--bg);padding:4px;border-radius:10px;margin-bottom:14px;-webkit-overflow-scrolling:touch">
-     ${[['info','ข้อมูล'],['bank','ธนาคาร'],['wage','ค่าจ้าง'],['time','เวลา/หัก'],['welfare','สวัสดิการ'],['holiday','วันหยุด']].map((t,i)=>`<button type="button" id="eftab-${t[0]}" onclick="efTab('${t[0]}')" style="flex:0 0 auto;padding:7px 13px;border:none;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;background:${i===0?'#fff':'transparent'};color:${i===0?'var(--p)':'var(--mu)'}">${t[1]}</button>`).join('')}
-   </div>
-   <div class="ef-pane" id="efpane-info">
-     <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
-       <div id="ef-photo-box" onclick="document.getElementById('ef-photo-input').click()" style="width:72px;height:72px;border-radius:50%;border:2px dashed var(--bd);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:var(--bg);flex-shrink:0">
-         ${(e&&e.photo)?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`:'<div style="text-align:center;color:var(--mu)"><div style="font-size:22px">📷</div><div style="font-size:9px">รูป</div></div>'}
-       </div>
-       <input type="file" id="ef-photo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;left:-5px" onchange="handleEmpPhoto(event)">
-       <div style="flex:1;font-size:11px;color:var(--mu)">รูปโปรไฟล์พนักงาน (แตะวงกลมเพื่อเลือกรูป)${(e&&e.photo)?'<br><button type="button" class="btn bd2" style="font-size:10px;padding:3px 8px;margin-top:6px" onclick="efPhotoClear()">✕ ลบรูป</button>':''}</div>
-     </div>
-     <div class="fg" style="margin-bottom:10px"><label class="flb">ชื่อ-นามสกุล *</label><input class="fi" id="ef-name" value="${v('name')}" placeholder="เช่น สมชาย ใจดี"></div>
-     <div class="fl2">
-       <div class="fg"><label class="flb">ตำแหน่ง</label><input class="fi" id="ef-role" value="${v('role')}" placeholder="ช่างไฟฟ้า"></div>
-       <div class="fg"><label class="flb">แผนก</label><input class="fi" id="ef-dept" value="${v('dept')}" placeholder="ช่าง / ออฟฟิศ"></div>
-       <div class="fg"><label class="flb">เบอร์โทร</label><input class="fi" id="ef-phone" value="${v('phone')}" placeholder="08x-xxx-xxxx"></div>
-       <div class="fg"><label class="flb">วันที่เริ่มงาน</label><input class="fi" type="date" id="ef-start" value="${v('startDate')}"></div>
-       <div class="fg"><label class="flb">ทดลองงาน (วัน)</label><input class="fi" type="number" id="ef-prob" value="${v('probDays')||'119'}" placeholder="119" min="0"></div>
-     </div>
-     <div class="fg" style="margin-top:8px"><label class="flb">เลขบัตรประชาชน</label><input class="fi" id="ef-idcard" value="${v('idCard')}" placeholder="x-xxxx-xxxxx-xx-x"></div>
-     <div class="fg" style="margin-top:8px"><label class="flb">ที่อยู่</label><input class="fi" id="ef-addr" value="${v('addr')}" placeholder="ที่อยู่พนักงาน"></div>
-     <div class="fl2" style="margin-top:8px">
-       <div class="fg"><label class="flb">ผู้ติดต่อฉุกเฉิน</label><input class="fi" id="ef-emg" value="${v('emgName')}"></div>
-       <div class="fg"><label class="flb">เบอร์ฉุกเฉิน</label><input class="fi" id="ef-emgphone" value="${v('emgPhone')}"></div>
-     </div>
-     <div style="background:var(--bg);border-radius:12px;padding:12px;margin-top:12px">
-       <div style="font-size:11px;font-weight:700;color:var(--p);margin-bottom:10px">🔐 บัญชีเข้าระบบ + สถานะ</div>
-       <div class="fl2"><div class="fg"><label class="flb">PIN เข้าระบบ</label><input class="fi" id="ef-pin" value="${v('pin')}" placeholder="เช่น 1234" maxlength="6"></div><div class="fg"><label class="flb">LINE ID</label><input class="fi" id="ef-line" value="${v('lineId')}" placeholder="@lineid"></div></div>
-       <div class="fg" style="margin-top:10px"><label class="flb">🛡️ ระดับสิทธิ์การใช้งาน</label>
-         <select class="fi" id="ef-access">
-           <option value="staff"${!e||(!e.accessLevel&&!e.isAdmin)||e.accessLevel==='staff'?' selected':''}>พนักงาน — เห็นเฉพาะพอร์ทัลตัวเอง</option>
-           <option value="accountant"${e&&e.accessLevel==='accountant'?' selected':''}>ฝ่ายบัญชี — บัญชี + ขาย (ไม่เห็น HR/ตั้งค่า)</option>
-           <option value="manager"${e&&e.accessLevel==='manager'?' selected':''}>ผู้จัดการ — งาน + HR + ขาย (ไม่เห็นบัญชี/ตั้งค่า)</option>
-           <option value="full"${e&&(e.accessLevel==='full'||(e.isAdmin&&!e.accessLevel))?' selected':''}>ผู้ดูแลทั้งหมด — เข้าได้ทุกเมนู</option>
-         </select>
-       </div>
-       <div class="set-row" style="margin-top:6px;padding:8px 0"><div style="flex:1"><div class="set-t">สถานะใช้งาน</div><div class="set-s">ปิด = พักงาน (ไม่คิดเงินเดือน)</div></div><button class="sw ${!e||e.active?'on':''}" id="ef-active" onclick="this.classList.toggle('on')"></button></div>
-     </div>
-   </div>
-   <div class="ef-pane" id="efpane-bank" style="display:none">
-     <div class="fg" style="margin-bottom:10px"><label class="flb">ธนาคาร</label><input class="fi" id="ef-bank" value="${v('bankName')}" placeholder="เช่น กสิกรไทย / ไทยพาณิชย์"></div>
-     <div class="fg" style="margin-bottom:10px"><label class="flb">เลขที่บัญชี</label><input class="fi" id="ef-bankacc" value="${v('bankAcc')}" placeholder="xxx-x-xxxxx-x"></div>
-     <div class="fg"><label class="flb">ชื่อบัญชี</label><input class="fi" id="ef-bankname" value="${v('bankAccName')}" placeholder="ชื่อเจ้าของบัญชี"></div>
-     <div style="font-size:11px;color:var(--mu);margin-top:12px">💳 ใช้สำหรับโอนเงินเดือนและแสดงบนสลิป</div>
-   </div>
-   <div class="ef-pane" id="efpane-wage" style="display:none">
-     <div class="fl2">
-       <div class="fg"><label class="flb">ประเภทการจ้าง</label><select class="fi" id="ef-paytype" onchange="efPayTypeChange()"><option value="monthly"${!e||e.payType==='monthly'?' selected':''}>รายเดือน</option><option value="daily"${e&&e.payType==='daily'?' selected':''}>รายวัน</option></select></div>
-       <div class="fg"><label class="flb" id="ef-rate-lb">${(!e||e.payType==='monthly')?'เงินเดือน (บาท)':'ค่าแรงรายวัน (บาท)'}</label><input class="fi" type="number" id="ef-rate" value="${e?(e.rate||0):''}" placeholder="0"></div>
-     </div>
-     <div class="fg" style="margin-top:8px"><label class="flb">รอบการจ่าย (ความถี่)</label><select class="fi" id="ef-paycycle">
-       ${['รายเดือน','ทุก 15 วัน','รายสัปดาห์','ทุก 4 วัน','ทุก 2 วัน','รายวัน'].map(c=>`<option value="${c}"${(e&&e.payCycle===c)||(!e&&c==='รายเดือน')||(e&&!e.payCycle&&((e.payType==='daily'&&c==='รายวัน')||(e.payType!=='daily'&&c==='รายเดือน')))?' selected':''}>${c}</option>`).join('')}
-     </select></div>
-     <div class="fl2" style="margin-top:8px">
-       <div class="fg"><label class="flb">ชั่วโมงงานปกติ/วัน</label><input class="fi" type="number" id="ef-normalhours" value="${e&&e.normalHours?e.normalHours:8}" placeholder="8"></div>
-       <div class="fg" id="ef-payday-box" style="${(e&&e.payType==='daily')?'display:none':''}"><label class="flb">จ่ายทุกวันที่</label><input class="fi" type="number" min="1" max="31" id="ef-payday" value="${e?(e.payDay||30):30}"></div>
-     </div>
-     <div class="fl2" style="margin-top:8px">
-       <div class="fg"><label class="flb">ตัวคูณ OT (เท่า)</label><input class="fi" type="number" step="0.1" id="ef-otmult" value="${e&&e.otMult?e.otMult:1.5}"></div>
-       <div class="fg"><label class="flb">ตัวคูณ OT วันหยุด</label><input class="fi" type="number" step="0.1" id="ef-hotmult" value="${e&&e.holidayOtMult?e.holidayOtMult:2}"></div>
-     </div>
-     <div style="font-size:11px;color:var(--mu);margin-top:10px">⏱️ ทำครบชั่วโมงปกติ=ได้เต็ม · เกิน=OT · มาทำงานวันหยุด=OT วันหยุด</div>
-   </div>
-   <div class="ef-pane" id="efpane-time" style="display:none">
-     <div class="fl2">
-       <div class="fg"><label class="flb">เวลาเข้างาน</label><input class="fi" type="time" id="ef-wstart" value="${e&&e.workStart?e.workStart:'08:00'}"></div>
-       <div class="fg"><label class="flb">เวลาเลิกงาน</label><input class="fi" type="time" id="ef-wend" value="${e&&e.workEnd?e.workEnd:'17:00'}"></div>
-     </div>
-     <div class="fg" style="margin-top:8px"><label class="flb">ผ่อนผันสาย (นาที)</label><input class="fi" type="number" id="ef-lategrace" value="${e&&e.lateGrace!=null?e.lateGrace:15}"></div>
-     <div class="fg" style="margin-top:8px"><label class="flb">📍 รัศมีพื้นที่ทำงาน (เมตร)</label><input class="fi" type="number" id="ef-georadius" value="${e&&e.geoRadius?e.geoRadius:100}" placeholder="100"></div>
-     <div class="fl2" style="margin-top:8px">
-       <div class="fg"><label class="flb">ปรับมาสาย (฿/นาที)</label><input class="fi" type="number" id="ef-latefine" value="${e&&e.lateFine?e.lateFine:0}"></div>
-       <div class="fg"><label class="flb">ปรับออกก่อน (฿/นาที)</label><input class="fi" type="number" id="ef-earlyfine" value="${e&&e.earlyFine?e.earlyFine:0}"></div>
-     </div>
-     <div style="font-size:11px;color:var(--mu);margin-top:8px">⏰ มาสายเกินผ่อนผัน → หักตามนาที · 📍 ออกนอกรัศมีจากจุดลงเวลาเข้า = แจ้งเตือน</div>
-   </div>
-   <div class="ef-pane" id="efpane-welfare" style="display:none">
-     <div class="fg" style="margin-bottom:10px"><label class="flb">ค่าเดินทาง/อาหาร (฿/วันทำงาน)</label><input class="fi" type="number" id="ef-travel" value="${e&&e.travel?e.travel:0}"></div>
-     <div class="fg" style="margin-bottom:10px"><label class="flb">เบี้ยขยัน (฿/เดือน — ได้เมื่อไม่สาย/ไม่ลา)</label><input class="fi" type="number" id="ef-diligence" value="${e&&e.diligence?e.diligence:0}"></div>
-     <div class="fg" style="margin-bottom:10px"><label class="flb">🏖️ โควต้าวันลาพักร้อน (วัน/ปี)</label><input class="fi" type="number" id="ef-leavequota" value="${e&&e.leaveQuota!=null?e.leaveQuota:6}" placeholder="6"></div>
-     <div class="set-row" style="background:var(--bg);border-radius:10px;padding:11px 12px;margin-bottom:10px"><div style="flex:1"><div class="set-t">หักประกันสังคม 5%</div><div class="set-s">นายจ้างสมทบเท่ากัน · สูงสุด 750 บาท/เดือน</div></div><button class="sw ${e&&e.sso?'on':''}" id="ef-sso" onclick="this.classList.toggle('on')"></button></div>
-     <div class="fg" style="margin-bottom:10px"><label class="flb">วิธีคิดภาษีหัก ณ ที่จ่าย</label><select class="fi" id="ef-taxmode" onchange="efTaxModeChange()">
-       <option value="none"${(!e||!e.taxMode||e.taxMode==='none')&&!(e&&e.taxPct)?' selected':''}>ไม่หักภาษี</option>
-       <option value="flat"${(e&&(e.taxMode==='flat'||(e.taxPct&&!e.taxMode)))?' selected':''}>หักแบบกำหนด % เอง</option>
-       <option value="progressive"${e&&e.taxMode==='progressive'?' selected':''}>คำนวณขั้นบันได (อัตโนมัติตามกฎหมาย)</option>
-     </select></div>
-     <div class="fg" id="ef-taxpct-box" style="display:${(e&&(e.taxMode==='flat'||(e.taxPct&&!e.taxMode)))?'block':'none'}"><label class="flb">อัตราภาษี (%)</label><input class="fi" type="number" step="0.5" id="ef-taxpct" value="${e&&e.taxPct?e.taxPct:0}"></div>
-   </div>
-   <div class="ef-pane" id="efpane-holiday" style="display:none">
-     <div style="font-size:12px;color:var(--mu);margin-bottom:12px">เลือก<b style="color:var(--tx)">วันหยุดประจำสัปดาห์</b>ของพนักงานคนนี้<br>(วันที่เลือก = วันหยุด · ถ้ามาทำงานวันหยุดจะคิด OT วันหยุด)</div>
-     <div style="display:flex;gap:5px;flex-wrap:wrap">
-       ${days.map(d=>`<label style="${dayStyle(d[1])}" onclick="const c=this.querySelector('input');c.checked=!c.checked;this.style.background=c.checked?'#FFE9E6':'#fff';this.style.borderColor=c.checked?'var(--dg)':'var(--bd)';this.style.color=c.checked?'var(--dg)':'var(--tx)'"><input type="checkbox" class="ef-offday" data-d="${d[1]}" ${off.includes(d[1])?'checked':''} style="display:none">${d[0]}</label>`).join('')}
-     </div>
-     <div style="display:flex;gap:8px;margin-top:14px">
-       <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="efSetOff([0])">หยุดอาทิตย์</button>
-       <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="efSetOff([0,6])">หยุดเสาร์-อาทิตย์</button>
-       <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="efSetOff([])">ไม่มีวันหยุด</button>
+  <style>
+    .ef-tab-bar{display:flex;gap:4px;overflow-x:auto;background:#f1f5f9;padding:5px;border-radius:14px;margin-bottom:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+    .ef-tab-bar::-webkit-scrollbar{display:none}
+    .ef-tab-btn{flex:0 0 auto;padding:8px 14px;border:none;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;background:transparent;color:#64748b}
+    .ef-tab-btn.active{background:#fff;color:var(--p);box-shadow:0 2px 8px rgba(10,110,189,.12)}
+    .ef-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 15px;margin-bottom:12px}
+    .ef-section-hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9}
+    .ef-profile-header{background:linear-gradient(135deg,#0A6EBD 0%,#00C9A7 100%);border-radius:16px;padding:20px 16px;margin-bottom:14px;position:relative;overflow:hidden}
+    .ef-profile-header::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+    .ef-avatar-ring{width:82px;height:82px;border-radius:50%;border:3px solid rgba(255,255,255,.8);overflow:hidden;cursor:pointer;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+    .ef-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .ef-field-row.one{grid-template-columns:1fr}
+    .ef-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff}
+  </style>
+  <div class="ef-tab-bar">
+    ${[['info','👤 ข้อมูล'],['bank','🏦 ธนาคาร'],['wage','💰 ค่าจ้าง'],['time','⏰ เวลา/หัก'],['welfare','🎁 สวัสดิการ'],['holiday','📅 วันหยุด']].map((t,i)=>`<button type="button" id="eftab-${t[0]}" onclick="efTab('${t[0]}')" class="ef-tab-btn${i===0?' active':''}">${t[1]}</button>`).join('')}
+  </div>
+  <div class="ef-pane" id="efpane-info">
+    <div class="ef-profile-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="ef-avatar-ring" id="ef-photo-box" onclick="document.getElementById('ef-photo-input').click()">
+          ${(e&&e.photo)?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="text-align:center;color:rgba(255,255,255,.8)"><div style="font-size:28px">📷</div><div style="font-size:9px;margin-top:2px">แตะเพื่อ<br>เลือกรูป</div></div>`}
+        </div>
+        <input type="file" id="ef-photo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;left:-9px" onchange="handleEmpPhoto(event)">
+        <div style="flex:1;min-width:0">
+          <div style="color:#fff;font-size:18px;font-weight:800;line-height:1.2;margin-bottom:4px">${(e&&e.name)||'พนักงานใหม่'}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">
+            ${(e&&e.role)?`<span class="ef-badge">💼 ${e.role}</span>`:''}
+            ${(e&&e.dept)?`<span class="ef-badge">🏢 ${e.dept}</span>`:''}
+            ${(e&&e.active===false)?`<span class="ef-badge" style="background:rgba(239,68,68,.3)">⏸ พักงาน</span>`:`<span class="ef-badge" style="background:rgba(16,185,129,.3)">✅ ทำงานอยู่</span>`}
+          </div>
+          ${(e&&e.photo)?`<button type="button" style="margin-top:8px;background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit" onclick="efPhotoClear()">✕ ลบรูป</button>`:''}
+        </div>
+      </div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">👤 ข้อมูลส่วนตัว</div>
+      <div class="ef-field-row one" style="margin-bottom:10px"><div class="fg"><label class="flb">ชื่อ-นามสกุล *</label><input class="fi" id="ef-name" value="${v('name')}" placeholder="เช่น สมชาย ใจดี"></div></div>
+      <div class="ef-field-row" style="margin-bottom:10px">
+        <div class="fg"><label class="flb">ตำแหน่ง</label><input class="fi" id="ef-role" value="${v('role')}" placeholder="ช่างไฟฟ้า"></div>
+        <div class="fg"><label class="flb">แผนก</label><input class="fi" id="ef-dept" value="${v('dept')}" placeholder="ช่าง / ออฟฟิศ"></div>
+      </div>
+      <div class="ef-field-row" style="margin-bottom:10px">
+        <div class="fg"><label class="flb">📱 เบอร์โทร</label><input class="fi" id="ef-phone" value="${v('phone')}" placeholder="08x-xxx-xxxx" type="tel"></div>
+        <div class="fg"><label class="flb">💬 LINE ID</label><input class="fi" id="ef-line" value="${v('lineId')}" placeholder="@lineid"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">🪪 เลขบัตรประชาชน</label><input class="fi" id="ef-idcard" value="${v('idCard')}" placeholder="x-xxxx-xxxxx-xx-x"></div>
+      <div class="fg"><label class="flb">📍 ที่อยู่</label><input class="fi" id="ef-addr" value="${v('addr')}" placeholder="ที่อยู่พนักงาน"></div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">📅 วันที่ทำงาน & ทดลองงาน</div>
+      <div class="ef-field-row">
+        <div class="fg"><label class="flb">วันที่เริ่มงาน</label><input class="fi" type="date" id="ef-start" value="${v('startDate')}"></div>
+        <div class="fg"><label class="flb">ทดลองงาน (วัน)</label><input class="fi" type="number" id="ef-prob" value="${v('probDays')||'119'}" placeholder="119" min="0"></div>
+      </div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">🚨 ผู้ติดต่อฉุกเฉิน</div>
+      <div class="ef-field-row">
+        <div class="fg"><label class="flb">ชื่อผู้ติดต่อ</label><input class="fi" id="ef-emg" value="${v('emgName')}" placeholder="เช่น แม่/พ่อ/คู่สมรส"></div>
+        <div class="fg"><label class="flb">เบอร์โทร</label><input class="fi" id="ef-emgphone" value="${v('emgPhone')}" placeholder="08x-xxx-xxxx" type="tel"></div>
+      </div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">🔐 บัญชีระบบ & สิทธิ์</div>
+      <div class="ef-field-row" style="margin-bottom:10px">
+        <div class="fg"><label class="flb">PIN เข้าระบบ</label><input class="fi" id="ef-pin" value="${v('pin')}" placeholder="เช่น 1234" maxlength="6" type="password" autocomplete="off"></div>
+        <div class="fg"><label class="flb">🛡️ ระดับสิทธิ์</label>
+          <select class="fi" id="ef-access">
+            <option value="staff"${!e||(!e.accessLevel&&!e.isAdmin)||e.accessLevel==='staff'?' selected':''}>👤 พนักงาน</option>
+            <option value="accountant"${e&&e.accessLevel==='accountant'?' selected':''}>🧾 ฝ่ายบัญชี</option>
+            <option value="manager"${e&&e.accessLevel==='manager'?' selected':''}>👔 ผู้จัดการ</option>
+            <option value="full"${e&&(e.accessLevel==='full'||(e.isAdmin&&!e.accessLevel))?' selected':''}>⚡ ผู้ดูแลระบบ</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border-radius:10px;padding:10px 12px">
+        <div><div style="font-size:13px;font-weight:600">สถานะการทำงาน</div><div style="font-size:11.5px;color:var(--mu)">ปิด = พักงาน (ไม่คิดเงินเดือน)</div></div>
+        <button class="sw ${!e||e.active?'on':''}" id="ef-active" onclick="this.classList.toggle('on')"></button>
+      </div>
+    </div>
+  </div>
+  <div class="ef-pane" id="efpane-bank" style="display:none">
+    <div class="ef-section">
+      <div class="ef-section-hd">🏦 บัญชีธนาคาร</div>
+      <div style="font-size:11.5px;color:var(--mu);margin-bottom:12px;background:#EAF4FF;border-radius:9px;padding:9px 11px">💳 ใช้สำหรับโอนเงินเดือนและแสดงบนสลิปเงินเดือน</div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">ธนาคาร</label>
+        <select class="fi" id="ef-bank">
+          ${['','กสิกรไทย','ไทยพาณิชย์','กรุงไทย','กรุงเทพ','กรุงศรีอยุธยา','ออมสิน','ธ.ก.ส.','ซีไอเอ็มบี','ทหารไทยธนชาต','อื่นๆ'].map(b=>`<option value="${b}"${v('bankName')===b?' selected':''}>${b||'— เลือกธนาคาร —'}</option>`).join('')}
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">เลขที่บัญชี</label><input class="fi" id="ef-bankacc" value="${v('bankAcc')}" placeholder="xxx-x-xxxxx-x" type="tel"></div>
+      <div class="fg"><label class="flb">ชื่อบัญชี (ตามสมุด)</label><input class="fi" id="ef-bankname" value="${v('bankAccName')}" placeholder="ชื่อเจ้าของบัญชี"></div>
+    </div>
+  </div>
+  <div class="ef-pane" id="efpane-wage" style="display:none">
+    <div class="ef-section">
+      <div class="ef-section-hd">💰 อัตราค่าจ้าง</div>
+      <div class="ef-field-row" style="margin-bottom:10px">
+        <div class="fg"><label class="flb">ประเภทการจ้าง</label><select class="fi" id="ef-paytype" onchange="efPayTypeChange()"><option value="monthly"${!e||e.payType==='monthly'?' selected':''}>รายเดือน</option><option value="daily"${e&&e.payType==='daily'?' selected':''}>รายวัน</option></select></div>
+        <div class="fg"><label class="flb" id="ef-rate-lb">${(!e||e.payType==='monthly')?'เงินเดือน (฿)':'ค่าแรง/วัน (฿)'}</label><input class="fi" type="number" id="ef-rate" value="${e?(e.rate||0):''}" placeholder="0"></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">รอบการจ่าย</label><select class="fi" id="ef-paycycle">
+        ${['รายเดือน','ทุก 15 วัน','รายสัปดาห์','ทุก 4 วัน','ทุก 2 วัน','รายวัน'].map(c=>`<option value="${c}"${(e&&e.payCycle===c)||(!e&&c==='รายเดือน')||(e&&!e.payCycle&&((e.payType==='daily'&&c==='รายวัน')||(e.payType!=='daily'&&c==='รายเดือน')))?' selected':''}>${c}</option>`).join('')}
+      </select></div>
+      <div class="ef-field-row">
+        <div class="fg"><label class="flb">ชั่วโมงปกติ/วัน</label><input class="fi" type="number" id="ef-normalhours" value="${e&&e.normalHours?e.normalHours:8}" placeholder="8"></div>
+        <div class="fg" id="ef-payday-box" style="${(e&&e.payType==='daily')?'display:none':''}"><label class="flb">จ่ายทุกวันที่</label><input class="fi" type="number" min="1" max="31" id="ef-payday" value="${e?(e.payDay||30):30}"></div>
+      </div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">⏱️ OT & ค่าทำงานพิเศษ</div>
+      <div class="ef-field-row">
+        <div class="fg"><label class="flb">ตัวคูณ OT (เท่า)</label><input class="fi" type="number" step="0.1" id="ef-otmult" value="${e&&e.otMult?e.otMult:1.5}"><div style="font-size:10.5px;color:var(--mu);margin-top:3px">ปกติ = 1.5x</div></div>
+        <div class="fg"><label class="flb">ตัวคูณ OT วันหยุด</label><input class="fi" type="number" step="0.1" id="ef-hotmult" value="${e&&e.holidayOtMult?e.holidayOtMult:2}"><div style="font-size:10.5px;color:var(--mu);margin-top:3px">ปกติ = 2x</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="ef-pane" id="efpane-time" style="display:none">
+    <div class="ef-section">
+      <div class="ef-section-hd">⏰ เวลาทำงาน</div>
+      <div class="ef-field-row" style="margin-bottom:10px">
+        <div class="fg"><label class="flb">🟢 เวลาเข้างาน</label><input class="fi" type="time" id="ef-wstart" value="${e&&e.workStart?e.workStart:'08:00'}"></div>
+        <div class="fg"><label class="flb">🔴 เวลาเลิกงาน</label><input class="fi" type="time" id="ef-wend" value="${e&&e.workEnd?e.workEnd:'17:00'}"></div>
+      </div>
+      <div class="ef-field-row">
+        <div class="fg"><label class="flb">ผ่อนผันมาสาย (นาที)</label><input class="fi" type="number" id="ef-lategrace" value="${e&&e.lateGrace!=null?e.lateGrace:15}"></div>
+        <div class="fg"><label class="flb">📍 รัศมีพื้นที่ (เมตร)</label><input class="fi" type="number" id="ef-georadius" value="${e&&e.geoRadius?e.geoRadius:100}" placeholder="100"></div>
+      </div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">💸 การหักค่าปรับ</div>
+      <div class="ef-field-row">
+        <div class="fg"><label class="flb">มาสาย (฿/นาที)</label><input class="fi" type="number" id="ef-latefine" value="${e&&e.lateFine?e.lateFine:0}"></div>
+        <div class="fg"><label class="flb">ออกก่อน (฿/นาที)</label><input class="fi" type="number" id="ef-earlyfine" value="${e&&e.earlyFine?e.earlyFine:0}"></div>
+      </div>
+    </div>
+  </div>
+  <div class="ef-pane" id="efpane-welfare" style="display:none">
+    <div class="ef-section">
+      <div class="ef-section-hd">🎁 เงินเพิ่มพิเศษ</div>
+      <div class="ef-field-row" style="margin-bottom:10px">
+        <div class="fg"><label class="flb">ค่าเดินทาง/อาหาร (฿/วัน)</label><input class="fi" type="number" id="ef-travel" value="${e&&e.travel?e.travel:0}"></div>
+        <div class="fg"><label class="flb">เบี้ยขยัน (฿/เดือน)</label><input class="fi" type="number" id="ef-diligence" value="${e&&e.diligence?e.diligence:0}"></div>
+      </div>
+      <div class="fg"><label class="flb">🏖️ โควต้าลาพักร้อน (วัน/ปี)</label><input class="fi" type="number" id="ef-leavequota" value="${e&&e.leaveQuota!=null?e.leaveQuota:6}" placeholder="6"></div>
+    </div>
+    <div class="ef-section">
+      <div class="ef-section-hd">📋 ภาษี & ประกันสังคม</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border-radius:10px;padding:10px 12px;margin-bottom:10px">
+        <div><div style="font-size:13px;font-weight:600">หักประกันสังคม 5%</div><div style="font-size:11.5px;color:var(--mu)">นายจ้างสมทบ · สูงสุด 750 ฿/เดือน</div></div>
+        <button class="sw ${e&&e.sso?'on':''}" id="ef-sso" onclick="this.classList.toggle('on')"></button>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label class="flb">วิธีคิดภาษี ณ ที่จ่าย</label><select class="fi" id="ef-taxmode" onchange="efTaxModeChange()">
+        <option value="none"${(!e||!e.taxMode||e.taxMode==='none')&&!(e&&e.taxPct)?' selected':''}>ไม่หักภาษี</option>
+        <option value="flat"${(e&&(e.taxMode==='flat'||(e.taxPct&&!e.taxMode)))?' selected':''}>กำหนด % เอง</option>
+        <option value="progressive"${e&&e.taxMode==='progressive'?' selected':''}>ขั้นบันได (อัตโนมัติตามกฎหมาย)</option>
+      </select></div>
+      <div class="fg" id="ef-taxpct-box" style="display:${(e&&(e.taxMode==='flat'||(e.taxPct&&!e.taxMode)))?'block':'none'}"><label class="flb">อัตราภาษี (%)</label><input class="fi" type="number" step="0.5" id="ef-taxpct" value="${e&&e.taxPct?e.taxPct:0}"></div>
+    </div>
+  </div>
+  <div class="ef-pane" id="efpane-holiday" style="display:none">
+    <div class="ef-section">
+      <div class="ef-section-hd">📅 วันหยุดประจำสัปดาห์</div>
+      <div style="font-size:12px;color:var(--mu);margin-bottom:12px">เลือกวันที่ <b style="color:var(--tx)">หยุด</b> ของพนักงานคนนี้ (วันสีแดง = หยุด · มาทำงานวันหยุด = คิด OT วันหยุด)</div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px">
+        ${days.map(d=>`<label style="${dayStyle(d[1])};border-radius:12px;display:flex;flex-direction:column;align-items:center;padding:10px 4px" onclick="const c=this.querySelector('input');c.checked=!c.checked;this.style.background=c.checked?'#FFE9E6':'#fff';this.style.borderColor=c.checked?'var(--dg)':'var(--bd)';this.style.color=c.checked?'var(--dg)':'var(--tx)'"><input type="checkbox" class="ef-offday" data-d="${d[1]}" ${off.includes(d[1])?'checked':''} style="display:none"><span style="font-size:13px;font-weight:700">${d[0]}</span></label>`).join('')}
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="efSetOff([0])">☀️ หยุดอาทิตย์</button>
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="efSetOff([0,6])">🏖️ หยุดเสาร์-อาทิตย์</button>
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px" onclick="efSetOff([])">🔄 ไม่หยุด</button>
+      </div>
+    </div>
+  </div>
+  `;
      </div>
    </div>`;
   document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delEmployee('${id}')">🗑️</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveEmployee()">💾 บันทึก</button>`;
