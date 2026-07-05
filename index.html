@@ -13,6 +13,18 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--p:#0A6EBD;--pd:#084F8A;--pl:#E8F4FD;--ac:#00C9A7;--aw:#FF6B35;--dg:#E53E3E;--wn:#D97706;--ok:#059669;--bg:#F0F4F8;--sb:#0D1B2A;--st:#A0B4C8;--cd:#ffffff;--tx:#1A2B3C;--mu:#6B8099;--bd:#DDE5EE;--sw:240px}
+.ef-tab-bar{display:flex;gap:4px;overflow-x:auto;background:#f1f5f9;padding:5px;border-radius:14px;margin-bottom:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ef-tab-bar::-webkit-scrollbar{display:none}
+.ef-tab-btn{flex:0 0 auto;padding:8px 14px;border:none;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;background:transparent;color:#64748b}
+.ef-tab-btn.active{background:#fff;color:var(--p);box-shadow:0 2px 8px rgba(10,110,189,.12)}
+.ef-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 15px;margin-bottom:12px}
+.ef-section-hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9}
+.ef-profile-header{background:linear-gradient(135deg,#0A6EBD 0%,#00C9A7 100%);border-radius:16px;padding:20px 16px;margin-bottom:14px;position:relative;overflow:hidden}
+.ef-profile-header::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
+.ef-avatar-ring{width:82px;height:82px;border-radius:50%;border:3px solid rgba(255,255,255,.8);overflow:hidden;cursor:pointer;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.ef-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ef-field-row.one{grid-template-columns:1fr}
+.ef-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 /* SIDEBAR */
@@ -344,7 +356,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17p · 🛡️ ดูใบรับประกันได้ทุกสถานะ</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17q · 🐛 แก้บั๊กมือถือกดไม่ได้ + ฟอร์มพนักงานใหม่</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -8871,20 +8883,6 @@ function openEmployeeForm(id){
   document.getElementById('ml-t').textContent=id?'✏️ แก้ไขข้อมูลพนักงาน':'👤 เพิ่มพนักงานใหม่';
   document.getElementById('ml-s').textContent=id?(e.name||e.id):'กรอกข้อมูลให้ครบถ้วน';
   document.getElementById('ml-bd').innerHTML=`
-  <style>
-    .ef-tab-bar{display:flex;gap:4px;overflow-x:auto;background:#f1f5f9;padding:5px;border-radius:14px;margin-bottom:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-    .ef-tab-bar::-webkit-scrollbar{display:none}
-    .ef-tab-btn{flex:0 0 auto;padding:8px 14px;border:none;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;background:transparent;color:#64748b}
-    .ef-tab-btn.active{background:#fff;color:var(--p);box-shadow:0 2px 8px rgba(10,110,189,.12)}
-    .ef-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 15px;margin-bottom:12px}
-    .ef-section-hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9}
-    .ef-profile-header{background:linear-gradient(135deg,#0A6EBD 0%,#00C9A7 100%);border-radius:16px;padding:20px 16px;margin-bottom:14px;position:relative;overflow:hidden}
-    .ef-profile-header::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
-    .ef-avatar-ring{width:82px;height:82px;border-radius:50%;border:3px solid rgba(255,255,255,.8);overflow:hidden;cursor:pointer;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.2)}
-    .ef-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-    .ef-field-row.one{grid-template-columns:1fr}
-    .ef-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff}
-  </style>
   <div class="ef-tab-bar">
     ${[['info','👤 ข้อมูล'],['bank','🏦 ธนาคาร'],['wage','💰 ค่าจ้าง'],['time','⏰ เวลา/หัก'],['welfare','🎁 สวัสดิการ'],['holiday','📅 วันหยุด']].map((t,i)=>`<button type="button" id="eftab-${t[0]}" onclick="efTab('${t[0]}')" class="ef-tab-btn${i===0?' active':''}">${t[1]}</button>`).join('')}
   </div>
@@ -9047,15 +9045,13 @@ function openEmployeeForm(id){
     </div>
   </div>
   `;
-     </div>
-   </div>`;
   document.getElementById('ml-act').innerHTML=`${id?`<button class="btn bd2" style="margin-right:auto" onclick="delEmployee('${id}')">🗑️</button>`:''}<button class="btn bo" onclick="closeModal()">ยกเลิก</button><button class="btn bp" onclick="saveEmployee()">💾 บันทึก</button>`;
   document.getElementById('ml').classList.add('op');
 }
 function efTab(name){
   ['info','bank','wage','time','welfare','holiday'].forEach(t=>{
     const pane=document.getElementById('efpane-'+t); if(pane) pane.style.display=t===name?'':'none';
-    const tab=document.getElementById('eftab-'+t); if(tab){ tab.style.background=t===name?'#fff':'transparent'; tab.style.color=t===name?'var(--p)':'var(--mu)'; }
+    const tab=document.getElementById('eftab-'+t); if(tab){ if(t===name) tab.classList.add('active'); else tab.classList.remove('active'); }
   });
 }
 function efSetOff(arr){ document.querySelectorAll('.ef-offday').forEach(c=>{ c.checked=arr.includes(+c.dataset.d); const lb=c.parentElement; lb.style.background=c.checked?'#FFE9E6':'#fff'; lb.style.borderColor=c.checked?'var(--dg)':'var(--bd)'; lb.style.color=c.checked?'var(--dg)':'var(--tx)'; }); }
