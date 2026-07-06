@@ -13,18 +13,23 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{--p:#0A6EBD;--pd:#084F8A;--pl:#E8F4FD;--ac:#00C9A7;--aw:#FF6B35;--dg:#E53E3E;--wn:#D97706;--ok:#059669;--bg:#F0F4F8;--sb:#0D1B2A;--st:#A0B4C8;--cd:#ffffff;--tx:#1A2B3C;--mu:#6B8099;--bd:#DDE5EE;--sw:240px}
-.ef-tab-bar{display:flex;gap:4px;overflow-x:auto;background:#f1f5f9;padding:5px;border-radius:14px;margin-bottom:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.ef-tab-bar{display:flex;gap:0;overflow-x:auto;background:#f1f5f9;padding:4px;border-radius:14px;margin-bottom:18px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
 .ef-tab-bar::-webkit-scrollbar{display:none}
-.ef-tab-btn{flex:0 0 auto;padding:8px 14px;border:none;border-radius:10px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;background:transparent;color:#64748b}
-.ef-tab-btn.active{background:#fff;color:var(--p);box-shadow:0 2px 8px rgba(10,110,189,.12)}
-.ef-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 15px;margin-bottom:12px}
-.ef-section-hd{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--p);margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #f1f5f9}
-.ef-profile-header{background:linear-gradient(135deg,#0A6EBD 0%,#00C9A7 100%);border-radius:16px;padding:20px 16px;margin-bottom:14px;position:relative;overflow:hidden}
-.ef-profile-header::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08)}
-.ef-avatar-ring{width:82px;height:82px;border-radius:50%;border:3px solid rgba(255,255,255,.8);overflow:hidden;cursor:pointer;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.ef-tab-btn{flex:0 0 auto;padding:9px 16px;border:none;border-radius:11px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .2s;background:transparent;color:#64748b}
+.ef-tab-btn.active{background:linear-gradient(135deg,#0A6EBD,#0080d5);color:#fff;box-shadow:0 3px 12px rgba(10,110,189,.3)}
+.ef-section{background:#fff;border:1.5px solid #e8edf3;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,.04)}
+.ef-section-hd{display:flex;align-items:center;gap:9px;font-size:12px;font-weight:700;color:#0A6EBD;margin-bottom:13px;padding-bottom:10px;border-bottom:1.5px solid #f0f4f9;letter-spacing:.3px;text-transform:uppercase}
+.ef-section-hd .ic{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#EAF4FF,#d0eaff);display:flex;align-items:center;justify-content:center;font-size:14px}
+.ef-profile-header{background:linear-gradient(135deg,#0A6EBD 0%,#005fa3 60%,#00C9A7 100%);border-radius:18px;padding:22px 18px;margin-bottom:16px;position:relative;overflow:hidden}
+.ef-profile-header::before{content:'';position:absolute;top:-40px;right:-40px;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.07)}
+.ef-profile-header::after{content:'';position:absolute;bottom:-30px;left:40px;width:80px;height:80px;border-radius:50%;background:rgba(0,201,167,.15)}
+.ef-avatar-ring{width:88px;height:88px;border-radius:50%;border:3px solid rgba(255,255,255,.85);overflow:hidden;cursor:pointer;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 6px 20px rgba(0,0,0,.25);backdrop-filter:blur(4px)}
 .ef-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .ef-field-row.one{grid-template-columns:1fr}
-.ef-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;background:rgba(255,255,255,.2);color:#fff}
+.ef-field-row.three{grid-template-columns:1fr 1fr 1fr}
+.ef-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(4px)}
+.ef-stat{background:rgba(255,255,255,.13);border-radius:12px;padding:8px 12px;text-align:center;border:1px solid rgba(255,255,255,.2)}
+.ef-stat .num{font-size:16px;font-weight:800;color:#fff}.ef-stat .lbl{font-size:9.5px;color:rgba(255,255,255,.75);margin-top:1px}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 /* SIDEBAR */
@@ -304,44 +309,81 @@ tbody tr:hover td{background:#FAFBFD}
 <body>
 
 <!-- ══ LOGIN SCREEN ══ -->
-<div id="loginScreen" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0D1B2A 0%,#0A6EBD 100%)">
-  <div style="position:absolute;inset:0;opacity:.06;background-image:radial-gradient(circle at 20% 30%,#fff 1px,transparent 1px),radial-gradient(circle at 80% 70%,#fff 1px,transparent 1px);background-size:48px 48px"></div>
-  <div style="background:#fff;border-radius:20px;padding:40px;width:380px;max-width:90vw;box-shadow:0 30px 80px rgba(0,0,0,.4);position:relative;z-index:1">
-    <div style="display:flex;align-items:center;gap:11px;justify-content:center;margin-bottom:8px">
-      <div style="width:44px;height:44px;background:var(--p);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px">📊</div>
-      <div style="font-size:24px;font-weight:700;letter-spacing:-.5px">Flow<span style="color:var(--ac)">Biz</span></div>
+<div id="loginScreen" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,#0D1B2A 0%,#0a3a6e 50%,#0A6EBD 100%)">
+  <!-- bg decoration -->
+  <div style="position:absolute;inset:0;pointer-events:none;overflow:hidden">
+    <div style="position:absolute;top:-80px;left:-80px;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(0,201,167,.18),transparent 70%)"></div>
+    <div style="position:absolute;bottom:-60px;right:-60px;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(10,110,189,.3),transparent 70%)"></div>
+    <div style="position:absolute;top:40%;left:60%;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.05),transparent 70%)"></div>
+  </div>
+  <div style="background:#fff;border-radius:24px;padding:36px 32px 32px;width:390px;max-width:92vw;box-shadow:0 40px 100px rgba(0,0,0,.5);position:relative;z-index:1">
+    <!-- logo -->
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="display:inline-flex;align-items:center;justify-content:center;width:56px;height:56px;background:linear-gradient(135deg,#0A6EBD,#00C9A7);border-radius:16px;font-size:26px;box-shadow:0 8px 20px rgba(10,110,189,.4);margin-bottom:10px">📊</div>
+      <div style="font-size:26px;font-weight:800;letter-spacing:-.5px">Flow<span style="color:#00C9A7">Biz</span></div>
+      <div style="color:#94a3b8;font-size:12.5px;margin-top:2px">ระบบจัดการธุรกิจ</div>
     </div>
-    <div style="text-align:center;color:var(--mu);font-size:13px;margin-bottom:20px">ระบบบัญชีธุรกิจ — เข้าสู่ระบบ</div>
-    <div style="display:flex;gap:6px;background:var(--bg);padding:4px;border-radius:11px;margin-bottom:20px">
-      <button class="lg-tab on" id="lgtab-admin" onclick="lgSwitch('admin')" style="flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:#fff;color:var(--p)">🔑 ผู้ดูแล/ออฟฟิศ</button>
-      <button class="lg-tab" id="lgtab-emp" onclick="lgSwitch('emp')" style="flex:1;padding:9px;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;background:transparent;color:var(--mu)">👷 พนักงาน</button>
+    <!-- tab switch -->
+    <div style="display:flex;gap:0;background:#f1f5f9;padding:4px;border-radius:14px;margin-bottom:22px">
+      <button class="lg-tab on" id="lgtab-admin" onclick="lgSwitch('admin')" style="flex:1;padding:10px;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:#fff;color:#0A6EBD;box-shadow:0 2px 8px rgba(10,110,189,.15);transition:all .2s">🔑 ผู้ดูแล</button>
+      <button class="lg-tab" id="lgtab-emp" onclick="lgSwitch('emp')" style="flex:1;padding:10px;border:none;border-radius:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;background:transparent;color:#94a3b8;transition:all .2s">👷 พนักงาน</button>
     </div>
+    <!-- admin login -->
     <div id="loginForm">
-      <div class="fg" style="margin-bottom:14px"><label class="flb">ชื่อผู้ใช้ / อีเมล</label><input class="fi" id="lg-user" placeholder="username"></div>
-      <div class="fg" style="margin-bottom:20px"><label class="flb">รหัสผ่าน</label><input class="fi" id="lg-pass" type="password" placeholder="••••••"></div>
-      <button class="btn bp" style="width:100%;justify-content:center;padding:12px;font-size:14px" onclick="doLogin()">🔓 เข้าสู่ระบบ</button>
-      <div id="lg-err" style="color:var(--dg);font-size:12px;text-align:center;margin-top:10px;display:none">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
+      <div class="fg" style="margin-bottom:14px">
+        <label class="flb">ชื่อผู้ใช้</label>
+        <input class="fi" id="lg-user" placeholder="username" style="padding:12px 14px;font-size:14px" onkeydown="if(event.key==='Enter')document.getElementById('lg-pass').focus()">
+      </div>
+      <div class="fg" style="margin-bottom:20px">
+        <label class="flb">รหัสผ่าน</label>
+        <input class="fi" id="lg-pass" type="password" placeholder="••••••" style="padding:12px 14px;font-size:14px" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <button class="btn bp" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:13px;font-weight:700;background:linear-gradient(135deg,#0A6EBD,#0080d5);box-shadow:0 4px 16px rgba(10,110,189,.35)" onclick="doLogin()">🔓 เข้าสู่ระบบ</button>
+      <div id="lg-err" style="color:#E53E3E;font-size:12px;text-align:center;margin-top:10px;display:none;background:#FEECEC;padding:8px 12px;border-radius:9px">❌ ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง</div>
     </div>
+    <!-- employee login -->
     <div id="empLoginForm" style="display:none">
-      <div class="fg" style="margin-bottom:14px"><label class="flb">เลือกชื่อพนักงาน</label><select class="fi" id="elg-emp"></select></div>
-      <div class="fg" style="margin-bottom:20px"><label class="flb">รหัส PIN</label><input class="fi" id="elg-pin" type="password" inputmode="numeric" placeholder="••••" autocomplete="off"></div>
-      <button class="btn bp" style="width:100%;justify-content:center;padding:12px;font-size:14px;background:var(--ac)" onclick="doEmpLogin()">👷 เข้าระบบพนักงาน</button>
-      <div id="elg-err" style="color:var(--dg);font-size:12px;text-align:center;margin-top:10px;display:none">❌ PIN ไม่ถูกต้อง</div>
-      <div style="text-align:center;font-size:11px;color:var(--mu);margin-top:18px;padding-top:18px;border-top:1px solid var(--bd)">พนักงานเข้าระบบด้วย PIN<br><span style="color:#aaa">ขอ PIN จากผู้ดูแลระบบ</span></div>
+      <!-- employee selector -->
+      <div class="fg" style="margin-bottom:16px">
+        <label class="flb">เลือกชื่อของคุณ</label>
+        <select class="fi" id="elg-emp" style="padding:12px 14px;font-size:14px;border-radius:13px" onchange="elgFocus()"></select>
+      </div>
+      <!-- PIN label -->
+      <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-align:center">รหัส PIN (4–6 หลัก)</div>
+      <!-- PIN dots display -->
+      <div id="elg-dots" style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;height:24px;align-items:center"></div>
+      <!-- PIN pad -->
+      <div id="elg-pinpad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto 16px">
+        ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button type="button" onclick="elgKey('${k}')" style="height:58px;border:none;border-radius:14px;font-size:${k==='⌫'?'20':'22'}px;font-weight:700;cursor:pointer;font-family:inherit;background:${k===''?'transparent':k==='⌫'?'#fee2e2':'#f1f5f9'};color:${k==='⌫'?'#E53E3E':'#1e293b'};box-shadow:${k===''?'none':'0 2px 6px rgba(0,0,0,.08)'};transition:all .1s;${k===''?'pointer-events:none':''}" ${k===''?'disabled':''} onmousedown="this.style.transform='scale(.93)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(.93)'" ontouchend="this.style.transform=''">${k}</button>`).join('')}
+      </div>
+      <button class="btn bp" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:13px;font-weight:700;background:linear-gradient(135deg,#00C9A7,#00a98e);box-shadow:0 4px 16px rgba(0,201,167,.35)" onclick="doEmpLogin()">👷 เข้าระบบพนักงาน</button>
+      <div id="elg-err" style="color:#E53E3E;font-size:12px;text-align:center;margin-top:10px;display:none;background:#FEECEC;padding:8px 12px;border-radius:9px">❌ PIN ไม่ถูกต้อง — ลองใหม่อีกครั้ง</div>
+      <div style="text-align:center;font-size:11.5px;color:#94a3b8;margin-top:16px">🔒 ข้อมูลปลอดภัย · ขอ PIN จากผู้ดูแลระบบ</div>
     </div>
   </div>
 </div>
 
 <!-- ══ EMPLOYEE PORTAL (พอร์ทัลพนักงาน) ══ -->
 <div id="empPortal" style="position:fixed;inset:0;z-index:9000;background:#F0F4F8;overflow-y:auto;display:none">
-  <div style="max-width:560px;margin:0 auto;padding:0 0 40px">
-    <div style="background:linear-gradient(135deg,#0D1B2A,#0A6EBD);color:#fff;padding:18px 18px 22px;border-radius:0 0 22px 22px">
-      <div style="display:flex;align-items:center;gap:12px">
-        <div id="ep-av" style="width:46px;height:46px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px"></div>
-        <div style="flex:1;min-width:0"><div id="ep-name" style="font-weight:700;font-size:17px"></div><div id="ep-role" style="font-size:12px;opacity:.9"></div></div>
-        <button onclick="doEmpLogout()" style="background:rgba(255,255,255,.18);border:none;color:#fff;padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">ออกระบบ</button>
+  <div style="max-width:560px;margin:0 auto;padding:0 0 50px">
+    <!-- portal header -->
+    <div style="background:linear-gradient(135deg,#0D1B2A 0%,#0a3a6e 55%,#0A6EBD 100%);color:#fff;padding:20px 18px 24px;border-radius:0 0 28px 28px;position:relative;overflow:hidden;box-shadow:0 8px 32px rgba(10,27,42,.4)">
+      <div style="position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(0,201,167,.2),transparent 70%)"></div>
+      <div style="position:absolute;bottom:-30px;left:30px;width:100px;height:100px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.05),transparent 70%)"></div>
+      <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+        <div id="ep-av" style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;border:2.5px solid rgba(255,255,255,.5);flex-shrink:0;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.25)"></div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;opacity:.65;font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:2px">สวัสดี 👋</div>
+          <div id="ep-name" style="font-weight:800;font-size:18px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></div>
+          <div id="ep-role" style="font-size:12px;opacity:.8;margin-top:2px"></div>
+        </div>
+        <button onclick="doEmpLogout()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);color:#fff;padding:8px 14px;border-radius:12px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit;backdrop-filter:blur(4px);flex-shrink:0">ออก</button>
       </div>
-      <div style="text-align:center;margin-top:14px"><div id="ep-clock" style="font-size:30px;font-weight:800;letter-spacing:1px">--:--:--</div><div id="ep-date" style="font-size:12px;opacity:.9"></div></div>
+      <!-- clock -->
+      <div style="text-align:center;margin-top:18px;position:relative;z-index:1">
+        <div id="ep-clock" style="font-size:38px;font-weight:800;letter-spacing:2px;font-variant-numeric:tabular-nums;text-shadow:0 2px 12px rgba(0,0,0,.3)">--:--:--</div>
+        <div id="ep-date" style="font-size:12.5px;opacity:.8;margin-top:4px"></div>
+      </div>
     </div>
     <div style="padding:16px" id="ep-body"></div>
   </div>
@@ -356,7 +398,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17q · 🐛 แก้บั๊กมือถือกดไม่ได้ + ฟอร์มพนักงานใหม่</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17q · 🔧 ประวัติซ่อม + 👤 ฟอร์มพนักงานใหม่</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -806,6 +848,7 @@ tbody tr:hover td{background:#FAFBFD}
       <button class="btn bo" style="margin-left:auto" onclick="openWorkContracts()">📜 สัญญาจ้าง</button>
       <button class="btn bo" onclick="openMAContracts()">🔄 สัญญา MA</button>
       <button class="btn bo" onclick="openWarrantyCenter()">🛡️ ประกัน</button>
+      <button class="btn bo" onclick="openRepairHistory()">🔧 ประวัติซ่อม</button>
       <button class="btn bo" onclick="openMRManager()">📦 ขอซื้อ/เบิก</button>
       <button class="btn bo" onclick="openJobCalendar()">📅 ปฏิทิน</button>
       <button class="btn bp" onclick="openJobForm()">+ สร้างงานใหม่</button>
@@ -2427,6 +2470,38 @@ body{color:#1f2937;font-size:13px;line-height:1.6}.frame{border:3px solid #0A6EB
   else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
 }
 // ── ใบรับสินค้าจากงานซ่อม ──
+function openRepairHistory(){
+  const jobs=(DB.jobs||[]).filter(j=>j.repairItems&&j.repairItems.length>0).slice().sort((a,b)=>String(b.repairDate||b.date||'').localeCompare(String(a.repairDate||a.date||'')));
+  const ST={'กำลังซ่อม':'#D97706','ส่งคืนแล้ว':'#0F9D58','รอทำ':'#64748b','กำลังทำ':'#0A6EBD','ส่งมอบแล้ว':'#0F9D58'};
+  const rows=jobs.length?jobs.map(j=>{ const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'-'; const sc=ST[j.status]||'#64748b';
+    return `<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0">
+          <div style="font-weight:600;font-size:13px">${escHtml(j.title||j.id)}</div>
+          <div style="font-size:11.5px;color:var(--mu);margin-top:2px">${escHtml(cn)} · รับวันที่ ${fmtD(j.repairDate||j.date)}${j.repairReceiver?' · '+escHtml(j.repairReceiver):''}</div>
+          <div style="font-size:11.5px;margin-top:4px">${(j.repairItems||[]).map(it=>`<span style="background:#f1f5f9;border-radius:6px;padding:2px 8px;font-size:10.5px;margin-right:4px">${escHtml(it.name)}${it.qty>1?' x'+it.qty:''}</span>`).join('')}</div>
+          ${j.symptom?`<div style="font-size:11px;color:var(--mu);margin-top:4px;font-style:italic">"${escHtml(j.symptom.slice(0,60))}"</div>`:''}
+          ${j.due?`<div style="font-size:11px;font-weight:600;color:${new Date(j.due)<new Date()?'#E53E3E':'#0A6EBD'};margin-top:3px">📅 กำหนดคืน ${fmtD(j.due)}${new Date(j.due)<new Date()?' ⚠️ เลยกำหนด':''}</div>`:''}
+        </div>
+        <span style="font-size:10.5px;font-weight:700;color:${sc};background:${sc}18;padding:3px 10px;border-radius:20px;white-space:nowrap;flex:none">${escHtml(j.status)}</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:9px">
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="printRepairReceipt('${j.id}')">🖨️ พิมพ์ใบรับ</button>
+        <button class="btn bo" style="flex:1;justify-content:center;font-size:12px;padding:6px" onclick="openRepairReceiptForm('${j.id}')">✏️ แก้ไข</button>
+        <button class="btn bo" style="font-size:12px;padding:6px 10px" onclick="closeModal();setTimeout(()=>openJobDrawer('${j.id}'),120)">📋 ดูงาน</button>
+      </div>
+    </div>`; }).join('') : `<div style="text-align:center;color:var(--mu);padding:28px;font-size:13px">ยังไม่มีใบรับสินค้าซ่อม<br><span style="font-size:11px">สร้างได้จากหน้างาน → 📋 ใบรับสินค้าซ่อม</span></div>`;
+  const overdue=jobs.filter(j=>j.due&&new Date(j.due)<new Date()&&j.status!=='ส่งมอบแล้ว').length;
+  document.getElementById('ml-t').textContent='🔧 ประวัติใบรับสินค้าซ่อม';
+  document.getElementById('ml-s').textContent=jobs.length+' งาน'+(overdue?' · เลยกำหนด '+overdue+' งาน':'');
+  document.getElementById('ml-bd').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <div style="background:#EAF4FF;border-radius:11px;padding:11px;text-align:center"><div style="font-size:22px;font-weight:800;color:#0A6EBD">${jobs.length}</div><div style="font-size:10.5px;color:var(--mu)">งานซ่อมทั้งหมด</div></div>
+      <div style="background:${overdue?'#FEECEC':'#F7F8FA'};border-radius:11px;padding:11px;text-align:center"><div style="font-size:22px;font-weight:800;color:${overdue?'#E53E3E':'#64748b'}">${overdue}</div><div style="font-size:10.5px;color:var(--mu)">เลยกำหนดคืน</div></div>
+    </div>${rows}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
 function openRepairReceiptForm(jobId){
   const j=(DB.jobs||[]).find(x=>x.id===jobId); if(!j){ toast('ไม่พบงาน'); return; }
   const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
@@ -8855,20 +8930,38 @@ function renderEmployees(){
   if(!list.length){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--mu);padding:32px">ยังไม่มีพนักงาน — กด "เพิ่มพนักงาน"</div>'; return; }
   grid.innerHTML=list.map(e=>{
     const att=attToday(e.id);
-    const statusDot=att&&att.inTime&&!att.outTime?'<span style="color:var(--ok);font-weight:600">🟢 อยู่ในงาน</span>':att&&att.outTime?'<span style="color:var(--mu)">⚪ ออกงานแล้ว</span>':'<span style="color:var(--mu)">⚪ ยังไม่เข้างาน</span>';
-    const tn=(typeof empTenure==='function')?empTenure(e):null; const annivYr=(typeof empAnnivThisMonth==='function')?empAnnivThisMonth(e):null; const prob=(typeof empProbation==='function')?empProbation(e):null;
-    return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openEmpDrawer('${e.id}')">
-      <div style="background:linear-gradient(135deg,#0A6EBD,#00C9A7);padding:14px;color:#fff;display:flex;align-items:center;gap:12px">
-        ${e.photo?`<img src="${e.photo}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.5)">`:`<div style="width:48px;height:48px;border-radius:50%;background:rgba(255,255,255,.25);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:18px">${initials(e.name)}</div>`}
-        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${e.name}</div><div style="font-size:12px;opacity:.9">${e.role||'-'}</div></div>
-        ${prob&&prob.inProbation?`<span class="badge" style="background:#fff;color:#d97706" title="ทดลองงาน เหลือ ${prob.daysLeft} วัน">⏳ ทดลองงาน</span>`:''}${annivYr?`<span class="badge" style="background:#fff;color:#b8860b" title="ครบรอบทำงาน">🎉 ${annivYr} ปี</span>`:''}${!e.active?'<span class="badge" style="background:#fff;color:var(--dg)">พักงาน</span>':''}
+    const isIn=att&&att.inTime&&!att.outTime;
+    const isOut=att&&att.outTime;
+    const statusDot=isIn?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#0F9D58;font-weight:700">🟢 อยู่ในงาน</span>':isOut?'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--mu)">⚪ ออกงานแล้ว</span>':'<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:#94a3b8">○ ยังไม่เข้างาน</span>';
+    const tn=(typeof empTenure==='function')?empTenure(e):null;
+    const annivYr=(typeof empAnnivThisMonth==='function')?empAnnivThisMonth(e):null;
+    const prob=(typeof empProbation==='function')?empProbation(e):null;
+    const inactive=e.active===false;
+    const gradient=inactive?'linear-gradient(135deg,#94a3b8,#64748b)':'linear-gradient(135deg,#0A6EBD 0%,#005fa3 60%,#00C9A7 100%)';
+    return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden;border:none;box-shadow:0 3px 14px rgba(0,0,0,.08);border-radius:18px;transition:transform .15s,box-shadow .15s" onclick="openEmpDrawer('${e.id}')">
+      <div style="background:${gradient};padding:16px 14px 14px;color:#fff;position:relative;overflow:hidden">
+        <div style="position:absolute;top:-20px;right:-20px;width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.07)"></div>
+        <div style="display:flex;align-items:center;gap:12px;position:relative;z-index:1">
+          ${e.photo?`<img src="${e.photo}" style="width:52px;height:52px;border-radius:50%;object-fit:cover;border:2.5px solid rgba(255,255,255,.75);box-shadow:0 3px 10px rgba(0,0,0,.2)">`:`<div style="width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;border:2.5px solid rgba(255,255,255,.4);color:#fff;flex-shrink:0">${initials(e.name)}</div>`}
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:800;font-size:15.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2">${escHtml(e.name)}</div>
+            <div style="font-size:11.5px;opacity:.85;margin-top:2px">${escHtml(e.role||'—')}${e.dept?` · ${escHtml(e.dept)}`:''}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            ${inactive?`<span style="background:rgba(0,0,0,.25);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">⏸ พักงาน</span>`:''}
+            ${prob&&prob.inProbation?`<span style="background:rgba(255,210,0,.25);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">⏳ ทดลองงาน</span>`:''}
+            ${annivYr?`<span style="background:rgba(255,255,255,.2);color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px">🎉 ${annivYr} ปี</span>`:''}
+          </div>
+        </div>
       </div>
-      <div style="padding:12px;font-size:12px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px">
-        <span style="color:var(--mu)">รหัส</span><span style="font-weight:500">${e.id}</span>
-        <span style="color:var(--mu)">โทร</span><span>${e.phone||'-'}</span>
-        <span style="color:var(--mu)">ค่าจ้าง</span><span style="font-weight:600;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+'/เดือน':'฿'+fmt(e.rate)+'/วัน'}</span>
-        ${tn?`<span style="color:var(--mu)">อายุงาน</span><span style="font-weight:500">${tn.label}</span>`:''}
-        <span style="color:var(--mu)">สถานะวันนี้</span><span>${statusDot}</span>
+      <div style="padding:12px 14px;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">${statusDot}<span style="font-size:11.5px;font-weight:700;color:var(--p)">${e.payType==='monthly'?'฿'+fmt(e.rate)+'/ด.':'฿'+fmt(e.rate)+'/วัน'}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11.5px">
+          <div style="background:#f8fafc;border-radius:9px;padding:7px 9px"><div style="color:var(--mu);font-size:10px;margin-bottom:2px">รหัส</div><div style="font-weight:600">${escHtml(e.id)}</div></div>
+          <div style="background:#f8fafc;border-radius:9px;padding:7px 9px"><div style="color:var(--mu);font-size:10px;margin-bottom:2px">โทร</div><div style="font-weight:600">${escHtml(e.phone||'—')}</div></div>
+          ${tn?`<div style="background:#f8fafc;border-radius:9px;padding:7px 9px;grid-column:span 2"><div style="color:var(--mu);font-size:10px;margin-bottom:2px">อายุงาน</div><div style="font-weight:600">${tn.label}</div></div>`:''}
+        </div>
+        <button class="btn bp" style="width:100%;justify-content:center;margin-top:10px;border-radius:10px;font-size:12.5px;padding:8px" onclick="event.stopPropagation();openEmployeeForm('${e.id}')">✏️ แก้ไขข้อมูล</button>
       </div></div>`;
   }).join('');
   try{ renderHRAnalytics(); }catch(err){}
@@ -8888,24 +8981,36 @@ function openEmployeeForm(id){
   </div>
   <div class="ef-pane" id="efpane-info">
     <div class="ef-profile-header">
-      <div style="display:flex;align-items:center;gap:14px">
-        <div class="ef-avatar-ring" id="ef-photo-box" onclick="document.getElementById('ef-photo-input').click()">
-          ${(e&&e.photo)?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="text-align:center;color:rgba(255,255,255,.8)"><div style="font-size:28px">📷</div><div style="font-size:9px;margin-top:2px">แตะเพื่อ<br>เลือกรูป</div></div>`}
-        </div>
-        <input type="file" id="ef-photo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;left:-9px" onchange="handleEmpPhoto(event)">
-        <div style="flex:1;min-width:0">
-          <div style="color:#fff;font-size:18px;font-weight:800;line-height:1.2;margin-bottom:4px">${(e&&e.name)||'พนักงานใหม่'}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">
-            ${(e&&e.role)?`<span class="ef-badge">💼 ${e.role}</span>`:''}
-            ${(e&&e.dept)?`<span class="ef-badge">🏢 ${e.dept}</span>`:''}
-            ${(e&&e.active===false)?`<span class="ef-badge" style="background:rgba(239,68,68,.3)">⏸ พักงาน</span>`:`<span class="ef-badge" style="background:rgba(16,185,129,.3)">✅ ทำงานอยู่</span>`}
+      <div style="display:flex;align-items:flex-start;gap:14px;position:relative;z-index:1">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+          <div class="ef-avatar-ring" id="ef-photo-box" onclick="document.getElementById('ef-photo-input').click()">
+            ${(e&&e.photo)?`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`:`<div style="text-align:center;color:rgba(255,255,255,.85)"><div style="font-size:30px">📷</div><div style="font-size:9px;margin-top:3px;line-height:1.4">แตะเลือก<br>รูปภาพ</div></div>`}
           </div>
-          ${(e&&e.photo)?`<button type="button" style="margin-top:8px;background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-family:inherit" onclick="efPhotoClear()">✕ ลบรูป</button>`:''}
+          <input type="file" id="ef-photo-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;left:-9px" onchange="handleEmpPhoto(event)">
+          ${(e&&e.photo)?`<button type="button" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:8px;padding:3px 10px;font-size:10px;cursor:pointer;font-family:inherit" onclick="efPhotoClear()">✕ ลบรูป</button>`:''}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="color:rgba(255,255,255,.65);font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:3px">${e?'แก้ไขข้อมูลพนักงาน':'เพิ่มพนักงานใหม่'}</div>
+          <div style="color:#fff;font-size:20px;font-weight:800;line-height:1.2;margin-bottom:8px">${(e&&e.name)||'ชื่อพนักงาน'}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px">
+            ${(e&&e.role)?`<span class="ef-badge">💼 ${escHtml(e.role)}</span>`:''}
+            ${(e&&e.dept)?`<span class="ef-badge">🏢 ${escHtml(e.dept)}</span>`:''}
+            <span class="ef-badge" style="${e&&e.active===false?'background:rgba(239,68,68,.3)':'background:rgba(16,185,129,.25)'}">${e&&e.active===false?'⏸ พักงาน':'✅ ทำงานอยู่'}</span>
+          </div>
+          ${e&&e.startDate?(()=>{
+            const days=Math.floor((new Date()-new Date(e.startDate))/86400000);
+            const yrs=Math.floor(days/365); const mos=Math.floor((days%365)/30);
+            return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">
+              <div class="ef-stat"><div class="num">${yrs}</div><div class="lbl">ปีที่ทำงาน</div></div>
+              <div class="ef-stat"><div class="num">${mos}</div><div class="lbl">เดือน</div></div>
+              <div class="ef-stat"><div class="num">${(DB.attendance||[]).filter(a=>a.empId===e.id&&a.checkIn).length}</div><div class="lbl">วันเข้างาน</div></div>
+            </div>`;
+          })():''}
         </div>
       </div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">👤 ข้อมูลส่วนตัว</div>
+      <div class="ef-section-hd"><span class="ic">👤</span> ข้อมูลส่วนตัว</div>
       <div class="ef-field-row one" style="margin-bottom:10px"><div class="fg"><label class="flb">ชื่อ-นามสกุล *</label><input class="fi" id="ef-name" value="${v('name')}" placeholder="เช่น สมชาย ใจดี"></div></div>
       <div class="ef-field-row" style="margin-bottom:10px">
         <div class="fg"><label class="flb">ตำแหน่ง</label><input class="fi" id="ef-role" value="${v('role')}" placeholder="ช่างไฟฟ้า"></div>
@@ -8919,21 +9024,21 @@ function openEmployeeForm(id){
       <div class="fg"><label class="flb">📍 ที่อยู่</label><input class="fi" id="ef-addr" value="${v('addr')}" placeholder="ที่อยู่พนักงาน"></div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">📅 วันที่ทำงาน & ทดลองงาน</div>
+      <div class="ef-section-hd"><span class="ic">📅</span> วันที่ทำงาน & ทดลองงาน</div>
       <div class="ef-field-row">
         <div class="fg"><label class="flb">วันที่เริ่มงาน</label><input class="fi" type="date" id="ef-start" value="${v('startDate')}"></div>
         <div class="fg"><label class="flb">ทดลองงาน (วัน)</label><input class="fi" type="number" id="ef-prob" value="${v('probDays')||'119'}" placeholder="119" min="0"></div>
       </div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">🚨 ผู้ติดต่อฉุกเฉิน</div>
+      <div class="ef-section-hd"><span class="ic">🚨</span> ผู้ติดต่อฉุกเฉิน</div>
       <div class="ef-field-row">
         <div class="fg"><label class="flb">ชื่อผู้ติดต่อ</label><input class="fi" id="ef-emg" value="${v('emgName')}" placeholder="เช่น แม่/พ่อ/คู่สมรส"></div>
         <div class="fg"><label class="flb">เบอร์โทร</label><input class="fi" id="ef-emgphone" value="${v('emgPhone')}" placeholder="08x-xxx-xxxx" type="tel"></div>
       </div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">🔐 บัญชีระบบ & สิทธิ์</div>
+      <div class="ef-section-hd"><span class="ic">🔐</span> บัญชีระบบ & สิทธิ์</div>
       <div class="ef-field-row" style="margin-bottom:10px">
         <div class="fg"><label class="flb">PIN เข้าระบบ</label><input class="fi" id="ef-pin" value="${v('pin')}" placeholder="เช่น 1234" maxlength="6" type="password" autocomplete="off"></div>
         <div class="fg"><label class="flb">🛡️ ระดับสิทธิ์</label>
@@ -8953,7 +9058,7 @@ function openEmployeeForm(id){
   </div>
   <div class="ef-pane" id="efpane-bank" style="display:none">
     <div class="ef-section">
-      <div class="ef-section-hd">🏦 บัญชีธนาคาร</div>
+      <div class="ef-section-hd"><span class="ic">🏦</span> บัญชีธนาคาร</div>
       <div style="font-size:11.5px;color:var(--mu);margin-bottom:12px;background:#EAF4FF;border-radius:9px;padding:9px 11px">💳 ใช้สำหรับโอนเงินเดือนและแสดงบนสลิปเงินเดือน</div>
       <div class="fg" style="margin-bottom:10px"><label class="flb">ธนาคาร</label>
         <select class="fi" id="ef-bank">
@@ -8966,7 +9071,7 @@ function openEmployeeForm(id){
   </div>
   <div class="ef-pane" id="efpane-wage" style="display:none">
     <div class="ef-section">
-      <div class="ef-section-hd">💰 อัตราค่าจ้าง</div>
+      <div class="ef-section-hd"><span class="ic">💰</span> อัตราค่าจ้าง</div>
       <div class="ef-field-row" style="margin-bottom:10px">
         <div class="fg"><label class="flb">ประเภทการจ้าง</label><select class="fi" id="ef-paytype" onchange="efPayTypeChange()"><option value="monthly"${!e||e.payType==='monthly'?' selected':''}>รายเดือน</option><option value="daily"${e&&e.payType==='daily'?' selected':''}>รายวัน</option></select></div>
         <div class="fg"><label class="flb" id="ef-rate-lb">${(!e||e.payType==='monthly')?'เงินเดือน (฿)':'ค่าแรง/วัน (฿)'}</label><input class="fi" type="number" id="ef-rate" value="${e?(e.rate||0):''}" placeholder="0"></div>
@@ -8980,7 +9085,7 @@ function openEmployeeForm(id){
       </div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">⏱️ OT & ค่าทำงานพิเศษ</div>
+      <div class="ef-section-hd"><span class="ic">⏱️</span> OT & ค่าทำงานพิเศษ</div>
       <div class="ef-field-row">
         <div class="fg"><label class="flb">ตัวคูณ OT (เท่า)</label><input class="fi" type="number" step="0.1" id="ef-otmult" value="${e&&e.otMult?e.otMult:1.5}"><div style="font-size:10.5px;color:var(--mu);margin-top:3px">ปกติ = 1.5x</div></div>
         <div class="fg"><label class="flb">ตัวคูณ OT วันหยุด</label><input class="fi" type="number" step="0.1" id="ef-hotmult" value="${e&&e.holidayOtMult?e.holidayOtMult:2}"><div style="font-size:10.5px;color:var(--mu);margin-top:3px">ปกติ = 2x</div></div>
@@ -8989,7 +9094,7 @@ function openEmployeeForm(id){
   </div>
   <div class="ef-pane" id="efpane-time" style="display:none">
     <div class="ef-section">
-      <div class="ef-section-hd">⏰ เวลาทำงาน</div>
+      <div class="ef-section-hd"><span class="ic">⏰</span> เวลาทำงาน</div>
       <div class="ef-field-row" style="margin-bottom:10px">
         <div class="fg"><label class="flb">🟢 เวลาเข้างาน</label><input class="fi" type="time" id="ef-wstart" value="${e&&e.workStart?e.workStart:'08:00'}"></div>
         <div class="fg"><label class="flb">🔴 เวลาเลิกงาน</label><input class="fi" type="time" id="ef-wend" value="${e&&e.workEnd?e.workEnd:'17:00'}"></div>
@@ -9000,7 +9105,7 @@ function openEmployeeForm(id){
       </div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">💸 การหักค่าปรับ</div>
+      <div class="ef-section-hd"><span class="ic">💸</span> การหักค่าปรับ</div>
       <div class="ef-field-row">
         <div class="fg"><label class="flb">มาสาย (฿/นาที)</label><input class="fi" type="number" id="ef-latefine" value="${e&&e.lateFine?e.lateFine:0}"></div>
         <div class="fg"><label class="flb">ออกก่อน (฿/นาที)</label><input class="fi" type="number" id="ef-earlyfine" value="${e&&e.earlyFine?e.earlyFine:0}"></div>
@@ -9009,7 +9114,7 @@ function openEmployeeForm(id){
   </div>
   <div class="ef-pane" id="efpane-welfare" style="display:none">
     <div class="ef-section">
-      <div class="ef-section-hd">🎁 เงินเพิ่มพิเศษ</div>
+      <div class="ef-section-hd"><span class="ic">🎁</span> เงินเพิ่มพิเศษ</div>
       <div class="ef-field-row" style="margin-bottom:10px">
         <div class="fg"><label class="flb">ค่าเดินทาง/อาหาร (฿/วัน)</label><input class="fi" type="number" id="ef-travel" value="${e&&e.travel?e.travel:0}"></div>
         <div class="fg"><label class="flb">เบี้ยขยัน (฿/เดือน)</label><input class="fi" type="number" id="ef-diligence" value="${e&&e.diligence?e.diligence:0}"></div>
@@ -9017,7 +9122,7 @@ function openEmployeeForm(id){
       <div class="fg"><label class="flb">🏖️ โควต้าลาพักร้อน (วัน/ปี)</label><input class="fi" type="number" id="ef-leavequota" value="${e&&e.leaveQuota!=null?e.leaveQuota:6}" placeholder="6"></div>
     </div>
     <div class="ef-section">
-      <div class="ef-section-hd">📋 ภาษี & ประกันสังคม</div>
+      <div class="ef-section-hd"><span class="ic">📋</span> ภาษี & ประกันสังคม</div>
       <div style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;border-radius:10px;padding:10px 12px;margin-bottom:10px">
         <div><div style="font-size:13px;font-weight:600">หักประกันสังคม 5%</div><div style="font-size:11.5px;color:var(--mu)">นายจ้างสมทบ · สูงสุด 750 ฿/เดือน</div></div>
         <button class="sw ${e&&e.sso?'on':''}" id="ef-sso" onclick="this.classList.toggle('on')"></button>
@@ -9032,7 +9137,7 @@ function openEmployeeForm(id){
   </div>
   <div class="ef-pane" id="efpane-holiday" style="display:none">
     <div class="ef-section">
-      <div class="ef-section-hd">📅 วันหยุดประจำสัปดาห์</div>
+      <div class="ef-section-hd"><span class="ic">📅</span> วันหยุดประจำสัปดาห์</div>
       <div style="font-size:12px;color:var(--mu);margin-bottom:12px">เลือกวันที่ <b style="color:var(--tx)">หยุด</b> ของพนักงานคนนี้ (วันสีแดง = หยุด · มาทำงานวันหยุด = คิด OT วันหยุด)</div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:14px">
         ${days.map(d=>`<label style="${dayStyle(d[1])};border-radius:12px;display:flex;flex-direction:column;align-items:center;padding:10px 4px" onclick="const c=this.querySelector('input');c.checked=!c.checked;this.style.background=c.checked?'#FFE9E6':'#fff';this.style.borderColor=c.checked?'var(--dg)':'var(--bd)';this.style.color=c.checked?'var(--dg)':'var(--tx)'"><input type="checkbox" class="ef-offday" data-d="${d[1]}" ${off.includes(d[1])?'checked':''} style="display:none"><span style="font-size:13px;font-weight:700">${d[0]}</span></label>`).join('')}
