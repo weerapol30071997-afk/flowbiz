@@ -30,6 +30,7 @@
 .ef-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.25);backdrop-filter:blur(4px)}
 .ef-stat{background:rgba(255,255,255,.13);border-radius:12px;padding:8px 12px;text-align:center;border:1px solid rgba(255,255,255,.2)}
 .ef-stat .num{font-size:16px;font-weight:800;color:#fff}.ef-stat .lbl{font-size:9.5px;color:rgba(255,255,255,.75);margin-top:1px}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 /* SIDEBAR */
@@ -357,6 +358,7 @@ tbody tr:hover td{background:#FAFBFD}
         ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button type="button" onclick="elgKey('${k}')" style="height:58px;border:none;border-radius:14px;font-size:${k==='⌫'?'20':'22'}px;font-weight:700;cursor:pointer;font-family:inherit;background:${k===''?'transparent':k==='⌫'?'#fee2e2':'#f1f5f9'};color:${k==='⌫'?'#E53E3E':'#1e293b'};box-shadow:${k===''?'none':'0 2px 6px rgba(0,0,0,.08)'};transition:all .1s;${k===''?'pointer-events:none':''}" ${k===''?'disabled':''} onmousedown="this.style.transform='scale(.93)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(.93)'" ontouchend="this.style.transform=''">${k}</button>`).join('')}
       </div>
       <button class="btn bp" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:13px;font-weight:700;background:linear-gradient(135deg,#00C9A7,#00a98e);box-shadow:0 4px 16px rgba(0,201,167,.35)" onclick="doEmpLogin()">👷 เข้าระบบพนักงาน</button>
+      <input type="hidden" id="elg-pin" value="">
       <div id="elg-err" style="color:#E53E3E;font-size:12px;text-align:center;margin-top:10px;display:none;background:#FEECEC;padding:8px 12px;border-radius:9px">❌ PIN ไม่ถูกต้อง — ลองใหม่อีกครั้ง</div>
       <div style="text-align:center;font-size:11.5px;color:#94a3b8;margin-top:16px">🔒 ข้อมูลปลอดภัย · ขอ PIN จากผู้ดูแลระบบ</div>
     </div>
@@ -398,7 +400,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17q · 🔧 ประวัติซ่อม + 👤 ฟอร์มพนักงานใหม่</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17t · 👷 Portal ครบสมบูรณ์</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -6055,24 +6057,33 @@ function renderJobs(){
     const nPhoto=(j.surveyPhotos?.length||0)+(j.beforePhotos?.length||0)+(j.afterPhotos?.length||0);
     const stepIdx=JOB_FLOW.indexOf(j.status==='ไม่อนุมัติ'?'ตรวจงาน':j.status);
     const progress=stepIdx>=0?Math.round((stepIdx+1)/JOB_FLOW.length*100):0;
-    return `<div class="card" style="cursor:pointer;padding:0;overflow:hidden" onclick="openJobDrawer('${j.id}')">
-      <div style="height:5px;background:var(--bd)"><div style="height:100%;width:${progress}%;background:${JOB_STATUS_STYLE[j.status]?.c||'#0A6EBD'};transition:width .4s"></div></div>
-      <div style="padding:14px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
-          <div style="font-weight:700;font-size:14px;line-height:1.3">${j.title}</div>
-          ${jobStatusBadge(j.status)}
+    const sc=JOB_STATUS_STYLE[j.status]?.c||'#0A6EBD';
+    const overdue=j.due&&j.due<iso(new Date())&&j.status!=='ส่งมอบแล้ว';
+    const ws=(typeof warrantyStatus==='function')?warrantyStatus(j):null;
+    return `<div style="cursor:pointer;border-radius:16px;overflow:hidden;box-shadow:0 3px 14px rgba(0,0,0,.08);border:1.5px solid ${overdue?'#fca5a5':'#e8edf3'};background:#fff;transition:transform .12s,box-shadow .12s" onclick="openJobDrawer('${j.id}')">
+      <!-- progress bar -->
+      <div style="height:4px;background:#f1f5f9"><div style="height:100%;width:${progress}%;background:${sc};transition:width .4s;border-radius:0 4px 4px 0"></div></div>
+      <!-- header -->
+      <div style="padding:13px 14px 10px;display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:800;font-size:14px;line-height:1.3;margin-bottom:3px;word-break:break-word">${escHtml(j.title||j.id)}</div>
+          <div style="font-size:11px;color:#94a3b8;font-weight:600">${escHtml(j.id)}</div>
         </div>
-        <div style="font-size:11px;color:var(--mu);margin-bottom:10px">${j.id}</div>
-        <div style="display:grid;grid-template-columns:auto 1fr;gap:5px 8px;font-size:12px;margin-bottom:10px">
-          <span style="color:var(--mu)">👤 ลูกค้า</span><span style="font-weight:500">${cust.name||j.cust||'-'}</span>
-          <span style="color:var(--mu)">📍 สถานที่</span><span style="font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${j.location||'-'}</span>
-          <span style="color:var(--mu)">👷 ผู้รับผิดชอบ</span><span style="font-weight:500">${j.assignee||'-'}</span>
-          <span style="color:var(--mu)">📅 กำหนดเสร็จ</span><span style="font-weight:500">${j.due?fmtD(j.due):'-'}</span>
+        ${jobStatusBadge(j.status)}
+      </div>
+      <!-- info chips -->
+      <div style="padding:0 14px 10px;display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="color:#94a3b8;flex-none">👤</span><span style="font-weight:600;color:#374151">${escHtml(cust.name||j.cust||'ไม่ระบุ')}</span></div>
+        ${j.assignee?`<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="color:#94a3b8;flex-none">👷</span><span style="font-weight:600;color:#374151">${escHtml(j.assignee)}</span></div>`:''}
+        ${j.location?`<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="color:#94a3b8;flex-none">📍</span><span style="color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(j.location)}</span></div>`:''}
+        ${j.due?`<div style="display:flex;align-items:center;gap:6px;font-size:12px"><span style="color:${overdue?'#E53E3E':'#94a3b8'};flex-none">📅</span><span style="font-weight:600;color:${overdue?'#E53E3E':'#374151'}">${fmtD(j.due)}${overdue?' ⚠️ เลยกำหนด':''}</span></div>`:''}
+      </div>
+      <!-- footer -->
+      <div style="padding:9px 14px 12px;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center">
+        <div style="display:flex;gap:6px;align-items:center;font-size:11.5px;color:#64748b">
+          ${nPhoto>0?`<span>📷 ${nPhoto}</span>`:''}${j.gps?`<span>📍 GPS</span>`:''}${ws?`<span style="color:#0F9D58">🛡️ ประกัน</span>`:''}${j.customerSig?`<span style="color:#0F9D58">✍️ เซ็น</span>`:''}
         </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--bd);padding-top:9px">
-          <span style="font-size:11px;color:var(--mu)">${nPhoto>0?`📷 ${nPhoto} รูป`:'ยังไม่มีรูป'}${j.gps?' · 📍GPS':''}</span>
-          <span style="font-weight:700;color:var(--p);font-size:13px">฿${fmt(j.value||0)}</span>
-        </div>
+        <span style="font-weight:800;color:${sc};font-size:14px">฿${fmt(j.value||0)}</span>
       </div>
     </div>`;
   }).join('');
@@ -10364,22 +10375,23 @@ document.getElementById('lg-pass').addEventListener('keydown',e=>{ if(e.key==='E
 // ── สลับแท็บ ผู้ดูแล / พนักงาน ──
 function lgSwitch(mode){
   const admin=mode==='admin';
-  document.getElementById('lgtab-admin').classList.toggle('on',admin);
-  document.getElementById('lgtab-emp').classList.toggle('on',!admin);
-  document.getElementById('lgtab-admin').style.background=admin?'#fff':'transparent';
-  document.getElementById('lgtab-admin').style.color=admin?'var(--p)':'var(--mu)';
-  document.getElementById('lgtab-emp').style.background=!admin?'#fff':'transparent';
-  document.getElementById('lgtab-emp').style.color=!admin?'var(--p)':'var(--mu)';
+  const btnA=document.getElementById('lgtab-admin'); const btnE=document.getElementById('lgtab-emp');
+  if(btnA){ btnA.style.background=admin?'linear-gradient(135deg,#0A6EBD,#0080d5)':' transparent'; btnA.style.color=admin?'#fff':'#94a3b8'; btnA.style.boxShadow=admin?'0 3px 12px rgba(10,110,189,.3)':'none'; }
+  if(btnE){ btnE.style.background=!admin?'linear-gradient(135deg,#00C9A7,#00a98e)':'transparent'; btnE.style.color=!admin?'#fff':'#94a3b8'; btnE.style.boxShadow=!admin?'0 3px 12px rgba(0,201,167,.3)':'none'; }
   document.getElementById('loginForm').style.display=admin?'block':'none';
   document.getElementById('empLoginForm').style.display=admin?'none':'block';
-  if(!admin){ const sel=document.getElementById('elg-emp'); sel.innerHTML=(DB.employees||[]).filter(e=>e.active).map(e=>`<option value="${e.id}">${e.name} (${e.role||''})</option>`).join('')||'<option value="">ยังไม่มีพนักงาน</option>'; }
+  if(!admin){
+    const sel=document.getElementById('elg-emp'); if(sel) sel.innerHTML=(DB.employees||[]).filter(e=>e.active!==false).map(e=>`<option value="${e.id}">${e.name}${e.role?' ('+e.role+')':''}</option>`).join('')||'<option value="">ยังไม่มีพนักงาน</option>';
+    const inp=document.getElementById('elg-pin'); if(inp) inp.value='';
+    elgKey('');
+  }
 }
 // ── ล็อกอินพนักงาน ──
 function doEmpLogin(){
   const empId=document.getElementById('elg-emp').value;
   const pin=document.getElementById('elg-pin').value.trim();
   const e=empById(empId);
-  if(e&&e.active&&e.pin&&e.pin===pin){
+  if(e&&e.active!==false&&e.pin&&String(e.pin).trim()===String(pin).trim()){
     document.getElementById('loginScreen').style.display='none';
     document.getElementById('elg-pin').value='';
     document.getElementById('elg-err').style.display='none';
@@ -10397,9 +10409,27 @@ function doEmpLogin(){
       openEmpPortal();
       toast('👋 สวัสดี '+e.name);
     }
-  } else { document.getElementById('elg-err').style.display='block'; }
+  } else {
+    const errEl=document.getElementById('elg-err'); if(errEl) errEl.style.display='block';
+    // shake PIN dots
+    const dots=document.getElementById('elg-dots'); if(dots){ dots.style.animation='shake .35s ease'; setTimeout(()=>{ dots.style.animation=''; },400); }
+    // clear PIN after short delay
+    setTimeout(()=>{ const inp=document.getElementById('elg-pin'); if(inp) inp.value=''; elgKey(''); },400);
+  }
 }
 document.getElementById('elg-pin').addEventListener('keydown',e=>{ if(e.key==='Enter') doEmpLogin(); });
+function elgKey(k){
+  const inp=document.getElementById('elg-pin'); if(!inp) return;
+  const errEl=document.getElementById('elg-err'); if(errEl) errEl.style.display='none';
+  if(k==='⌫'){ inp.value=inp.value.slice(0,-1); }
+  else if(k!==''&&inp.value.length<6){ inp.value+=String(k); }
+  // update dots
+  const dots=document.getElementById('elg-dots'); if(!dots) return;
+  const len=inp.value.length;
+  dots.innerHTML=Array.from({length:Math.max(4,len+1<=6?len+1:6)},(_,i)=>`<div style="width:14px;height:14px;border-radius:50%;background:${i<len?'#00C9A7':'#e2e8f0'};transition:background .15s;box-shadow:${i<len?'0 2px 6px rgba(0,201,167,.4)':'none'}"></div>`).join('');
+  if(inp.value.length>=4){ /* auto-attempt after 6 digits */ if(inp.value.length===6) setTimeout(doEmpLogin,120); }
+}
+function elgFocus(){ const inp=document.getElementById('elg-pin'); if(inp) inp.value=''; elgKey(''); }
 function doEmpLogout(){
   try{ sessionStorage.removeItem('flowbiz_emp'); }catch(e){}
   curUser=null;
@@ -10414,14 +10444,21 @@ let _epTimer=null;
 function openEmpPortal(){
   document.getElementById('empPortal').style.display='block';
   const e=empById(curUser.empId);
-  document.getElementById('ep-av').textContent=initials(e.name);
+  if(!e) return;
+  const avEl=document.getElementById('ep-av');
+  if(avEl){ if(e.photo){ avEl.innerHTML=`<img src="${e.photo}" style="width:100%;height:100%;object-fit:cover">`; } else { avEl.innerHTML=`<span style="color:#fff;font-weight:800;font-size:20px">${initials(e.name)}</span>`; } }
   document.getElementById('ep-name').textContent=e.name;
-  document.getElementById('ep-role').textContent=e.role||'พนักงาน';
-  const tick=()=>{ const d=new Date(); const c=document.getElementById('ep-clock'); if(c) c.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0'); const dd=document.getElementById('ep-date'); if(dd) dd.textContent=fmtD(d.toISOString().slice(0,10)); };
+  document.getElementById('ep-role').textContent=(e.role||'พนักงาน')+(e.dept?' · '+e.dept:'');
+  const thDays=['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
+  const tick=()=>{
+    const d=new Date();
+    const c=document.getElementById('ep-clock'); if(c) c.textContent=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0');
+    const dd=document.getElementById('ep-date'); if(dd) dd.textContent='วัน'+thDays[d.getDay()]+' '+fmtD(iso(d));
+  };
   tick(); if(_epTimer) clearInterval(_epTimer); _epTimer=setInterval(tick,1000);
   renderEmpPortal();
-  cloudWatchStart(); // เฝ้าดูงานใหม่จากอีกเครื่อง (เบา) — ดึงเฉพาะเมื่อมีการแก้
-  epGeoStart(); // เริ่มติดตามพื้นที่ทำงาน (ถ้ากำลังเข้างาน)
+  try{ cloudWatchStart(); }catch(x){}
+  try{ epGeoStart(); }catch(x){}
 }
 function empMyJobs(e){
   return (DB.jobs||[]).filter(j=> j.assigneeId===e.id || (j.assignee&&e.name&&j.assignee.includes(e.name)) );
@@ -10448,84 +10485,100 @@ function renderEmpPortal(){
   const activeJobs=myJobs.filter(j=>j.status!=='ส่งมอบแล้ว');
   const newJobs=empNewJobs(e);
   let clockCard;
-  if(!att||!att.inTime) clockCard=`<div style="background:#FFF3E8;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:#b45309;margin-bottom:10px">⚪ วันนี้ยังไม่ได้ลงเวลาเข้า</div>`;
-  else if(!att.outTime) clockCard=`<div style="background:#E8F8F0;border-radius:12px;padding:14px;text-align:center;font-size:13px;color:var(--ok);margin-bottom:10px">🟢 เข้างานแล้ว ${fmtTime(att.inTime)} น. ${att.inGps?`· <a href="https://maps.google.com/?q=${att.inGps.lat},${att.inGps.lng}" target="_blank" style="color:var(--p)">📍</a>`:''}<div id="ep-geo" style="font-size:12px;margin-top:6px;color:var(--mu)">📡 กำลังตรวจตำแหน่ง... (อนุญาตให้เข้าถึงตำแหน่ง)</div></div>`;
-  else clockCard=`<div style="background:#fff;border:1px solid var(--bd);border-radius:12px;padding:14px;text-align:center;font-size:13px;margin-bottom:10px">✅ เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · ${attHours(att).toFixed(1)} ชม.</div>`;
-  // ประวัติเข้า-ออก 14 วัน
+  const isIn=att&&att.inTime&&!att.outTime; const isDone=att&&att.outTime;
+  if(!att||!att.inTime){ clockCard=`<div style="background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="font-size:28px">⏱️</div><div style="font-size:13px;color:#92400e;font-weight:600">วันนี้ยังไม่ได้ลงเวลาเข้างาน</div></div>`; }
+  else if(isIn){ clockCard=`<div style="background:linear-gradient(135deg,#E8F8F0,#d1fae5);border:1.5px solid #6ee7b7;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="font-size:28px;animation:pulse 2s infinite">🟢</div><div><div style="font-size:14px;color:#065f46;font-weight:800">กำลังทำงานอยู่</div><div style="font-size:12px;color:#059669;margin-top:2px">เข้างาน ${fmtTime(att.inTime)} น. ${att.inGps?`· <a href="https://maps.google.com/?q=${att.inGps.lat},${att.inGps.lng}" target="_blank" style="color:#0A6EBD">📍GPS</a>`:''}</div><div id="ep-geo" style="font-size:11.5px;color:#6b7280;margin-top:4px"></div></div></div>`; }
+  else { clockCard=`<div style="background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:14px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px"><div style="font-size:28px">✅</div><div><div style="font-size:13px;color:#374151;font-weight:700">ทำงานครบวันแล้ว</div><div style="font-size:12px;color:#6b7280;margin-top:2px">เข้า ${fmtTime(att.inTime)} · ออก ${fmtTime(att.outTime)} · ${attHours(att).toFixed(1)} ชม.</div></div></div>`; }
   const histRows=recs.slice(0,14).map(a=>attnCard(a,false)).join('');
   const myLeaves=(DB.leaves||[]).filter(l=>l.empId===e.id).sort((a,b)=>(b.requestedAt||'').localeCompare(a.requestedAt||'')).slice(0,6);
-  const myLeaveRows=myLeaves.map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #f0f0f0;font-size:12.5px"><div><div style="font-weight:600">${leaveTypeLabel(l.type)} · ${leaveDaysCount(l.from,l.to)} วัน</div><div style="color:var(--mu);font-size:11px">${fmtD(l.from)}${(l.to&&l.to!==l.from)?' - '+fmtD(l.to):''}${l.reason?' · '+l.reason:''}</div></div>${leaveBadge(l.status)}</div>`).join('');
-  const dayNames=['อา','จ','อ','พ','พฤ','ศ','ส'];
-  const offTxt=(Array.isArray(e.offDays)&&e.offDays.length)?e.offDays.map(d=>dayNames[d]).join(', '):'ไม่มี';
-  const profileCard=`<div style="background:linear-gradient(135deg,#0D1B2A,#0A6EBD);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px">
-    <div style="font-size:13px;font-weight:600">${e.role||'พนักงาน'}${e.dept?' · '+e.dept:''}</div>
-    <div style="display:flex;gap:14px;margin-top:8px;font-size:11.5px;flex-wrap:wrap;opacity:.92">
-      <span>🆔 ${e.id}</span><span>⏰ ${e.workStart||'08:00'}–${e.workEnd||'17:00'}</span><span>🏖️ หยุด ${offTxt}</span>
-    </div>
-  </div>`;
-  const body=`${profileCard}
-    ${newJobs.length?`<div style="background:linear-gradient(135deg,#E67E22,#F39C12);color:#fff;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 14px rgba(230,126,34,.3)">
-      <div style="font-size:26px">🔔</div><div style="flex:1"><div style="font-weight:700;font-size:14px">มีงานใหม่ ${newJobs.length} งาน!</div><div style="font-size:12px;opacity:.95">${newJobs.map(j=>j.title).slice(0,2).join(', ')}${newJobs.length>2?' ...':''}</div></div>
-      <button onclick="empMarkSeen()" style="background:rgba(255,255,255,.25);border:none;color:#fff;padding:7px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">รับทราบ</button>
+  const myLeaveRows=myLeaves.map(l=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #f1f5f9;font-size:12.5px"><div><div style="font-weight:600">${leaveTypeLabel(l.type)} · ${leaveDaysCount(l.from,l.to)} วัน</div><div style="color:var(--mu);font-size:11px">${fmtD(l.from)}${l.to&&l.to!==l.from?' – '+fmtD(l.to):''}${l.reason?' · '+l.reason:''}</div></div>${leaveBadge(l.status)}</div>`).join('');
+  const body=`
+    ${newJobs.length?`<div style="background:linear-gradient(135deg,#F59E0B,#D97706);color:#fff;border-radius:16px;padding:15px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;box-shadow:0 6px 20px rgba(217,119,6,.35)">
+      <div style="font-size:30px">🔔</div><div style="flex:1"><div style="font-weight:800;font-size:15px">มีงานใหม่ ${newJobs.length} งาน!</div><div style="font-size:12px;opacity:.95;margin-top:2px">${newJobs.map(j=>j.title).slice(0,2).join(' · ')}${newJobs.length>2?' +อีก'+(newJobs.length-2):''}</div></div>
+      <button onclick="empMarkSeen()" style="background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.35);color:#fff;padding:8px 14px;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;backdrop-filter:blur(4px)">รับทราบ</button>
     </div>`:''}
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="font-weight:700;font-size:14px;margin-bottom:10px">⏰ ลงเวลาเข้า-ออกงาน</div>
+    <!-- ลงเวลา -->
+    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 3px 16px rgba(0,0,0,.07)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:13px">
+        <span style="font-size:18px">⏰</span><span style="font-weight:800;font-size:15px">ลงเวลาเข้า-ออกงาน</span>
+      </div>
       ${clockCard}
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-        <button class="btn bp" style="justify-content:center;padding:16px;background:var(--ok);font-size:14px" onclick="epClock('in')">🟢 เข้างาน<br><span style="font-size:10px;opacity:.9;font-weight:400">ถ่ายรูป+GPS</span></button>
-        <button class="btn bp" style="justify-content:center;padding:16px;background:var(--dg);font-size:14px" onclick="epClock('out')">🔴 ออกงาน<br><span style="font-size:10px;opacity:.9;font-weight:400">ถ่ายรูป+GPS</span></button>
+        <button style="padding:18px 12px;border:none;border-radius:14px;background:${isIn||isDone?'#e2e8f0':'linear-gradient(135deg,#10b981,#059669)'};color:${isIn||isDone?'#9ca3af':'#fff'};font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:${isIn||isDone?'none':'0 4px 14px rgba(16,185,129,.4)'};transition:all .2s" onclick="epClock('in')" ${isDone?'disabled':''}>
+          🟢 เข้างาน<div style="font-size:10.5px;font-weight:500;margin-top:3px;opacity:.85">ถ่ายรูป + GPS</div>
+        </button>
+        <button style="padding:18px 12px;border:none;border-radius:14px;background:${!isIn?'#e2e8f0':'linear-gradient(135deg,#ef4444,#dc2626)'};color:${!isIn?'#9ca3af':'#fff'};font-size:15px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:${!isIn?'none':'0 4px 14px rgba(239,68,68,.4)'};transition:all .2s" onclick="epClock('out')" ${!isIn?'disabled':''}>
+          🔴 ออกงาน<div style="font-size:10.5px;font-weight:500;margin-top:3px;opacity:.85">ถ่ายรูป + GPS</div>
+        </button>
       </div>
     </div>
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="font-weight:700;font-size:14px;margin-bottom:12px">📊 สรุปเดือนนี้</div>
-      <div style="display:flex;justify-content:space-around;text-align:center">
-        <div><div style="font-size:24px;font-weight:800;color:var(--p)">${days}</div><div style="font-size:11px;color:var(--mu)">วันทำงาน</div></div>
-        <div><div style="font-size:24px;font-weight:800;color:var(--ok)">${hrs.toFixed(1)}</div><div style="font-size:11px;color:var(--mu)">ชั่วโมง</div></div>
-        <div><div style="font-size:24px;font-weight:800;color:var(--ac)">฿${fmt(estPay)}</div><div style="font-size:11px;color:var(--mu)">${e.payType==='monthly'?'เงินเดือน':'ค่าจ้างสะสม'}</div></div>
+    <!-- สรุปเดือน -->
+    <div style="background:linear-gradient(135deg,#0A6EBD,#005fa3);border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 6px 20px rgba(10,110,189,.3)">
+      <div style="color:rgba(255,255,255,.75);font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;margin-bottom:14px">📊 สรุปเดือนนี้</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px">
+        <div style="background:rgba(255,255,255,.15);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,.15)"><div style="font-size:26px;font-weight:900;color:#fff">${days}</div><div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px">วันทำงาน</div></div>
+        <div style="background:rgba(255,255,255,.15);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(255,255,255,.15)"><div style="font-size:26px;font-weight:900;color:#fff">${hrs.toFixed(1)}</div><div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px">ชั่วโมง</div></div>
+        <div style="background:rgba(0,201,167,.25);border-radius:12px;padding:12px;text-align:center;border:1px solid rgba(0,201,167,.3)"><div style="font-size:20px;font-weight:900;color:#fff">฿${days*50>=1000?Math.round(estPay/1000)+'k':fmt(estPay)}</div><div style="font-size:10px;color:rgba(255,255,255,.7);margin-top:2px">${e.payType==='monthly'?'เงินเดือน':'ค่าจ้าง'}</div></div>
       </div>
-      <div style="display:flex;justify-content:space-around;text-align:center;font-size:11px;color:var(--mu);margin-top:10px;border-top:1px solid #f0f0f0;padding-top:10px">
-        <span>ประเภท: <b style="color:#333">${e.payType==='monthly'?'รายเดือน':'รายวัน'}</b></span>
-        <span>อัตรา: <b style="color:#333">฿${fmt(e.rate)}${e.payType==='daily'?'/วัน':'/ด.'}</b></span>
-        ${e.sso?'<span>ปกส.: <b style="color:#333">หัก 5%</b></span>':''}
+      <div style="background:rgba(255,255,255,.1);border-radius:10px;padding:9px 12px;display:flex;justify-content:space-between;font-size:11.5px;color:rgba(255,255,255,.85)">
+        <span>${e.payType==='monthly'?'รายเดือน':'รายวัน'} · ฿${fmt(e.rate)}${e.payType==='daily'?'/วัน':'/เดือน'}</span>
+        ${e.sso?'<span>ประกันสังคม 5%</span>':''}
+        <span style="font-size:10px;opacity:.65">* ประมาณการ</span>
       </div>
-      <div style="font-size:10.5px;color:var(--mu);text-align:center;margin-top:8px">* ยอดประมาณการ — รอบจ่ายจริงโดยฝ่ายบุคคล</div>
     </div>
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:700;font-size:14px">🛠️ งานที่ได้รับมอบหมาย</div>
-        <span class="badge ${activeJobs.length?'b-pend':'b-paid'}">${activeJobs.length} งานค้าง</span>
+    <!-- งานที่ได้รับ -->
+    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 3px 16px rgba(0,0,0,.07)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:13px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">🛠️</span><span style="font-weight:800;font-size:15px">งานที่รับมอบหมาย</span></div>
+        <span style="background:${activeJobs.length?'#FEF3C7':'#F0FDF4'};color:${activeJobs.length?'#D97706':'#0F9D58'};font-size:11.5px;font-weight:700;padding:4px 12px;border-radius:20px">${activeJobs.length} งานค้าง</span>
       </div>
       ${myJobs.length?myJobs.slice(0,12).map(j=>{
-        const cust=getCust(j.cust);
-        const np=(j.beforePhotos||[]).length, na=(j.afterPhotos||[]).length;
-        return `<div style="border:1px solid var(--bd);border-radius:12px;padding:12px;margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px"><div style="font-weight:600;font-size:13px">${j.title}</div>${jobStatusBadge?jobStatusBadge(j.status):'<span class="badge">'+j.status+'</span>'}</div>
-          <div style="font-size:11.5px;color:var(--mu);margin-bottom:8px">${cust.name||j.cust||'-'}${j.location?' · 📍'+j.location:''}${j.due?' · กำหนด '+fmtD(j.due):''}</div>
-          ${(j.startedAt||np||na)?`<div style="font-size:11px;color:var(--mu);margin-bottom:8px;display:flex;gap:10px;flex-wrap:wrap">${j.startedAt?`<span>🔧 เริ่ม ${fmtTime(j.startedAt)}</span>`:''}${j.finishedAt?`<span>✅ เสร็จ ${fmtTime(j.finishedAt)}</span>`:''}${np?`<span>📸 ก่อน ${np}</span>`:''}${na?`<span>✨ หลัง ${na}</span>`:''}</div>`:''}
-          <div style="display:flex;gap:6px;flex-wrap:wrap">
-            ${(j.status==='รอทำ'||j.status==='สำรวจ')?`<button class="btn bp" style="font-size:11px;padding:6px 10px" onclick="epJobStart('${j.id}')">🔧 เริ่มงาน (ถ่ายรูป)</button>`:''}
-            ${j.status==='กำลังทำ'?`<button class="btn bp" style="font-size:11px;padding:6px 10px;background:var(--ac)" onclick="epJobFinish('${j.id}')">✅ เสร็จงาน (ถ่ายรูป)</button>`:''}
-            ${j.status==='กำลังทำ'?`<button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="jobAddPhotos('${j.id}','before')">📷 +รูปก่อน</button>`:''}
-            ${j.status!=='ส่งมอบแล้ว'?`<button class="btn bo" style="font-size:11px;padding:6px 10px;color:#0A6EBD" onclick="empOpenMRForm('${j.id}','${escHtml(j.title||j.id)}','${escHtml(e.name||'')}')">📦 ขอเบิก/ซื้อ</button>`:''}
-            ${j.gps?`<a class="btn bo" style="font-size:11px;padding:6px 10px;text-decoration:none" href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank">🗺️ แผนที่</a>`:''}
-            <button class="btn bo" style="font-size:11px;padding:6px 10px" onclick="epJobDetail('${j.id}')">📄 รายละเอียด</button>
-          </div></div>`;
-      }).join(''):'<div style="text-align:center;color:var(--mu);font-size:13px;padding:20px">ยังไม่มีงานที่ได้รับมอบหมาย</div>'}
+        const cust=getCust(j.cust); const sc=JOB_STATUS_STYLE[j.status]?.c||'#0A6EBD';
+        const overdue=j.due&&j.due<iso(new Date())&&j.status!=='ส่งมอบแล้ว';
+        return `<div style="border:1.5px solid ${overdue?'#fca5a5':'#e8edf3'};border-radius:14px;padding:13px;margin-bottom:10px;background:${overdue?'#fff5f5':'#fff'}">
+          <div style="display:flex;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <div style="font-weight:700;font-size:13.5px;line-height:1.3">${escHtml(j.title)}</div>
+            ${jobStatusBadge?jobStatusBadge(j.status):''}
+          </div>
+          <div style="font-size:11.5px;color:#6b7280;margin-bottom:10px">${escHtml(cust.name||j.cust||'')}${j.location?' · 📍'+escHtml(j.location):''}${j.due?` · <span style="color:${overdue?'#E53E3E':'#0A6EBD'};font-weight:600">${overdue?'⚠️ ':'📅 '}กำหนด ${fmtD(j.due)}</span>`:''}</div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap">
+            ${j.status!=='ส่งมอบแล้ว'?`<button class="btn bp" style="flex:1;justify-content:center;font-size:12px;padding:8px;border-radius:10px" onclick="epJobStatusNext('${j.id}')">▶️ อัปเดตสถานะ</button>`:''}
+            ${j.status!=='ส่งมอบแล้ว'?`<button class="btn bo" style="font-size:12px;padding:8px 12px;border-radius:10px" onclick="empOpenMRForm('${j.id}','${escHtml(j.title||j.id)}','${escHtml(e.name||'')}')">📦 ขอเบิก</button>`:''}
+            ${j.gps?`<a class="btn bo" style="font-size:12px;padding:8px 12px;text-decoration:none;border-radius:10px" href="https://maps.google.com/?q=${j.gps.lat},${j.gps.lng}" target="_blank">🗺️</a>`:''}
+          </div>
+        </div>`; }).join('') : '<div style="text-align:center;color:#94a3b8;padding:20px;font-size:13px">ยังไม่มีงานที่ได้รับมอบหมาย</div>'}
     </div>
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <div style="font-weight:700;font-size:14px">🏖️ การลา</div>
-        <button class="btn bp" style="padding:7px 14px;font-size:13px" onclick="openLeaveForm('${e.id}',true)">+ ขอลา</button>
+    <!-- ขอลา -->
+    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 3px 16px rgba(0,0,0,.07)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:8px"><span style="font-size:18px">🏖️</span><span style="font-weight:800;font-size:15px">การลา</span></div>
+        <button class="btn bp" style="padding:8px 16px;font-size:12.5px;border-radius:10px" onclick="closeDrawer();epLeaveForm()">+ ขอลา</button>
       </div>
-      ${myLeaveRows||'<div style="text-align:center;color:var(--mu);font-size:12px;padding:10px">ยังไม่มีรายการลา</div>'}
+      ${myLeaveRows||'<div style="text-align:center;color:#94a3b8;font-size:12px;padding:12px">ยังไม่มีรายการลา</div>'}
     </div>
-    <div style="background:#fff;border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 2px 10px rgba(0,0,0,.05)">
-      <div style="font-weight:700;font-size:14px;margin-bottom:10px">📅 ประวัติเข้า-ออกงาน (14 วันล่าสุด)</div>
-      ${histRows||'<div style="text-align:center;color:var(--mu);font-size:13px;padding:16px">ยังไม่มีประวัติ</div>'}
+    <!-- ประวัติเข้า-ออก -->
+    <div style="background:#fff;border-radius:18px;padding:18px;margin-bottom:14px;box-shadow:0 3px 16px rgba(0,0,0,.07)">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:13px"><span style="font-size:18px">📅</span><span style="font-weight:800;font-size:15px">ประวัติเข้า-ออกงาน (14 วันล่าสุด)</span></div>
+      ${histRows||'<div style="text-align:center;color:#94a3b8;font-size:13px;padding:16px">ยังไม่มีประวัติ</div>'}
     </div>`;
   document.getElementById('ep-body').innerHTML=body;
 }
 // ลงเวลาในพอร์ทัล (ตัวเองเท่านั้น)
+function epJobStatusNext(jobId){
+  const j=(DB.jobs||[]).find(x=>x.id===jobId); if(!j) return;
+  const idx=JOB_FLOW.indexOf(j.status); const next=idx>=0&&idx<JOB_FLOW.length-1?JOB_FLOW[idx+1]:null;
+  if(!next){ toast('งานนี้อยู่ขั้นตอนสุดท้ายแล้ว ('+j.status+')'); return; }
+  if(!confirm('อัปเดตสถานะงาน\n"'+j.title+'"\n'+j.status+' → '+next+'?')) return;
+  j.status=next;
+  if(typeof saveData==='function') saveData();
+  if(typeof auditLog==='function') auditLog('status','jobs',jobId,j.status+' → '+next);
+  toast('✅ อัปเดตสถานะ → '+next);
+  renderEmpPortal();
+}
+function epLeaveForm(){
+  if(typeof openLeaveForm==='function') openLeaveForm(curUser.empId,true);
+  else toast('⚠️ ฟังก์ชันขอลายังไม่พร้อม');
+}
 function epClock(dir){
   const empId=curUser.empId; const att=attToday(empId);
   if(dir==='in'&&att&&att.inTime){ if(!confirm('วันนี้ลงเวลาเข้าแล้ว — ลงใหม่ทับ?')) return; }
