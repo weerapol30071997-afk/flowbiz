@@ -31,6 +31,9 @@
 .ef-stat{background:rgba(255,255,255,.13);border-radius:12px;padding:8px 12px;text-align:center;border:1px solid rgba(255,255,255,.2)}
 .ef-stat .num{font-size:16px;font-weight:800;color:#fff}.ef-stat .lbl{font-size:9.5px;color:rgba(255,255,255,.75);margin-top:1px}
 @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+.pin-btn{height:58px;border:none;border-radius:14px;font-size:22px;font-weight:700;cursor:pointer;font-family:inherit;background:#f1f5f9;color:#1e293b;box-shadow:0 2px 6px rgba(0,0,0,.08);transition:transform .1s,background .1s;-webkit-tap-highlight-color:transparent}
+.pin-btn:active{transform:scale(.91);background:#e2e8f0}
+.pin-del{background:#fee2e2!important;color:#E53E3E!important;font-size:20px!important}
 *{margin:0;padding:0;box-sizing:border-box}
 body{font-family:'IBM Plex Sans Thai',sans-serif;background:var(--bg);color:var(--tx);display:flex;min-height:100vh;font-size:14px;overflow-x:hidden;-webkit-tap-highlight-color:transparent}
 /* SIDEBAR */
@@ -353,9 +356,20 @@ tbody tr:hover td{background:#FAFBFD}
       <div style="font-size:13px;font-weight:700;color:#374151;margin-bottom:10px;text-align:center">รหัส PIN (4–6 หลัก)</div>
       <!-- PIN dots display -->
       <div id="elg-dots" style="display:flex;justify-content:center;gap:12px;margin-bottom:16px;height:24px;align-items:center"></div>
-      <!-- PIN pad -->
-      <div id="elg-pinpad" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto 16px">
-        ${[1,2,3,4,5,6,7,8,9,'',0,'⌫'].map(k=>`<button type="button" onclick="elgKey('${k}')" style="height:58px;border:none;border-radius:14px;font-size:${k==='⌫'?'20':'22'}px;font-weight:700;cursor:pointer;font-family:inherit;background:${k===''?'transparent':k==='⌫'?'#fee2e2':'#f1f5f9'};color:${k==='⌫'?'#E53E3E':'#1e293b'};box-shadow:${k===''?'none':'0 2px 6px rgba(0,0,0,.08)'};transition:all .1s;${k===''?'pointer-events:none':''}" ${k===''?'disabled':''} onmousedown="this.style.transform='scale(.93)'" onmouseup="this.style.transform=''" ontouchstart="this.style.transform='scale(.93)'" ontouchend="this.style.transform=''">${k}</button>`).join('')}
+      <!-- PIN pad (static HTML) -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:240px;margin:0 auto 16px">
+        <button type="button" onclick="elgKey('1')" class="pin-btn">1</button>
+        <button type="button" onclick="elgKey('2')" class="pin-btn">2</button>
+        <button type="button" onclick="elgKey('3')" class="pin-btn">3</button>
+        <button type="button" onclick="elgKey('4')" class="pin-btn">4</button>
+        <button type="button" onclick="elgKey('5')" class="pin-btn">5</button>
+        <button type="button" onclick="elgKey('6')" class="pin-btn">6</button>
+        <button type="button" onclick="elgKey('7')" class="pin-btn">7</button>
+        <button type="button" onclick="elgKey('8')" class="pin-btn">8</button>
+        <button type="button" onclick="elgKey('9')" class="pin-btn">9</button>
+        <button type="button" disabled style="background:transparent;border:none"></button>
+        <button type="button" onclick="elgKey('0')" class="pin-btn">0</button>
+        <button type="button" onclick="elgKey('⌫')" class="pin-btn pin-del">⌫</button>
       </div>
       <button class="btn bp" style="width:100%;justify-content:center;padding:13px;font-size:14px;border-radius:13px;font-weight:700;background:linear-gradient(135deg,#00C9A7,#00a98e);box-shadow:0 4px 16px rgba(0,201,167,.35)" onclick="doEmpLogin()">👷 เข้าระบบพนักงาน</button>
       <input type="hidden" id="elg-pin" value="">
@@ -400,7 +414,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17t · 👷 Portal ครบสมบูรณ์</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17u · 🔑 แก้ PIN pad พนักงาน</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
