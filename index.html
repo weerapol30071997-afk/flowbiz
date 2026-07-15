@@ -414,7 +414,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17u · 🔑 แก้ PIN pad พนักงาน</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17v · 🖨️ พิมพ์เอกสารงานครบ + ใบงาน A4</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -6270,6 +6270,7 @@ function openJobDrawer(id){
   const itemsBox=(j.items&&j.items.length)?`<div style="margin-bottom:14px"><div style="font-size:12px;font-weight:700;color:var(--p);margin-bottom:8px">📋 รายการงาน/วัสดุ (${j.items.length})</div>${j.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><span style="font-weight:500">${it.desc}${it.note?`<span style="color:var(--mu);font-weight:400"> · ${it.note}</span>`:''}</span><span style="color:var(--mu);white-space:nowrap;margin-left:8px">${it.qty||''} ${it.unit||''}</span></div>`).join('')}</div>`:'';
   // ปุ่มเปลี่ยนสถานะตาม flow
   let actionBtns='';
+  const printBtn=`<button class="btn bo" style="flex:1;justify-content:center" onclick="jobPrintMenu('${id}')">🖨️ พิมพ์เอกสาร</button>`;
   if(j.status==='สำรวจ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','รอทำ')">✓ ยืนยันสำรวจเสร็จ → รอทำ</button>`;
   else if(j.status==='รอทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobStartWork('${id}')">🔧 เริ่มทำงาน (บันทึกเวลา+ตำแหน่ง)</button>`;
   else if(j.status==='กำลังทำ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobFinishWork('${id}')">🔎 เสร็จงาน → ส่งตรวจ (บันทึกเวลา+ตำแหน่ง)</button>`;
@@ -6277,6 +6278,7 @@ function openJobDrawer(id){
   else if(j.status==='อนุมัติแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center;background:#00897B" onclick="jobDeliver('${id}')">📦 ทำใบส่งมอบงาน</button>`;
   else if(j.status==='ไม่อนุมัติ') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="jobSetStatus('${id}','กำลังทำ')">🔧 กลับไปแก้งาน</button>`;
   else if(j.status==='ส่งมอบแล้ว') actionBtns=`<button class="btn bp" style="flex:1;justify-content:center" onclick="printJobDelivery('${id}')">🖨️ พิมพ์ใบส่งมอบ</button><button class="btn bo" style="flex:1;justify-content:center" onclick="shareJobDelivery('${id}')">📤 แชร์</button>`;
+  actionBtns+=printBtn;
   if(j.status==='ส่งมอบแล้ว'||j.status==='อนุมัติแล้ว'){
     const ws=(typeof warrantyStatus==='function')?warrantyStatus(j):null;
     if(ws){ actionBtns+=`<button class="btn bo" style="flex:1;justify-content:center" onclick="reprintWarranty('${id}')">🛡️ ดูใบรับประกัน</button>`; }
@@ -7063,6 +7065,76 @@ function jobDeliveryHtml(id){
     <div class="foot">เอกสารนี้ออกโดยระบบ FlowBiz · ${CO.name} · พิมพ์เมื่อ ${fmtSlash(today)}</div>
   </body></html>`;
   return html;
+}
+function jobPrintMenu(id){
+  const j=(DB.jobs||[]).find(x=>x.id===id); if(!j){ toast('ไม่พบงาน'); return; }
+  const ws=(typeof warrantyStatus==='function')?warrantyStatus(j):null;
+  const hasCL=(DB.checklists||[]).some(c=>c.refId===id);
+  document.getElementById('ml-t').textContent='🖨️ พิมพ์เอกสาร';
+  document.getElementById('ml-s').textContent=escHtml(j.title||id);
+  const btn=(ic,label,fn)=>`<button class="btn bo" style="width:100%;justify-content:flex-start;gap:12px;padding:13px 16px;margin-bottom:8px;border-radius:13px;font-size:13.5px" onclick="${fn}"><span style="font-size:20px">${ic}</span><span style="font-weight:600">${label}</span></button>`;
+  document.getElementById('ml-bd').innerHTML=`
+    ${btn('📋','ใบงาน / Work Order',`printWorkOrder('${id}')`)}
+    ${btn('🚚','ใบส่งมอบงาน',`printJobDelivery('${id}')`)}
+    ${ws?btn('🛡️','ใบรับประกัน',`reprintWarranty('${id}')`):''}
+    ${hasCL?btn('✅','ใบตรวจรับงาน',`printChecklist('${id}')`):''}
+    ${(j.repairItems&&j.repairItems.length)?btn('🔧','ใบรับสินค้าซ่อม',`printRepairReceipt('${id}')`):''}
+    ${j.quoteRef?btn('📄','ใบเสนอราคาต้นแบบ',`printDoc('quotes','${j.quoteRef}')`):''}`;
+  document.getElementById('ml-act').innerHTML=`<button class="btn bo" onclick="closeModal()">ปิด</button>`;
+  document.getElementById('ml').classList.add('op');
+}
+function printWorkOrder(id){
+  const j=(DB.jobs||[]).find(x=>x.id===id); if(!j){ toast('ไม่พบงาน'); return; }
+  const cust=getCust(j.cust); const cn=(cust&&cust.name)||j.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const br=x=>esc(x).replace(/\n/g,'<br>');
+  const costs=(j.costs||[]).filter(c=>c.desc); const total=costs.reduce((s,c)=>s+(+c.amt||0),0);
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.6}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:10px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:10px 0 4px}.title h1{font-size:22px;color:#0A6EBD;font-weight:800}.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:12px}
+.row{display:flex;font-size:12.5px;padding:3px 0;border-bottom:1px dashed #eef1f4}.row .k{color:#6b7280;width:130px;flex:none}.row .v{font-weight:600}
+.box{border:1px solid #e5e7eb;border-radius:9px;padding:11px 13px;margin:10px 0}.box .t{font-size:11px;font-weight:700;color:#0A6EBD;margin-bottom:6px}
+table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12.5px}th{background:#0A6EBD;color:#fff;padding:6px;text-align:left}td{border:1px solid #e5e7eb;padding:6px}
+.badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:11px;font-weight:700}
+.sig{display:flex;justify-content:space-between;margin-top:28px;gap:24px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:6px;font-size:12px}
+</style></head><body><div class="frame">
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>โทร. ${esc(CO.tel)} · เลขภาษี ${esc(CO.tax)}</div></div>
+  <div class="title"><h1>ใบงาน / Work Order</h1></div>
+  <div class="no">เลขที่ ${esc(id)} · ${fmtD(j.date)}</div>
+  <div class="row"><span class="k">ลูกค้า</span><span class="v">${esc(cn)}</span></div>
+  <div class="row"><span class="k">ชื่องาน</span><span class="v">${esc(j.title)}</span></div>
+  ${j.location?`<div class="row"><span class="k">สถานที่</span><span class="v">${esc(j.location)}</span></div>`:''}
+  ${j.assignee?`<div class="row"><span class="k">ผู้รับผิดชอบ</span><span class="v">${esc(j.assignee)}</span></div>`:''}
+  <div class="row"><span class="k">วันเริ่มงาน</span><span class="v">${fmtD(j.date)}</span></div>
+  ${j.due?`<div class="row"><span class="k">กำหนดแล้วเสร็จ</span><span class="v">${fmtD(j.due)}</span></div>`:''}
+  <div class="row"><span class="k">มูลค่างาน</span><span class="v">฿${fmt(j.value||0)}</span></div>
+  <div class="row"><span class="k">สถานะ</span><span class="v">${esc(j.status)}</span></div>
+  ${j.desc?`<div class="box"><div class="t">รายละเอียดงาน</div><div>${br(j.desc)}</div></div>`:''}
+  ${costs.length?`<div class="box"><div class="t">ต้นทุน / วัสดุ</div>
+    <table><thead><tr><th>รายการ</th><th style="text-align:right;width:100px">จำนวนเงิน</th></tr></thead>
+    <tbody>${costs.map(c=>`<tr><td>${esc(c.desc)}</td><td style="text-align:right">฿${fmt(c.amt)}</td></tr>`).join('')}
+    <tr style="font-weight:700"><td>รวมต้นทุน</td><td style="text-align:right">฿${fmt(total)}</td></tr></tbody></table>
+  </div>`:''}
+  ${j.quoteRef?`<div class="row"><span class="k">อ้างอิงใบเสนอราคา</span><span class="v">${esc(j.quoteRef)}</span></div>`:''}
+  <div class="sig">
+    <div class="col"><div class="ln">ช่าง / ผู้รับผิดชอบ<br>(${esc(j.assignee||CO.seller||'____________________')})</div></div>
+    <div class="col"><div class="ln">ผู้อนุมัติ / ผู้จัดการ<br>(${esc(CO.seller||'____________________')})</div></div>
+    <div class="col"><div class="ln">ลูกค้ารับทราบ<br>(${esc(cn||'____________________')})</div></div>
+  </div>
+</div></body></html>`;
+  closeModal();
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบงาน '+id,{});
+  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
+}
+function shareJobDelivery(id){
+  const j=(DB.jobs||[]).find(x=>x.id===id); if(!j) return;
+  const text=`ใบส่งมอบงาน ${id}\nงาน: ${j.title}\nลูกค้า: ${getCust(j.cust).name||j.cust||''}\nวันที่: ${fmtD(j.date)}\nมูลค่า: ฿${fmt(j.value||0)}`;
+  if(navigator.share){ navigator.share({title:'ใบส่งมอบงาน '+id,text}).catch(()=>{}); }
+  else if(navigator.clipboard){ navigator.clipboard.writeText(text).then(()=>toast('📋 คัดลอกข้อมูลแล้ว')).catch(()=>toast('⚠️ ไม่รองรับการแชร์ในเบราว์เซอร์นี้')); }
+  else { toast('⚠️ ไม่รองรับการแชร์ในเบราว์เซอร์นี้'); }
 }
 function printJobDelivery(id){
   const html=jobDeliveryHtml(id); if(!html) return;
