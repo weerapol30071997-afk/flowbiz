@@ -414,7 +414,7 @@ tbody tr:hover td{background:#FAFBFD}
       <div class="logo-ic">📊</div>
       <div class="logo-tx">Flow<span>Biz</span></div>
     </div>
-    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.17v · 🖨️ พิมพ์เอกสารงานครบ + ใบงาน A4</div>
+    <div style="font-size:9px;color:#5a7a99;margin-top:2px;letter-spacing:.3px">v2026.06.18b · 💳 พิมพ์ใบแบ่งจ่ายต่องวด</div>
   </div>
   <div class="co-box">
     <div class="co-nm">บ.ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส</div>
@@ -3939,19 +3939,36 @@ function printWorkContract(id){
   const unitMode=c.priceType==='unit';
   const itemRows=items.length?items.map((it,i)=>`<tr><td style="width:30px;text-align:center">${i+1}</td><td>${esc(it.desc)}</td>${unitMode?`<td style="text-align:right;width:60px">${it.qty||''}</td><td style="width:55px">${esc(it.unit||'')}</td><td style="text-align:right;width:90px">${it.price?fmt(it.price):''}</td>`:''}</tr>`).join('') : `<tr><td colspan="${unitMode?5:2}" style="text-align:center;color:#94a3b8">ตามรายละเอียดแนบท้ายสัญญา</td></tr>`;
   const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
-@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
-body{color:#1f2937;font-size:12.5px;line-height:1.6}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
-.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:8px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
-.title{text-align:center;margin:14px 0 4px}.title h1{font-size:21px;color:#0A6EBD;font-weight:800}.title .en{font-size:10.5px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
-.no{text-align:center;font-size:12px;color:#52606d;margin-bottom:14px}
-.party{display:flex;gap:14px;margin:8px 0 12px}.box{flex:1;border:1px solid #e5e7eb;border-radius:9px;padding:10px 12px}.box .t{font-size:10px;color:#6b7280;margin-bottom:4px;font-weight:700}
-.row{display:flex;font-size:12px;padding:2px 0}.row .k{color:#6b7280;width:140px;flex:none}.row .v{font-weight:600}
-.sec{margin-top:14px}.sec h3{font-size:13px;color:#0A6EBD;border-bottom:1px solid #cfe4fa;padding-bottom:4px;margin-bottom:6px}
-table.it{width:100%;border-collapse:collapse;font-size:11.5px;margin:6px 0}table.it th{background:#0A6EBD;color:#fff;padding:5px 6px;text-align:left}table.it td{border:1px solid #e5e7eb;padding:5px 6px}
-.sum{margin-top:8px;display:flex;justify-content:flex-end}.sum .box2{width:60%;background:#f5faff;border-radius:9px;padding:10px 13px;font-weight:700;display:flex;justify-content:space-between;color:#0A6EBD;font-size:14px}
-.clause{font-size:11.5px;color:#374151;text-align:justify;margin-top:4px}
-.sig{display:flex;justify-content:space-between;margin-top:34px;gap:30px;page-break-inside:avoid}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:50px;padding-top:6px;font-size:12px}
-.foot{text-align:center;font-size:10px;color:#9ca3af;margin-top:18px;border-top:1px solid #eef1f4;padding-top:8px}
+@page{size:A4 portrait;margin:10mm 12mm}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1a202c;font-size:9.5px;line-height:1.45}
+.frame{border:1.5px solid #0A6EBD;border-radius:7px;padding:10px 14px}
+.hd{text-align:center;border-bottom:1.5px solid #0A6EBD;padding-bottom:6px;margin-bottom:5px}
+.hd .cn{font-weight:700;font-size:11.5px;color:#0A6EBD}
+.hd .ca{font-size:8.5px;color:#555;margin-top:1px}
+.title{text-align:center;margin:5px 0 2px}
+.title h1{font-size:14px;color:#0A6EBD;font-weight:800}
+.title .en{font-size:8px;color:#94a3b8;letter-spacing:2px;text-transform:uppercase}
+.no{text-align:center;font-size:9px;color:#52606d;margin-bottom:6px}
+.party{display:flex;gap:8px;margin:5px 0 6px}
+.box{flex:1;border:1px solid #e5e7eb;border-radius:5px;padding:5px 8px}
+.box .t{font-size:8px;color:#6b7280;margin-bottom:2px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.row{display:flex;font-size:9px;padding:1px 0}
+.row .k{color:#6b7280;width:110px;flex:none}
+.row .v{font-weight:600}
+.sec{margin-top:6px;page-break-inside:avoid}
+.sec h3{font-size:9.5px;color:#0A6EBD;border-bottom:1px solid #cfe4fa;padding-bottom:2px;margin-bottom:3px;font-weight:700;background:#f0f7ff;padding:3px 6px;border-radius:3px}
+table.it{width:100%;border-collapse:collapse;font-size:9px;margin:3px 0}
+table.it th{background:#0A6EBD;color:#fff;padding:3px 5px;text-align:left;font-size:8.5px}
+table.it td{border:1px solid #e5e7eb;padding:3px 5px}
+.sum{margin-top:4px;display:flex;justify-content:flex-end}
+.sum .box2{width:55%;background:#f5faff;border-radius:5px;padding:5px 9px;font-weight:700;display:flex;justify-content:space-between;color:#0A6EBD;font-size:10.5px}
+.clause{font-size:9px;color:#374151;text-align:justify;margin-top:2px;line-height:1.5;text-indent:2em}
+.clause p{margin-bottom:3px}
+.sig{display:flex;justify-content:space-between;margin-top:14px;gap:16px;page-break-inside:avoid}
+.sig .col{flex:1;text-align:center}
+.sig .ln{border-top:1px dotted #94a3b8;margin-top:28px;padding-top:4px;font-size:9px}
+.foot{text-align:center;font-size:8px;color:#9ca3af;margin-top:8px;border-top:1px solid #eef1f4;padding-top:5px}
 </style></head><body><div class="frame">
   <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' , '+esc(CO.mobile):''}</div></div>
   <div class="title"><h1>สัญญาจ้างเหมางาน</h1><div class="en">Work / Lump-Sum Contract</div></div>
@@ -5094,7 +5111,8 @@ function openInstDrawer(id){
     const stl=inst.paid?'<span style="color:var(--ok);font-size:11px">✓ ชำระแล้ว</span>':inst.overdue?'<span style="color:var(--dg);font-size:11px">⚠ เกินกำหนด</span>':'<span style="color:var(--p);font-size:11px">รอชำระ</span>';
     const slipLink=(inst.payment&&inst.payment.slip)?`<a onclick="event.stopPropagation();photoView('${inst.payment.slip}')" style="font-size:10px;color:var(--p);cursor:pointer;display:block;margin-top:1px">📎 ดูสลิป</a>`:'';
     const btn=inst.paid?`<button class="pay-b done">✓</button>`:`<button class="pay-b" onclick="instMarkPaid('${id}',${inst.n-1})">บันทึก</button>`;
-    return `<div class="tl-row"><div class="tl-ci ${cls}">${inst.n}</div><div class="tl-inf"><div class="tl-t">${inst.desc}</div><div class="tl-s">ครบกำหนด ${fmtD(inst.due)}</div></div><div><div class="tl-am">฿${fmt(inst.amt)}</div><div class="tl-st">${stl}${slipLink}</div></div><div>${btn}</div></div>`;
+    const printBtn=`<button class="btn bo" style="padding:4px 8px;font-size:11px;margin-top:4px;border-radius:7px" onclick="printInstRow('${id}',${inst.n-1})">🖨️</button>`;
+    return `<div class="tl-row"><div class="tl-ci ${cls}">${inst.n}</div><div class="tl-inf"><div class="tl-t">${inst.desc}</div><div class="tl-s">ครบกำหนด ${fmtD(inst.due)}</div></div><div><div class="tl-am">฿${fmt(inst.amt)}</div><div class="tl-st">${stl}${slipLink}</div>${printBtn}</div><div>${btn}</div></div>`;
   }).join('');
   const methodLabel=r.method==='qty'?'📦 ตามจำนวนสินค้า':'💰 ตามยอด/เปอร์เซ็นต์';
   const itemsBlock=(r.items&&r.items.length)?`<div style="margin-bottom:18px"><div style="font-size:13px;font-weight:700;margin-bottom:8px">รายการสินค้า</div>${r.items.map(it=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--bd);font-size:12px"><div><div style="font-weight:500">${it.name}</div><div style="color:var(--mu)">${it.qty} ${it.unit||''} × ฿${fmt(it.price)}</div></div><div style="font-weight:700">฿${fmt(it.price*it.qty)}</div></div>`).join('')}</div>`:'';
@@ -5102,6 +5120,81 @@ function openInstDrawer(id){
     `${itemsBlock}<div><div style="font-size:13px;font-weight:700;margin-bottom:10px">ตารางงวดการชำระ</div>${tl}</div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn bp" style="flex:1;justify-content:center" onclick="instEdit('${r.id}')">✏️ แก้ไข</button><button class="btn bo" style="flex:1;justify-content:center" onclick="printDoc('installments','${r.id}')">🖨️ พิมพ์</button><button class="btn bd2" style="flex:1;justify-content:center" onclick="deleteDoc('installments','${r.id}')">🗑️ ลบ</button></div>`,'installments');
 }
 
+function printInstRow(rid, idx){
+  const r=DB.installments.find(x=>x.id===rid); if(!r){ toast('ไม่พบเอกสาร'); return; }
+  const row=r.rows[idx]; if(!row){ toast('ไม่พบงวด'); return; }
+  const cust=getCust(r.cust); const cn=(cust&&cust.name)||r.cust||'';
+  const CO=Object.assign({name:'บริษัท ดับเบิ้ลยู.เค เอ็นจิเนียริ่ง เซอร์วิส 2024 จำกัด (สำนักงานใหญ่)',addr:'164/293 หมู่บ้าน ว.แลนด์เฮ้าส์ หมู่1 ตำบลท่าข้าม อำเภอหาดใหญ่ จังหวัดสงขลา 90110',tax:'0905568006387',tel:'074896293',mobile:'0813062293',seller:'กุสุมา ชุมนวล'},companyInfo||{});
+  const esc=x=>String(x==null?'':x).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  const totalPaid=r.rows.slice(0,idx).filter(x=>x.paid).reduce((s,x)=>s+(+x.amt||0),0);
+  const totalRemain=r.rows.reduce((s,x)=>s+(x.paid?0:(+x.amt||0)),0);
+  const overdue=row.due&&row.due<iso(new Date())&&!row.paid;
+  const methodLabel=r.method==='qty'?'ตามจำนวนสินค้า':'ตามยอด/เปอร์เซ็นต์';
+  const isVat=!!r.vat; const vat7=isVat?Math.round(row.amt/1.07*0.07*100)/100:0;
+  const base=isVat?Math.round((row.amt-vat7)*100)/100:row.amt;
+  const allRows=r.rows.map((x,i)=>`<tr style="${i===idx?'background:#EAF4FF;font-weight:700':''}${x.paid&&i!==idx?'color:#94a3b8':''}">
+    <td style="text-align:center">${x.n}</td>
+    <td>${esc(x.desc||'-')}</td>
+    <td style="text-align:center">${fmtD(x.due)}</td>
+    <td style="text-align:right">${x.pct?fmt(x.pct)+'%':'—'}</td>
+    <td style="text-align:right;font-weight:600">฿${fmt(x.amt)}</td>
+    <td style="text-align:center;font-size:11px">${i===idx?'<b style="color:#0A6EBD">← งวดนี้</b>':x.paid?'<span style="color:#0F9D58">✓ จ่ายแล้ว</span>':'<span style="color:#94a3b8">รอชำระ</span>'}</td>
+  </tr>`).join('');
+  let qrHtml='';
+  try{ if(!row.paid&&typeof promptPayPayload==='function'&&typeof qrSVG==='function'&&typeof PROMPTPAY_ID!=='undefined'){
+    const payload=promptPayPayload(PROMPTPAY_ID,row.amt);
+    qrHtml=`<div style="display:flex;align-items:center;gap:14px;border:1px solid #d7dee5;border-radius:10px;padding:12px 16px;margin-top:16px;background:#fbfdff">
+      <div style="width:110px;height:110px;flex:none">${qrSVG(payload,110)}</div>
+      <div style="font-size:12px;line-height:1.6"><div style="font-weight:800;color:#003D6A;font-size:14px">PromptPay</div><div>พร้อมเพย์: <b>${PROMPTPAY_ID}</b></div><div style="font-size:18px;font-weight:800;color:#0A6EBD;margin-top:4px">฿${fmt(row.amt)}</div><div style="color:#7a868f;font-size:11px">ในนาม ${esc(CO.shortName||CO.name)}</div></div>
+    </div>`;
+  }}catch(e){}
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><style>
+@page{size:A4 portrait;margin:14mm}*{margin:0;padding:0;box-sizing:border-box;font-family:'Sarabun',sans-serif}
+body{color:#1f2937;font-size:13px;line-height:1.6}.frame{border:2px solid #0A6EBD;border-radius:10px;padding:22px 26px}
+.hd{text-align:center;border-bottom:2px solid #0A6EBD;padding-bottom:12px;margin-bottom:10px}.hd .cn{font-weight:700;font-size:15px;color:#0A6EBD}.hd .ca{font-size:11px;color:#555;margin-top:2px}
+.title{text-align:center;margin:10px 0 4px}.title h1{font-size:22px;color:#0A6EBD;font-weight:800}
+.highlight{background:linear-gradient(135deg,#EAF4FF,#d0eaff);border:2px solid #0A6EBD;border-radius:14px;padding:16px 20px;margin:14px 0;text-align:center}
+.row{display:flex;font-size:12.5px;padding:3px 0;border-bottom:1px dashed #eef1f4}.row .k{color:#6b7280;width:140px;flex:none}.row .v{font-weight:600}
+table.pt{width:100%;border-collapse:collapse;font-size:12px;margin:12px 0}table.pt th{background:#0A6EBD;color:#fff;padding:6px;text-align:left}table.pt td{border:1px solid #e5e7eb;padding:5px 7px}
+table.sumt{margin:8px 0 0 auto;width:260px;font-size:12.5px;border-collapse:collapse}table.sumt td{padding:4px 8px}table.sumt tr.grand{font-weight:700;color:#0A6EBD;border-top:2px solid #0A6EBD}
+.sig{display:flex;justify-content:space-between;margin-top:30px;gap:24px}.sig .col{flex:1;text-align:center}.sig .ln{border-top:1px dotted #94a3b8;margin-top:46px;padding-top:5px;font-size:12px}
+.paid-stamp{position:absolute;top:20px;right:20px;border:4px solid #0F9D58;color:#0F9D58;padding:8px 20px;border-radius:10px;font-size:22px;font-weight:900;opacity:.35;transform:rotate(-15deg);pointer-events:none}
+</style></head><body><div class="frame" style="position:relative">
+  ${row.paid?'<div class="paid-stamp">ชำระแล้ว</div>':''}
+  <div class="hd"><div class="cn">${esc(CO.name)}</div><div class="ca">${esc(CO.addr)}<br>เลขประจำตัวผู้เสียภาษี ${esc(CO.tax)} · โทร. ${esc(CO.tel)}${CO.mobile?' / '+CO.mobile:''}</div></div>
+  <div class="title"><h1>ใบเรียกเก็บเงิน — งวดที่ ${row.n}</h1></div>
+  <div style="text-align:center;font-size:12px;color:#52606d;margin-bottom:14px">เลขที่ ${esc(rid)} · วันที่ ${fmtD(r.date)} · วิธีแบ่งจ่าย: ${methodLabel}</div>
+  <div class="row"><span class="k">ลูกค้า</span><span class="v">${esc(cn)}</span></div>
+  ${cust.tax?`<div class="row"><span class="k">เลขประจำตัวผู้เสียภาษี</span><span class="v">${esc(cust.tax)}</span></div>`:''}
+  ${r.ref?`<div class="row"><span class="k">อ้างอิงเอกสาร</span><span class="v">${esc(r.ref)}</span></div>`:''}
+  <!-- ยอดงวดนี้ -->
+  <div class="highlight">
+    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:4px">ยอดเรียกเก็บงวดที่ ${row.n} — ${esc(row.desc||('งวดที่ '+row.n))}</div>
+    <div style="font-size:30px;font-weight:900;color:#0A6EBD">฿${fmt(row.amt)}</div>
+    <div style="font-size:12px;color:#374151;margin-top:4px">ครบกำหนดชำระ: <b style="color:${overdue?'#E53E3E':'#0A6EBD'}">${fmtD(row.due)}${overdue?' ⚠️ เลยกำหนด':''}</b></div>
+    ${row.pct?`<div style="font-size:11.5px;color:#6b7280;margin-top:2px">(${fmt(row.pct)}% ของมูลค่ารวม ฿${fmt(r.total)})</div>`:''}
+  </div>
+  ${isVat?`<table class="sumt"><tr><td>มูลค่าก่อนภาษี</td><td style="text-align:right">฿${fmt(base)}</td></tr><tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td style="text-align:right">฿${fmt(vat7)}</td></tr><tr class="grand"><td>ยอดชำระงวดนี้</td><td style="text-align:right">฿${fmt(row.amt)}</td></tr></table>`:`<table class="sumt"><tr class="grand"><td>ยอดชำระงวดนี้</td><td style="text-align:right">฿${fmt(row.amt)}</td></tr></table>`}
+  <!-- ตารางทุกงวด -->
+  <div style="font-size:12.5px;font-weight:700;margin:16px 0 6px;color:#374151">ตารางงวดชำระทั้งหมด</div>
+  <table class="pt"><thead><tr><th style="width:34px;text-align:center">งวด</th><th>รายละเอียด</th><th style="text-align:center">ครบกำหนด</th><th style="text-align:right">%</th><th style="text-align:right">จำนวนเงิน</th><th style="text-align:center">สถานะ</th></tr></thead>
+  <tbody>${allRows}</tbody></table>
+  <!-- สรุปยอด -->
+  <table class="sumt" style="margin-top:8px">
+    <tr><td>ยอดรวมทั้งหมด</td><td style="text-align:right">฿${fmt(r.total)}</td></tr>
+    <tr style="color:#0F9D58"><td>ชำระก่อนหน้า</td><td style="text-align:right">฿${fmt(totalPaid)}</td></tr>
+    <tr class="grand"><td>คงเหลือทั้งหมด (รวมงวดนี้)</td><td style="text-align:right">฿${fmt(totalRemain)}</td></tr>
+  </table>
+  ${qrHtml}
+  ${row.paid&&row.payment&&row.payment.slip?`<div style="margin-top:12px;text-align:center"><div style="font-size:12px;color:var(--mu);margin-bottom:6px">สลิปการชำระเงิน</div><img src="${row.payment.slip}" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #e5e7eb"></div>`:''}
+  <div class="sig">
+    <div class="col"><div class="ln">ผู้รับเงิน<br>(${esc(CO.seller||'____________________')})</div></div>
+    <div class="col"><div class="ln">ผู้ชำระเงิน<br>(${esc(cn||'____________________')})</div></div>
+  </div>
+</div></body></html>`;
+  if(typeof showPrintPreview==='function') showPrintPreview(html,'ใบเรียกเก็บ '+rid+' งวด '+row.n,{});
+  else { const wn=window.open('','_blank'); if(wn){wn.document.write(html);wn.document.close();setTimeout(()=>wn.print(),400);} }
+}
 function instMarkPaid(rid,idx){ openPayModal('inst',rid,idx); }
 // แก้ไขใบแบ่งจ่าย (แก้อ้างอิง/ยอด/งวดที่ยังไม่จ่าย — งวดที่จ่ายแล้วล็อกไว้)
 function instEdit(id){
@@ -10805,17 +10898,59 @@ function printDoc(type,id,opts){
       const itemsTable=(r.items&&r.items.length)
         ? `<table class="pt"><thead><tr><th style="width:36px;text-align:center">#</th><th>รายการสินค้า</th><th style="text-align:center;width:70px">จำนวน</th><th style="text-align:center;width:60px">หน่วย</th><th style="text-align:right;width:110px">ราคา/หน่วย</th><th style="text-align:right;width:110px">ยอดรวม</th></tr></thead><tbody>${r.items.map((it,i)=>{const parts=String(it.name||'').split('\n');const nm=parts[0]||'';const sub=it.sub||parts.slice(1).join(' ');return `<tr><td style="text-align:center;color:#52606d">${i+1}</td><td><div style="font-weight:500">${nm}</div>${sub?`<div style="font-size:11.5px;color:#7a868f;margin-top:1px">${nlbr(sub)}</div>`:''}</td><td style="text-align:center">${(+it.qty).toLocaleString('th-TH')}</td><td style="text-align:center;color:#5a6b7e">${it.unit||''}</td><td style="text-align:right">${fmt(it.price)}${it.disc?`<div style="font-size:10px;color:#c0392b">-${it.disc}%</div>`:''}</td><td style="text-align:right">${fmt(_lt(it))}</td></tr>`;}).join('')}</tbody></table>`
         : '';
-      const methodLabel = r.method==='qty' ? 'แบ่งจ่ายตามจำนวนสินค้า' : 'แบ่งจ่ายตามยอด/เปอร์เซ็นต์';
-      const rows=r.rows.map(x=>`<tr><td style="text-align:center">${x.n}</td><td>${x.desc}</td><td style="text-align:center">${fmtD(x.due)}</td><td style="text-align:right">${x.pct?fmt(x.pct)+'%':'—'}</td><td style="text-align:right">${fmt(x.amt)}</td><td style="text-align:center">${x.paid?'✓ ชำระแล้ว':'รอชำระ'}</td></tr>`).join('');
+      const paidRows = (r.payments||[]).filter(p=>p&&p.amount>0);
+      const totalPaid = paidRows.reduce((s,p)=>s+(+p.amount||0),0);
+      const rows=r.rows.map(x=>{
+        const isLate=!x.paid&&x.due&&x.due<iso(new Date());
+        const paidAmt=x.paidAmt||0; const hasPart=paidAmt>0&&paidAmt<(+x.amt||0);
+        const remain=Math.max(0,(+x.amt||0)-paidAmt);
+        return `<tr style="${isLate?'background:#fff5f5':''}">
+          <td style="text-align:center;font-weight:700">${x.n}</td>
+          <td>${x.desc||''}</td>
+          <td style="text-align:center">${fmtD(x.due)}</td>
+          <td style="text-align:right">${x.pct?fmt(x.pct)+'%':'—'}</td>
+          <td style="text-align:right;font-weight:700">฿${fmt(x.amt)}</td>
+          <td style="text-align:right;color:${x.paid?'#0F9D58':hasPart?'#D97706':'#374151'}">${x.paid?'฿'+fmt(x.amt):hasPart?'฿'+fmt(paidAmt):'—'}</td>
+          <td style="text-align:right;color:${remain>0?'#E53E3E':'#0F9D58'}">${x.paid?'—':'฿'+fmt(remain)}</td>
+          <td style="text-align:center">
+            ${x.paid?`<span style="color:#0F9D58;font-weight:700">✓ ชำระแล้ว</span>${x.paidDate?`<br><span style="font-size:10px;color:#94a3b8">${fmtD(x.paidDate)}</span>`:''}`
+            :hasPart?`<span style="color:#D97706;font-weight:700">จ่ายบางส่วน</span>`
+            :isLate?`<span style="color:#E53E3E;font-weight:700">⚠️ เลยกำหนด</span>`
+            :`<span style="color:#94a3b8">รอชำระ</span>`}
+          </td>
+        </tr>`;}).join('');
+      const totalRowAmts=r.rows.reduce((s,x)=>s+(+x.amt||0),0);
+      const totalRowPaid=r.rows.reduce((s,x)=>s+(x.paid?(+x.amt||0):(+x.paidAmt||0)),0);
+      const totalRemain=Math.max(0,totalRowAmts-totalRowPaid);
+      const summaryRow=`<tr style="background:#f5faff;font-weight:800;font-size:11px">
+        <td colspan="3" style="text-align:right">รวมทั้งสิ้น</td>
+        <td style="text-align:right"></td>
+        <td style="text-align:right;color:#0A6EBD">฿${fmt(totalRowAmts)}</td>
+        <td style="text-align:right;color:#0F9D58">฿${fmt(totalRowPaid)}</td>
+        <td style="text-align:right;color:${totalRemain>0?'#E53E3E':'#0F9D58'}">฿${fmt(totalRemain)}</td>
+        <td></td></tr>`;
       const gTotal=(typeof r.total==='number'&&!isNaN(r.total))?r.total:total;
       const vBase=r.vat?(r.vatBase!=null?r.vatBase:Math.round(gTotal/1.07*100)/100):gTotal;
       const vAmt=r.vat?(r.vatAmt!=null?r.vatAmt:Math.round((gTotal-vBase)*100)/100):0;
-      const instSum=r.vat
-        ? `<table class="sumt"><tr><td>มูลค่าก่อนภาษี</td><td>${fmt(vBase)} บาท</td></tr><tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vAmt)} บาท</td></tr><tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(gTotal)} บาท</td></tr></table>`
-        : `<table class="sumt"><tr><td>รวมเป็นเงิน</td><td>${fmt(gTotal)} บาท</td></tr><tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(gTotal)} บาท</td></tr></table>`;
+      const paidPct=gTotal>0?Math.round(totalRowPaid/gTotal*100):0;
+      const instSum=`<table class="sumt">
+        ${r.vat?`<tr><td>มูลค่าก่อนภาษี</td><td>${fmt(vBase)} บาท</td></tr><tr><td>ภาษีมูลค่าเพิ่ม 7%</td><td>${fmt(vAmt)} บาท</td></tr>`:``}
+        <tr class="grand"><td>จำนวนเงินรวมทั้งสิ้น</td><td>${fmt(gTotal)} บาท</td></tr>
+        <tr style="color:#0F9D58"><td>ชำระแล้ว (${paidPct}%)</td><td>฿${fmt(totalRowPaid)} บาท</td></tr>
+        <tr style="color:${totalRemain>0.01?'#E53E3E':'#0F9D58'};font-weight:700"><td>${totalRemain>0.01?'ยังค้างชำระ':'✓ ชำระครบแล้ว'}</td><td>${totalRemain>0.01?'฿'+fmt(totalRemain)+' บาท':'—'}</td></tr>
+      </table>`;
       return `${itemsTable}
       <div style="font-size:12.5px;font-weight:600;margin:6px 0 10px;color:#52606d">ตารางแบ่งชำระ · วิธี: ${methodLabel}</div>
-      <table class="pt"><thead><tr><th style="width:40px;text-align:center">งวด</th><th>รายละเอียด</th><th style="text-align:center">ครบกำหนด</th><th style="text-align:right">%</th><th style="text-align:right">จำนวนเงิน (฿)</th><th style="text-align:center">สถานะ</th></tr></thead><tbody>${rows}</tbody></table>
+      <table class="pt"><thead><tr>
+        <th style="width:36px;text-align:center">งวด</th>
+        <th>รายละเอียด</th>
+        <th style="text-align:center;width:88px">ครบกำหนด</th>
+        <th style="text-align:right;width:40px">%</th>
+        <th style="text-align:right;width:96px">ยอดงวด (฿)</th>
+        <th style="text-align:right;width:96px">จ่ายแล้ว (฿)</th>
+        <th style="text-align:right;width:96px">คงเหลือ (฿)</th>
+        <th style="text-align:center;width:80px">สถานะ</th>
+      </tr></thead><tbody>${rows}${summaryRow}</tbody></table>
       ${instSum}
       <div class="baht">(${bahtText(gTotal)})</div>`;
     }
@@ -10841,7 +10976,11 @@ function printDoc(type,id,opts){
     const isBill=(type==='invoices'||type==='installments');
     if(isBill && payMode!=='none'){
       let payAmt=0;
-      if(type==='installments' && r.rows){ payAmt=r.rows.filter(x=>!x.paid).reduce((s,x)=>s+(+x.amt||0),0); }
+      if(type==='installments' && r.rows){
+        const _rowsTotal=r.rows.reduce((s,x)=>s+(+x.amt||0),0);
+        const _rowsPaid=r.rows.reduce((s,x)=>s+(x.paid?(+x.amt||0):(+x.paidAmt||0)),0);
+        payAmt=Math.max(0,_rowsTotal-_rowsPaid);
+      }
       else { payAmt=(+r.amt||0)-(+r.paidAmt||0); }
       payAmt=Math.round(payAmt*100)/100;
       if(payAmt>0.01){
